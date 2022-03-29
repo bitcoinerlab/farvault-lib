@@ -1,0 +1,9 @@
+node_modules/
+trash/
+dist/
+localhost-key.pem
+localhost.pem
+*.swp
+*.swo
+*.swn
+*.log
