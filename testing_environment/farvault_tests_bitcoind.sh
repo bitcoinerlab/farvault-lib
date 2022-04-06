@@ -1,7 +1,7 @@
 #!/bin/sh
 
-rm -rf /tmp/regtest1
-mkdir -p /tmp/regtest1/bitcoind /tmp/regtest1/electrs
+rm -rf /tmp/regtest1/bitcoind
+mkdir -p /tmp/regtest1/bitcoind
 
 #Options: https://manpages.debian.org/testing/bitcoind/bitcoind.1.en.html
 
