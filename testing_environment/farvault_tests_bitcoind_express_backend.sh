@@ -1,4 +1,5 @@
-#/bin/sh
+#!/bin/sh
+rm -rf /tmp/regtest1/regtest-server
 mkdir -p /tmp/regtest1/regtest-server/regtest-data
 echo "satoshi" > /tmp/regtest1/regtest-server/regtest-data/KEYS
 export RPCCOOKIE=/tmp/regtest1/bitcoind/regtest/.cookie
