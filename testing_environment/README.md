@@ -1,17 +1,13 @@
-Very similar to what it is described here:
+# Setup
 
-https://github.com/bitcoindevkit/bitcoin-regtest-box
+## Install bitcoin (bitcoind)
+If you want to install the graphical version (Bitcoin-QT): https://bitcoin.org/en/download
+If you want to install bitcoind, then read instructions how to compile it here https://github.com/bitcoin/bitcoin/blob/master/doc/ (search for build-\*.md). For example, fo macos: https://github.com/bitcoin/bitcoin/blob/master/doc/build-osx.md
 
-Install bitcoin (bitcoind)
-* If you want to install the graphical version (Bitcoin-QT):
-  * https://bitcoin.org/en/download
-* If you want to install the raw daemon and client so that you can run commands on the terminal then:
-  * For macos: https://github.com/bitcoin/bitcoin/blob/master/doc/build-osx.md
-  * Choose your OS: https://github.com/bitcoin/bitcoin/blob/master/doc/ (search for build-*.md)
-
-You'll be able to run the tests using both versions.
-
-Tip. If you have Bitcoin-QT installed and only want to install bitcoin-cli:
+## Install bitcoin-cli
+You will also need to install `bitcoin-cli` (to send commands to your Bitcoin node).
+If you compiled bitcoind above then you can skip this step.
+If you are using Bitcoin-QT, then you must download the sources but you can skip compiling bitcoind:
 ```
 mkdir ~/bitcoin
 cd bitcoin
