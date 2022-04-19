@@ -1,0 +1,18 @@
+{
+  "source": {
+    "include": [
+      "src/",
+      "src/HDInterface",
+      "src/digiSign",
+      "src/digiSign",
+      "test",
+      "test/fixtures",
+      "test/integration"
+    ],
+    "includePattern": ".+\\.js(doc|x)?$",
+    "excludePattern": "(^|\\/|\\\\)_"
+  },
+  "opts": {
+    "destination": "./docs/"
+  }
+}

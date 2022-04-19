@@ -6,6 +6,7 @@ export const TPUB = 'tpub';
 export const UPUB = 'upub';
 export const VPUB = 'vpub';
 
+//https://github.com/satoshilabs/slips/blob/master/slip-0132.md
 export const XPUBVERSION = 0x0488b21e;
 export const YPUBVERSION = 0x049d7cb2;
 export const ZPUBVERSION = 0x04b24746;
@@ -59,3 +60,4 @@ export const GAP_LIMIT = 20;
 export const GAP_ACCOUNT_LIMIT = 1;
 
 export const BLOCKSTREAM_EXPLORER_BASEURL = 'https://blockstream.info';
+export const ESPLORA_BASEURL = 'http://127.0.0.1:3002';

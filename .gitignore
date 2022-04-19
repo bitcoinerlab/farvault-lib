@@ -1,6 +1,7 @@
 node_modules/
 trash/
 dist/
+docs/
 localhost-key.pem
 localhost.pem
 *.swp

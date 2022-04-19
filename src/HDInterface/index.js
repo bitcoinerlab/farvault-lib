@@ -6,7 +6,6 @@ import * as soft from './soft';
 
 import { PUBTYPES } from '../walletConstants';
 import { derivePubKey, parseDerivationPath, networkCoinType } from '../bip32';
-
 async function getPublicKey(
   HDInterface,
   derivationPath,
@@ -23,11 +22,11 @@ async function getPublicKey(
     throw new Error('Network mismatch');
   }
   const pubType = PUBTYPES[coinType][purpose];
-  const pub = await HDInterface.getPub({pubType, accountNumber, network});
+  const pub = await HDInterface.getPub({ pubType, accountNumber, network });
   return derivePubKey(pub, index, isChange, network);
 }
 
-export async function initHDInterface(type, { mnemonics } = {}) {
+export async function initHDInterface(type, { mnemonic } = {}) {
   let HDInterface = null;
   if (type === LEDGER_NANO_INTERFACE) {
     const ledgerAppBtc = await ledgerNano.init();
@@ -38,7 +37,10 @@ export async function initHDInterface(type, { mnemonics } = {}) {
         ledgerNano.createSigners(ledgerAppBtc, ...args)
     };
   } else if (type === SOFT_HD_INTERFACE) {
-    const seed = await soft.init(mnemonics);
+    if (typeof mnemonic === undefined) {
+      console.log('WARN: Using default mnemonic!');
+    }
+    const seed = await soft.init(mnemonic);
     HDInterface = {
       type,
       getPub: (...args) => soft.getPub(seed, ...args),

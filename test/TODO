@@ -1,0 +1,3 @@
+getPubAddress
+networkCoinType
+export async function bip32UnspentAddresses(

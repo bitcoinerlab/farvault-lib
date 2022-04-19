@@ -1,4 +1,4 @@
-/*Super compplete example and the way to run tests:
+/*Super complete example and the way to run tests:
 https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/test/integration/csv.spec.ts
 */
 //TODO: find the new unlock txs
@@ -19,7 +19,7 @@ import {
 } from './HDInterface';
 import varuint from 'varuint-bitcoin';
 
-import { coinSelect } from './coinselect';
+import { coinselect } from './coinselect';
 import {
   Psbt,
   payments,
@@ -84,6 +84,24 @@ function createRelativeTimeLockScript(
   rescuedPublicKey,
   lockTime
 ) {
+  if (
+    !Buffer.isBuffer(hotPublicKey) ||
+    Buffer.byteLength(hotPublicKey) !== 33
+  ) {
+    throw new Error('Invalid hotPublicKey');
+  }
+  if (
+    !Buffer.isBuffer(rescuedPublicKey) ||
+    Buffer.byteLength(rescuedPublicKey) !== 33
+  ) {
+    throw new Error('Invalid rescuedPublicKey');
+  }
+  if (
+    typeof lockTime !== 'number' ||
+    bip68.encode(bip68.decode(lockTime)) !== lockTime
+  ) {
+    throw new Error('Invalid lockTime');
+  }
   return script.fromASM(
     /* Simpler to understand but slightly more expensive
      * `
@@ -244,7 +262,7 @@ const validator = (pubkey, msghash, signature) =>
 export async function ledgerPayment(network = networks.testnet) {
   const useLedger = true;
 
-  const mnemonics =
+  const mnemonic =
     'find subject time jump river dignity resist water arrange runway purpose question exchange random concert guitar rifle sun slim add pet loud depend view';
 
   //independentFrozenAddress = false to use a fixed path from the HDInterface
@@ -272,9 +290,9 @@ export async function ledgerPayment(network = networks.testnet) {
   //const fundsUTXOs = [utxos[6] /*native segwit*/];
 
   console.log(
-    coinSelect({
+    coinselect({
       utxos: fundsUTXOs,
-      target: unusedDerivationPaths[0],
+      targets: [unusedDerivationPaths[0]],
       feeRate: 10,
       network
     })
@@ -285,14 +303,14 @@ export async function ledgerPayment(network = networks.testnet) {
 
   const HDInterface = useLedger
     ? await initHDInterface(LEDGER_NANO_INTERFACE)
-    : await initHDInterface(SOFT_HD_INTERFACE, { mnemonics });
+    : await initHDInterface(SOFT_HD_INTERFACE, { mnemonic });
 
   //Random - not tied to the HDInterface of the rest of keys
   if (independentFrozenAddress) {
     const frozenMnemonic = bip39.generateMnemonic(256);
     console.log({ frozenMnemonic });
     frozenHDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
-      mnemonics
+      mnemonic
     });
     frozenDerivationPath = `${NATIVE_SEGWIT}'/${networkCoinType(
       network
@@ -498,3 +516,7 @@ export async function ledgerPayment(network = networks.testnet) {
   //TEST:
   //curl --user myusername --data-binary '{"jsonrpc": "1.0", "id": "curltest", "method": "testmempoolaccept", "params": [["signedhex"]]}' -H 'content-type: text/plain;' http://127.0.0.1:8332/
 }
+
+export const exportedForTesting = {
+  createRelativeTimeLockScript
+};

@@ -41,7 +41,7 @@ import {
   validateCoinTypePubType
 } from './validation';
 
-function getPubAddress(
+export function getPubAddress(
   pub,
   index = 0,
   isChange = false,
@@ -143,16 +143,16 @@ async function fetchPubBalance(
       }'/${networkCoinType(network)}'/${accountNumber}'/${
         change ? 1 : 0
       }/${index}`;
-      console.log({
-        address,
-        derivationPath,
-        pubType: getPubType(pub),
-        accountNumber,
-        change,
-        index,
-        used,
-        addressBalance
-      });
+      //console.log({
+      //  address,
+      //  derivationPath,
+      //  pubType: getPubType(pub),
+      //  accountNumber,
+      //  change,
+      //  index,
+      //  used,
+      //  addressBalance
+      //});
       if (addressBalance !== 0) {
         addresses.push({ address, derivationPath });
         balance += addressBalance;
@@ -174,7 +174,7 @@ async function fetchPubBalance(
 }
 
 //This should be bip32UTXO(network, addressFetcher, HDInterface)
-async function bip32UnspentAddresses(
+export async function bip32UnspentAddresses(
   HDInterface,
   network = networks.bitcoin,
   addressFetcher = blockstreamFetchAddress
@@ -182,19 +182,21 @@ async function bip32UnspentAddresses(
   //let bip32Balance = 0;
   const bip32Addresses = [];
   for (const pubType of Object.values(PUBTYPES[networkCoinType(network)])) {
+    //console.log('TRACE', 'bip32UnspentAddresses pubType', { pubType });
     for (
       let accountNumber = 0, consecutiveUnusedAccounts = 0;
       consecutiveUnusedAccounts < GAP_ACCOUNT_LIMIT;
       accountNumber++
     ) {
       const pub = await HDInterface.getPub({ pubType, accountNumber, network });
-      console.log({ accountNumber, pubType, pub });
+      //console.log('TRACE', 'bip32UnspentAddresses pubType', { accountNumber, consecutiveUnusedAccounts, pub });
       //This should be fetchPubUTXO(pub, network, addressFetcher)
       const { balance, addresses, used } = await fetchPubBalance(
         pub,
         network,
         addressFetcher
       );
+      //console.log({ accountNumber, pubType, pub, balance, used });
       if (used) {
         consecutiveUnusedAccounts = 0;
         bip32Addresses.push(...addresses);
@@ -225,14 +227,14 @@ export async function ledgerBalance(
     network,
     addressFetcher
   );
-  console.log({ uAddresses });
+  //console.log({ uAddresses });
   for (const address of uAddresses) {
     const addressUtxos = await utxoFetcher(address.address, network);
     addressUtxos.map(addressUtxo =>
       utxos.push({ ...addressUtxo, derivationPath: address.derivationPath })
     );
   }
-  console.log({ utxos });
+  //console.log({ utxos });
   return uAddresses;
 }
 
@@ -247,13 +249,13 @@ export async function softwareBalance(
     network,
     addressFetcher
   );
-  console.log({ uAddresses });
+  //console.log({ uAddresses });
   for (const address of uAddresses) {
     const addressUtxos = await utxoFetcher(address.address, network);
     addressUtxos.map(addressUtxo =>
       utxos.push({ ...addressUtxo, derivationPath: address.derivationPath })
     );
   }
-  console.log({ utxos });
+  //console.log({ utxos });
   return uAddresses;
 }

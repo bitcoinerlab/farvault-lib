@@ -7,7 +7,7 @@ import {
   VPUB,
   PUBTYPES
 } from './walletConstants';
-import { networks } from 'bitcoinjs-lib';
+import { networks, address as bjsAddress } from 'bitcoinjs-lib';
 export function validateNetwork(network) {
   if (
     network !== networks.bitcoin &&
@@ -32,4 +32,17 @@ export function validatePubType(pubType) {
 export function validateCoinTypePubType(coinType, pubType) {
   if (!Object.values(PUBTYPES[coinType]).includes(pubType))
     throw new Error('PubType does not belong to this coinType');
+}
+
+/**
+ * @param {string} address Bitcion address
+ * Based on: https://github.com/bitcoinjs/bitcoinjs-lib/issues/890
+ */
+export function validateAddress(address, network) {
+  try {
+    bjsAddress.toOutputScript(address, network);
+    return true;
+  } catch (e) {
+    throw new Error('Invalid address');
+  }
 }

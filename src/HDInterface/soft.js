@@ -2,9 +2,9 @@ import { mnemonicToSeed } from 'bip39';
 import { networks } from 'bitcoinjs-lib';
 import { BIP32_PURPOSE } from '../walletConstants';
 export async function init(
-  mnemonics = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
+  mnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
 ) {
-  return await mnemonicToSeed(mnemonics);
+  return await mnemonicToSeed(mnemonic);
 }
 import {
   validateNetwork,

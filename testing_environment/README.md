@@ -30,7 +30,7 @@ If you want to install bitcoind, then read instructions how to compile: https://
 
 For example, for macOS, follow these instructions: https://github.com/bitcoin/bitcoin/blob/master/doc/build-osx.md
 
-# Run bitcoind
+## Run bitcoind
 
 Prepare directories and run bitcoind:
 
@@ -48,7 +48,7 @@ bitcoind \
   -zmqpubhashblock=tcp://127.0.0.1:30001
 
 ```
-Options: `-txindex -zmqpubhashtx=tcp://127.0.0.1:30001 -zmqpubhashblock=tcp://127.0.0.1:30001` are required by regtest-server that we will install at the end.
+Options: `-txindex -zmqpubhashtx=tcp://127.0.0.1:30001 -zmqpubhashblock=tcp://127.0.0.1:30001` are required by regtest-server that you will install at the end.
 
 # Install bitcoin-cli
 You will also need to install `bitcoin-cli` (to send commands to your Bitcoin node).
@@ -90,14 +90,14 @@ DEPOSIT_ADDRESS=$(bitcoin-cli -regtest -datadir=/tmp/regtest1/bitcoind getnewadd
 bitcoin-cli -regtest -datadir=/tmp/regtest1/bitcoind sendtoaddress $DEPOSIT_ADDRESS 10
 bitcoin-cli -regtest -datadir=/tmp/regtest1/bitcoind generatetoaddress 1 $GEN_ADDRESS
 ```
-Note how we mined a new block so that the transaction is confimed.
+Note how you mined a new block so that the transaction is confimed.
 
 # Install Blockstream's electrs
 Electrs is the backend used by one of the best Bitcoin block explorers: https://blockstream.info/
 
-We will use it very often to check the funds of different addresses. The API is described here: https://github.com/Blockstream/esplora/blob/master/API.md
+You will use it very often to check the funds of different addresses. The API is described here: https://github.com/Blockstream/esplora/blob/master/API.md
 
-Note that a Bitcoin node does not provide a fast and reasonable way to see how many Bitcoin can be spent with a certain address. Thus, we need a different server (such as electrs) that indexes data wrt addresses.
+Note that a Bitcoin node does not provide a fast and reasonable way to see how many Bitcoin can be spent with a certain address. Thus, you need a different server (such as electrs) that indexes data with respect to addresses.
 
 ```
 mkdir ~/bitcoin/electrs
@@ -109,10 +109,10 @@ git clone https://github.com/blockstream/electrs && cd electrs
 git checkout new-index
 ```
 
-# Run electrs:
+## Run electrs:
 You might need to install Rust before running electrs: https://doc.rust-lang.org/cargo/getting-started/installation.html
 
-Once you have installed Rust, this is how you can run electrs so that it connects to the regtest bitcoin daemon which we just installed above:
+Once you have installed Rust, this is how you can run electrs so that it connects to the regtest bitcoin daemon which you just installed above:
 
 `electrs.sh`:
 ```
@@ -147,7 +147,7 @@ npm install
 ```
 Note: If npm install fails, read this: https://github.com/bitcoinjs/regtest-server/issues/12
 
-Run it like this:
+Run it like this so that it connects to the regtest Bitcoin node you installed before:
 `regtest_server.sh`:
 ```
 #!/bin/sh
