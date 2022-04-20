@@ -145,11 +145,15 @@ describe('FarVault full pipe', () => {
 
         const { utxos: selectedUtxos, fee, targets } = coinselect({
           utxos: walletUtxos,
-          targets: [{ address: walletAddresses[0].address }],
+          targets: [
+            { address: walletAddresses[0].address, value: 33432423432 }
+          ],
+          changeAddress: () => 'bcrt1qlckxrvk56kezy35xuw3tk5w5gkvnmjl0cahw3u',
           feeRate: 1,
           network
         });
-        console.log({ selectedUtxos, fee, targets });
+        expect(selectedUtxos).not.toBeUndefined();
+        expect(targets).not.toBeUndefined();
       },
       ESPLORA_CATCH_UP_TIME +
         BITCOIND_CATCH_UP_TIME +

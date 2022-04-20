@@ -10,6 +10,7 @@ export const fixtures = {
       },
       index: 0,
       isChange: false,
+      //234 BTC
       value: 23432423432
     },
     {
@@ -19,6 +20,7 @@ export const fixtures = {
       },
       index: 3,
       isChange: false,
+      //234 BTC
       value: 23432423432
     },
     {
@@ -28,6 +30,7 @@ export const fixtures = {
       },
       index: 5,
       isChange: false,
+      //0.0001 BTC
       value: 10000
     },
     {
@@ -37,6 +40,7 @@ export const fixtures = {
       },
       index: 1,
       isChange: true,
+      //0.0002 BTC
       value: 20000
     }
   ]

@@ -1,0 +1,8 @@
+//This file is used by jest for the tests
+{
+  "env": {
+    "test": {
+      "plugins": ["@babel/plugin-transform-modules-commonjs"]
+    },
+  }
+}

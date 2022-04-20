@@ -10,10 +10,11 @@ import { validateAddress } from './validation';
  * Given a set of target addresses where the user wants to send some bitcoin,
  * it selects a subset of utxos so that the targets are funded. Pass it a
  * changeAddress callback in case it's needed.
- * Read this to understand some of the decissions on the script size:
- * https://github.com/bitcoinjs/coinselect/issues/69
- * Note that there may still be a minor problem based on this:
+ * Read these issues below to understand some of the decissions on the
+ * {script:{lenght}} pieces of code in the implementation:
  * https://github.com/BlueWallet/BlueWallet/issues/4352#issuecomment-1102307443
+ * https://github.com/bitcoinjs/coinselect/issues/69
+ * https://github.com/BlueWallet/BlueWallet/pull/3810
  * @param {Object} parameters
  * @param {Object[]} parameters.utxos List of spendable utxos.
  * @param {string} parameters.utxos[].derivationPath Derivation path. F.ex.: "44'/1'/1'/0/0".
@@ -36,12 +37,12 @@ export function coinselect({
   changeAddress,
   network = networks.testnet
 }) {
-  //validateAddress(changeAddress, network);
+  let addedWitness = false;
   const csUtxos = utxos.map(utxo => {
     const { purpose } = parseDerivationPath(utxo.derivationPath);
     let decodedTx;
     try {
-      decodedTx = decodeTx(utxo.tx);
+      decodedTx = decodeTx(utxo.tx, network);
     } catch (error) {
       throw new Error('Invalid tx');
     }
@@ -59,11 +60,24 @@ export function coinselect({
     // compensating for coinselect inability to deal with segwit inputs,
     // and overriding script length for proper vbytes calculation
     // based on https://github.com/BlueWallet/BlueWallet/blob/master/class/wallets/abstract-hd-electrum-wallet.js
+    //console.log('TRACE LENGTH', bjsAddress.toOutputScript(decodedTx.vout[utxo.n].address, network).length);
     if (purpose === LEGACY) {
     } else if (purpose === NESTED_SEGWIT) {
-      csUtxo.script = { length: 50 };
+      let additionalWitnessBytes = 0;
+      if (addedWitness === false) {
+        //Line 84: https://gist.github.com/junderw/b43af3253ea5865ed52cb51c200ac19c
+        additionalWitnessBytes = 1;
+        addedWitness = true;
+      }
+      csUtxo.script = { length: 50 + additionalWitnessBytes };
     } else if (purpose === NATIVE_SEGWIT) {
-      csUtxo.script = { length: 27 };
+      let additionalWitnessBytes = 0;
+      if (addedWitness === false) {
+        //Line 84: https://gist.github.com/junderw/b43af3253ea5865ed52cb51c200ac19c
+        additionalWitnessBytes = 1;
+        addedWitness = true;
+      }
+      csUtxo.script = { length: 27 + additionalWitnessBytes };
     } else {
       throw new Error(
         'coinselect does ONLY work with p2wpkh, p2sh-p2wpkh or p2wpkh'
@@ -91,15 +105,20 @@ export function coinselect({
       csTarget.value = target.value;
     }
     validateAddress(target.address, network);
-    if (
-      (target.address.startsWith('bc1') && network === networks.bitcoin) ||
-      (target.address.startsWith('tb1') && network === networks.testnet) ||
-      (target.address.startsWith('bcrt1') && network === networks.regtest)
-    ) {
+    //console.log('TRACE LENGTH', bjsAddress.toOutputScript(target.address, network).length);
+    //Read discussion:
+    //https://github.com/BlueWallet/BlueWallet/issues/4352#issuecomment-1102307443
+    //
+    //if (
+    //  (target.address.startsWith('bc1') && network === networks.bitcoin) ||
+    //  (target.address.startsWith('tb1') && network === networks.testnet) ||
+    //  (target.address.startsWith('bcrt1') && network === networks.regtest)
+    //) {
+    //console.log('TRACE LENGTH', bjsAddress.toOutputScript(target.address, network).length);
       csTarget.script = {
-        length: bjsAddress.toOutputScript(target.address, network).length + 3
+        length: bjsAddress.toOutputScript(target.address, network).length
       };
-    }
+    //}
     return csTarget;
   });
 

@@ -166,6 +166,46 @@ export const fixtures = {
       ]
     },
     {
+      description: 'Send to Segwit, receive change - regtest',
+      network: networks.regtest,
+      mnemonic:
+        'pulp ritual farm danger swarm topple foil zone limb mail smoke lawsuit rent jungle grain step giraffe inmate outer embrace please lift powder trigger',
+      targets: [
+        {
+          address: 'bcrt1qs758ursh4q9z627kt3pp5yysm78ddny6txaqgw',
+          value: 1
+        }
+      ],
+      feeRate: 1,
+      changeAddress: 'bcrt1qlckxrvk56kezy35xuw3tk5w5gkvnmjl0cahw3u',
+      utxos: [
+        {
+          tx:
+            '020000000001068e86db5741bdbe1e1d7712f72624231873493ca311d7cf3b874f72059db1b45c0000000000feffffffa58f19e7a4926c42e9e06df7e60c7c0d5ed1fe5042c97ef3112e86ed48fdcf060000000000feffffffb693cfd434902f4db135d51916ac5ecab0597c070cd2a3568ccad7cd67a802bd0000000000feffffffb93c3ef94ffaf122b11c7ad518336ef31f4880cb5eb7a879cf9546ab85a0266a0000000000feffffffac5ad751d959b793cb8a9b8e5884dfe2a354f2c7d6d153a1c77b10c484ec56600000000000fefffffff1a88b6aa20071d031eb44275f86bfe5b115af805ff51f0e485bb6e4b3f960970000000000feffffff020868ae74050000001976a914081fe748fef4308de4a8b0c52ff0aa5469ee67c888ac96d3ed1200000000160014bbda5b2c418682731db1c922d686e9394c34abe40247304402204a70e83fa4f5c3ae94affbee54af1933c0e10f7fdc0f7990d502753f92f40a2002200b9f3e956ba0ba57fdb2a6a6b105d26a8f2556edcd74a9e8a3c8e3990485f62c012103e35032031e82bebd4b737761537968c69e96bb73819975869b0f23efb5fe249d024730440220158b29799929d0788558b080c634578c216ade2f46ad0e899d7abfafbbc870cf0220615149ce58c7465ffe9cdac9eddbd26193ea715860b544a968245e886e0f187f012102b80fc9af90e7d80c4c5e1b62e89eac6e5a633a0e7ad8cf740431138ace365dc602473044022034d65db7d43e23b0c74d69668e241d9d3e5182684b9362e2f6d7aa2d75f2ab5e022058de13e7cfbfba7f5376c61c7eb7dec34c5da350d7b003c8bf560fab1f3e2f68012102b80fc9af90e7d80c4c5e1b62e89eac6e5a633a0e7ad8cf740431138ace365dc6024730440220648d3fc8cd5ccc351dc996ce64a36d222e671dc08a499c843a9c1e863573125b0220362a57d5501fcdbfaab20e736a435161706bec72d24ff8851db2f208aa5e3fb8012102b80fc9af90e7d80c4c5e1b62e89eac6e5a633a0e7ad8cf740431138ace365dc60247304402203ad5c741b53abe05f951c49b1a8b632a99603cc6ac78eebc15ef4ccc7a6d19440220662cfd17d69b62afb55cca90d907a2b89f20b95ae666b75b827a9f306caeda71012103e35032031e82bebd4b737761537968c69e96bb73819975869b0f23efb5fe249d0247304402206d7432b222937ae6a597a446da4beca5ff902a37f4a22530f5302b0573e4bbbf0220564a872d97dbf0a34b7a1d4c7c2db5b85116626a6458d718bc98709601c37c00012103e35032031e82bebd4b737761537968c69e96bb73819975869b0f23efb5fe249db0010000',
+          n: 0,
+          derivationPath: "44'/1'/0'/0/0"
+        },
+        {
+          tx:
+            '02000000000106f62f9894b58a460bad39eb2fb1a64fb9112b13ae9c02931039299969d0bd7da70000000000feffffff3eb59a5b1cd5737c04cb73540e501b31608fae091fe58e403664eb7c8e4071fe0000000000feffffffb82e50e324ec88467bdef1e9463e4cc09544d635dd39e2fa1eb2479f6014ce470000000000feffffff78ea9de2f6029e5d5d5f317c2b6c93d6705ee9bbb1ee2374cf2d3e8729932a970000000000feffffff6153a0eb366576b75a96ac78b1c0df422acc1b6121dc90d36c9c7932b2b835400000000000feffffff2b61c6c7d61c90e95d24ccc159ef6b0603583b44830fcec55febe6e54b754cbe0000000000feffffff020868ae74050000001976a914f7819799f474e96c6bd5c92980e9ab8fc7c6f2f188ac96d3ed1200000000160014824def7319a692484b3cdbee08383f53464a6d670247304402204ac67a1a2fe609153634c951b76b392bc45cb59b80fce590a1eba3806c4e0b81022005c2d550e419358521a5d6d529e78767e444e83fcd90d1118cef98721d666512012103e35032031e82bebd4b737761537968c69e96bb73819975869b0f23efb5fe249d0247304402205da5738ceec23da187977d6a7db613ecdb6ee17217e0f8ec96838854640380d9022006425c3a42e75d3c0905a73bc8c2f66764d0ebf29274ce1187e5cecbcb9abc9f012102b80fc9af90e7d80c4c5e1b62e89eac6e5a633a0e7ad8cf740431138ace365dc6024630430220679a9f380dba0bb77a5bb27493542d0cac555b33c5898feafba2691df047a906021f16b5c746d44d90fd1bc78fb2f339e1c08b32d1b3076e15859673e476fd0040012103e35032031e82bebd4b737761537968c69e96bb73819975869b0f23efb5fe249d0247304402201a14397a6b41e1110afa1ba5b57fc4debf01d027ab30359e3fc9b14de1c58ccf022011aa1a60b7ebdf87b2b25af3aff61ec967ce4c384b2e2507f02481ed75392b61012103e35032031e82bebd4b737761537968c69e96bb73819975869b0f23efb5fe249d02473044022044a0a7b1bd6ca2bc47c30b8188ae5e526b48efb3a9b4c6ea917d8f668be76c2e022054a1f50f86d9ab7161a914876fb5590909e208e6221ba4bcf65ca6258ae799a8012102b80fc9af90e7d80c4c5e1b62e89eac6e5a633a0e7ad8cf740431138ace365dc60247304402201cdb57fe1a53169b94a1c2968e87b0e2a826d0c6089e04e899f1643f451ce0e40220694c6eb81d6115380912eb0af8b7b34c8677ce23a3d987c209793e0ae78ee7ce012102b80fc9af90e7d80c4c5e1b62e89eac6e5a633a0e7ad8cf740431138ace365dc6b0010000',
+          n: 0,
+          derivationPath: "44'/1'/0'/0/3"
+        },
+        {
+          tx:
+            '02000000000101b28e4e4676ab43d55e3d65f118642afab78f2eea3a46e0a9c2bfb32738f9c1d40000000000feffffff02e354814a0000000016001401bd43e70dc8e4fa1dfc465180a61b965026ae1c10270000000000001600140c87dd0cc9f687748c956f60d1eba97c67bcf12c024730440220117d399583cc714c55921ac15f8d7d7f71a124b92e36f3fd3ec0c3d81a66546902204368f40185009a475e9fa2edd434201af983d05182c9f553c7eae95b4ffea6a1012103e35032031e82bebd4b737761537968c69e96bb73819975869b0f23efb5fe249db0010000',
+          n: 1,
+          derivationPath: "84'/1'/0'/0/5"
+        },
+        {
+          tx:
+            '0200000000010107df9528fcb0e0c1f20613bc587f3777d04bb0ee3377d100ac128a2c775c0ac60000000000feffffff02d22d814a00000000160014783286fdcaf9e77238e13d50984eb2b366dc3401204e00000000000017a914e0f9baea19451cdefed125c4d24d7d344cf9acb4870247304402202a72f7da04c05c8f3416cc46ca1bf69a6d7b7811e5471e7dbc6bd6b931f0aa9902202badf9b6f2a45ad8d61f1bd15e5ca00c50e117238474fde63b4c14b1277d3538012103e35032031e82bebd4b737761537968c69e96bb73819975869b0f23efb5fe249db0010000',
+          n: 1,
+          derivationPath: "49'/1'/0'/1/1"
+        }
+      ]
+    },
+    {
       description: 'Send to Segwit - Send all',
       network: networks.regtest,
       mnemonic:
@@ -199,7 +239,77 @@ export const fixtures = {
           derivationPath: "49'/1'/0'/1/1"
         }
       ]
-    }
+    },
+    {
+      description: 'Send to Legacy address from 1 Segwit output - regtest',
+      network: networks.regtest,
+      mnemonic:
+        'pulp ritual farm danger swarm topple foil zone limb mail smoke lawsuit rent jungle grain step giraffe inmate outer embrace please lift powder trigger',
+      targets: [
+        {
+          //value: , //No value set, send it all
+          address: 'n4dMV2h2VxxrQvh4hpcarSgtJ5azGV6iPE'
+        }
+      ],
+      feeRate: 1,
+      //changeAddress: '', //won't be used
+      utxos: [
+        {
+          tx:
+            '02000000000101b28e4e4676ab43d55e3d65f118642afab78f2eea3a46e0a9c2bfb32738f9c1d40000000000feffffff02e354814a0000000016001401bd43e70dc8e4fa1dfc465180a61b965026ae1c10270000000000001600140c87dd0cc9f687748c956f60d1eba97c67bcf12c024730440220117d399583cc714c55921ac15f8d7d7f71a124b92e36f3fd3ec0c3d81a66546902204368f40185009a475e9fa2edd434201af983d05182c9f553c7eae95b4ffea6a1012103e35032031e82bebd4b737761537968c69e96bb73819975869b0f23efb5fe249db0010000',
+          n: 1,
+          derivationPath: "84'/1'/0'/0/5"
+        }
+      ]
+    },
+    {
+      description: 'Send to segwit from 1 segwit output - regtest',
+      network: networks.regtest,
+      mnemonic:
+        'pulp ritual farm danger swarm topple foil zone limb mail smoke lawsuit rent jungle grain step giraffe inmate outer embrace please lift powder trigger',
+      targets: [
+        {
+          //value: , //No value set, send it all
+          address: 'bcrt1qs758ursh4q9z627kt3pp5yysm78ddny6txaqgw'
+        }
+      ],
+      feeRate: 1,
+      //changeAddress: '', //won't be used
+      utxos: [
+        {
+          tx:
+            '02000000000101b28e4e4676ab43d55e3d65f118642afab78f2eea3a46e0a9c2bfb32738f9c1d40000000000feffffff02e354814a0000000016001401bd43e70dc8e4fa1dfc465180a61b965026ae1c10270000000000001600140c87dd0cc9f687748c956f60d1eba97c67bcf12c024730440220117d399583cc714c55921ac15f8d7d7f71a124b92e36f3fd3ec0c3d81a66546902204368f40185009a475e9fa2edd434201af983d05182c9f553c7eae95b4ffea6a1012103e35032031e82bebd4b737761537968c69e96bb73819975869b0f23efb5fe249db0010000',
+          n: 1,
+          derivationPath: "84'/1'/0'/0/5"
+        }
+      ]
+    } /*,
+    This one I cannot test it unlesss Bluewallet shares their mnemonic and
+    derivation path:
+    https://github.com/BlueWallet/BlueWallet/blob/master/tests/unit/hd-segwit-bech32-wallet.test.js
+    I could manually test it on 20-Apr-2022 by patching bitconjs-lib so that invalid signatures were not checked.
+    {
+      description: 'Can createTransaction with a correct feerate (with lenghty segwit address) - BlueWallet test',
+      network: networks.bitcoin,
+      mnemonic:
+        'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about',
+      targets: [
+        {
+          //value: , //No value set, send it all
+          address: 'bc1qtmcfj7lvgjp866w8lytdpap82u7eege58jy52hp4ctk0hsncegyqel8prp'
+        }
+      ],
+      feeRate: 1,
+      //changeAddress: '', //won't be used
+      utxos: [
+        {
+          tx:
+            '02000000000101fc17713781c409258d8913f07c15c45e6a5415646ccb16e4590d31f268b2afcc0000000000000000000115110100000000001600147ea385f352be696ab0f6e94a0ee0e3c6d4b14a530248304502210080b7107e0f8a77ff150bc88883d05be9e1ed596fe8b35d4272514d558904a02e022017e2ef0fd27f809adc5bcf1915e7f58217654223d229c46ff60dea00599224ed012103672a3533c9fb1fff4b09409bd08b1c4b14ccdb35778a3ebc9566012ad1e5faf800000000',
+          n: 0,
+          derivationPath: "84'/0'/0'/0/5"
+        }
+      ]
+    }*/
   ],
   nosolution: [
     {

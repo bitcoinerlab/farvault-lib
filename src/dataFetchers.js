@@ -6,11 +6,6 @@ import {
 import { networks } from 'bitcoinjs-lib';
 import { validateNetwork } from './validation';
 export async function esploraFetchAddress(address, baseUrl = ESPLORA_BASEURL) {
-  //console.log('TRACE esploraFetchAddress', {
-  //  baseUrl,
-  //  url: `${baseUrl}/address/${address}`,
-  //  address
-  //});
   const chain_stats = (
     await (await fetch(`${baseUrl}/address/${address}`)).json()
   )['chain_stats'];
@@ -21,11 +16,6 @@ export async function esploraFetchAddress(address, baseUrl = ESPLORA_BASEURL) {
 }
 
 export async function esploraFetchUTXOS(address, baseUrl = ESPLORA_BASEURL) {
-  //console.log('TRACE esploraFetchUTXOS', {
-  //  baseUrl,
-  //  url: `${baseUrl}/address/${address}/utxo`,
-  //  address
-  //});
   const utxos = [];
   const fetchedUtxos = await (
     await fetch(`${baseUrl}/address/${address}/utxo`)

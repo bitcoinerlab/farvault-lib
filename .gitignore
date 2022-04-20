@@ -8,3 +8,4 @@ localhost.pem
 *.swo
 *.swn
 *.log
+.DS_Store

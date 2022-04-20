@@ -28,14 +28,29 @@ describe('Coinselect', () => {
   describe('Coinselect valid tests', () => {
     fixtures.valid.map(fixture => {
       test(fixture.description, async () => {
+        const changeAddress = jest.fn(() => fixture.changeAddress);
+
         const network = fixture.network;
         const { utxos, targets, fee } = coinselect({
           utxos: fixture.utxos,
           targets: fixture.targets,
           feeRate: fixture.feeRate,
-          changeAddress: () => fixture.changeAddress,
+          changeAddress,
           network: fixture.network
         });
+        expect(utxos).not.toBeUndefined();
+        expect(targets).not.toBeUndefined();
+
+        expect([fixture.targets.length, fixture.targets.length + 1]).toContain(
+          targets.length
+        );
+        if (targets.length > fixture.targets.length) {
+          expect(changeAddress).toHaveBeenCalledTimes(1);
+          changeAddress.mockClear();
+          expect(fixture.changeAddress).toEqual(
+            targets[targets.length - 1].address
+          );
+        }
 
         const HDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
           mnemonic: fixture.mnemonic
@@ -86,19 +101,35 @@ describe('Coinselect', () => {
         }
         psbt.finalizeAllInputs();
 
-        expect(fee).toEqual(psbt.getFee());
         const txVSize = psbt.extractTransaction().virtualSize();
-        const actualFeerate = psbt.getFee() / txVSize;
-        expect(actualFeerate).toBeGreaterThanOrEqual(fixture.feeRate);
-        expect(actualFeerate).toBeGreaterThanOrEqual(1);
+        const actualFeeRate = psbt.getFee() / txVSize;
 
         //console.log({
         //  fee,
+        //  psbtFee: psbt.getFee(),
         //  feeRate: fixture.feeRate,
-        //  tx: psbt.extractTransaction().toHex(),
+        //  //tx: psbt.extractTransaction().toHex(),
         //  txVSize,
-        //  actualFeerate
+        //  actualFeeRate
         //});
+        //
+        expect(fee).toEqual(psbt.getFee());
+        expect(actualFeeRate).toBeGreaterThanOrEqual(fixture.feeRate);
+        expect(actualFeeRate).toBeGreaterThanOrEqual(1);
+        //We should not expect actualFeeRate to deviate much from target feeRate
+        //It can be larger (never lower) but let's say no more than 10% larger.
+        //The test below is not very scientific. Good for tests, but that's it.
+        expect(actualFeeRate).toBeLessThan(1.1 * fixture.feeRate);
+
+        //The total value in the utxos = fee + total value un the targets
+        expect(
+          utxos.reduce(
+            (accumul, utxo) => accumul + decodeTx(utxo.tx).vout[utxo.n].value,
+            0
+          )
+        ).toEqual(
+          fee + targets.reduce((accumul, target) => accumul + target.value, 0)
+        );
       });
     });
   });
