@@ -10,6 +10,9 @@ import { validateAddress } from './validation';
  * Given a set of target addresses where the user wants to send some bitcoin,
  * it selects a subset of utxos so that the targets are funded.
  *
+ * Pass only one target with empty value to send all utxos value (except fee) to
+ * the target's address.
+ *
  * Pass a `changeAddress` callback in case it's needed.
  *
  * Read the issues below to understand some of the decissions on the
@@ -23,7 +26,10 @@ import { validateAddress } from './validation';
  * @param {string} parameters.utxos[].derivationPath Derivation path. F.ex.: `44'/1'/1'/0/0`.
  * @param {string} parameters.utxos[].tx The transaction serialized in hex.
  * @param {number} parameters.utxos[].n The vout index of the tx above.
- * @param {Object[]} parameters.targets List of addresses to send funds.
+ * @param {Object[]} parameters.targets List of addresses to send funds.  
+ * If `targets.length === 1`' , and `targets[0].value` is `undefined`, then  
+ * all funds will be sent to `targets[0].address`, while leaving an appropriate  
+ * amount for the fee.
  * @param {string} parameters.targets[].address The address to send funds.
  * @param {number} parameters.targets[].value Number of satoshis to send the address above.
  * @param {number} parameters.feeRate satoshis per vbyte. Must be `>= 1`. Round it up in case of doubt. It is better to pay an extra 0.x satoshi/byte than be under-measuring and miss some cut off for some miner.
