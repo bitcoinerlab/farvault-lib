@@ -53,7 +53,7 @@ async function esploraFetchText(...args) {
  * @returns {number} return.balance Number of sats currently controlled by that address.
  */
 export async function esploraFetchAddress(address, baseUrl = ESPLORA_BASEURL) {
-  const chain_stats = await esploraFetchJson(`${baseUrl}/address/${address}`)[
+  const chain_stats = (await esploraFetchJson(`${baseUrl}/address/${address}`))[
     'chain_stats'
   ];
   return {
@@ -126,12 +126,7 @@ function blockstreamBaseURL(network = networks.bitcoin) {
  * address.
  */
 export function blockstreamFetchAddress(address, network = networks.bitcoin) {
-  return esploraFetchAddress(
-    address,
-    `${BLOCKSTREAM_EXPLORER_BASEURL}/${
-      network === networks.bitcoin ? '' : 'testnet/'
-    }api`
-  );
+  return esploraFetchAddress(address, blockstreamBaseURL(network));
 }
 export function blockstreamFetchUTXOS(address, network = networks.bitcoin) {
   return esploraFetchUTXOS(address, blockstreamBaseURL(network));
