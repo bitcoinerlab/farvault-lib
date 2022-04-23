@@ -41,9 +41,10 @@ export function validateCoinTypePubType(coinType, pubType) {
 
 /**
  * Throws an error if the address or the network is not valid.
- * Based on: https://github.com/bitcoinjs/bitcoinjs-lib/issues/890
+ *
+ * Based on: [https://github.com/bitcoinjs/bitcoinjs-lib/issues/890](https://github.com/bitcoinjs/bitcoinjs-lib/issues/890)
  * @param {string} address Bitcoin address
- * @param {Object} network bitcoinjs-lib network
+ * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
  * @returns {boolean} If the function does not throw, then it always returns true.
  */
 export function validateAddress(address, network) {
