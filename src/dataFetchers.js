@@ -33,22 +33,13 @@ async function esploraFetchText(...args) {
 }
 
 /**
- * Fetches [`/address/:address`](https://github.com/Blockstream/esplora/blob/master/API.md#get-addressaddress) from an esplora service.
- *
- *  Get information about an address.
- *
- *  Available fields: `address/scripthash, chain_stats and mempool_stats`.
- *
- * `{chain,mempool}_stats` each contain an object with:
- * * `tx_count`
- * * `funded_txo_count`
- * * `funded_txo_sum`
- * * `spent_txo_count and spent_txo_sum`
- *
- * Elements-based chains don't have the `{funded,spent}_txo_sum` fields.
+ * Fetches [`/address/:address`](https://github.com/Blockstream/esplora/blob/master/API.md#get-addressaddress)
+ * from an esplora service to get whether the address ever received some coins
+ * and the current amount of sats that it holds (if any).
  *
  * @param {string} address A Bitcoin address
- * @param {string} baseUrl The Base URL of the Esplora server. Defaults to: 'http://127.0.0.1:3002
+ * @param {string} baseUrl The Base URL of the Esplora server. Defaults to
+ * [http://127.0.0.1:3002](http://127.0.0.1:3002)
  * @returns {boolean} return.used Whether that address ever received sats.
  * @returns {number} return.balance Number of sats currently controlled by that address.
  */
@@ -62,6 +53,20 @@ export async function esploraFetchAddress(address, baseUrl = ESPLORA_BASEURL) {
   };
 }
 
+/**
+ * Recursively fetches [`/tx/:txid/hex`](https://github.com/Blockstream/esplora/blob/master/API.md#get-txtxidhex)
+ * for all the confirmed utxos of a certain address.
+ *
+ * It first fetches all the unspent outputs of an address with
+ * ['/address/:address/utxo'](https://github.com/Blockstream/esplora/blob/master/API.md#get-addressaddressutxo)
+ * and then loops over those utxos.
+ *
+ * @param {string} address A Bitcoin address
+ * @param {string} baseUrl The Base URL of the Esplora server. Defaults to
+ * [http://127.0.0.1:3002](http://127.0.0.1:3002)
+ * @returns {Array} An array of utxos objects like this: `[{ tx, vout },...]`,
+ * where `tx` is a string in hex format and `vout` is an integer >= 0.
+ */
 export async function esploraFetchUTXOS(address, baseUrl = ESPLORA_BASEURL) {
   const utxos = [];
   const fetchedUtxos = await esploraFetchJson(
@@ -89,7 +94,7 @@ export async function esploraFetchUTXOS(address, baseUrl = ESPLORA_BASEURL) {
  * ```
  * { "1": 87.882, "2": 87.882, "3": 87.882, "4": 87.882, "5": 81.129, "6": 68.285, ..., "144": 1.027, "504": 1.027, "1008": 1.027 }
  * ```
- * @param {string} baseUrl The Base URL of the Esplora server. Defaults to:
+ * @param {string} baseUrl The Base URL of the Esplora server. Defaults to
  * [http://127.0.0.1:3002](http://127.0.0.1:3002)
  * @returns {Object} An object where the key is the confirmation target (in number of blocks).
  */
@@ -128,6 +133,15 @@ function blockstreamBaseURL(network = networks.bitcoin) {
 export function blockstreamFetchAddress(address, network = networks.bitcoin) {
   return esploraFetchAddress(address, blockstreamBaseURL(network));
 }
+/**
+ * Calls {@link esploraFetchUTXOS} particularized for blockstream's esplora
+ * service.
+ * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * Only works for bitcoin and testnet. Default is bitcoin.
+ * @param {string} address A Bitcoin address
+ * @returns {Array} An array of utxos objects like this: `[{ tx, vout },...]`,
+ * where `tx` is a string in hex format and `vout` is an integer >= 0.
+ */
 export function blockstreamFetchUTXOS(address, network = networks.bitcoin) {
   return esploraFetchUTXOS(address, blockstreamBaseURL(network));
 }

@@ -10,6 +10,14 @@ import { validateAddress } from './validation';
  * Given a set of target addresses where the user wants to send some bitcoin,
  * it selects a subset of utxos so that the targets are funded.
  *
+ * This function is basically a wrapper of excellent 
+ * [bitcoinjs-lib/coinselect lib](https://github.com/bitcoinjs/coinselect)
+ * adding Segwit support and automatically detecting if the user wants to send
+ * max-funds to an address.
+ *
+ * It takes ideas from [Bluewallet](https://github.com/BlueWallet/BlueWallet/)
+ * coinselect.
+ *
  * Pass only one target with empty value to send all utxos value (except fee) to
  * the target's address.
  *
