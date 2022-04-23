@@ -8,13 +8,18 @@ import {
   PUBTYPES
 } from './walletConstants';
 import { networks, address as bjsAddress } from 'bitcoinjs-lib';
-export function validateNetwork(network) {
-  if (
-    network !== networks.bitcoin &&
-    network !== networks.testnet &&
-    network !== networks.regtest
-  )
-    throw new Error('Network must be mainnet, testnet or regtest');
+export function validateNetwork(network, includeRegtest = true) {
+  if (includeRegtest) {
+    if (
+      network !== networks.bitcoin &&
+      network !== networks.testnet &&
+      network !== networks.regtest
+    )
+      throw new Error('Network must be mainnet, testnet or regtest');
+  } else {
+    if (network !== networks.bitcoin && network !== networks.testnet)
+      throw new Error('Network must be mainnet or testnet');
+  }
 }
 export function validatePubType(pubType) {
   if (
@@ -35,10 +40,15 @@ export function validateCoinTypePubType(coinType, pubType) {
 }
 
 /**
- * @param {string} address Bitcion address
- * Based on: https://github.com/bitcoinjs/bitcoinjs-lib/issues/890
+ * Throws an error if the address or the network is not valid.
+ *
+ * Based on: [https://github.com/bitcoinjs/bitcoinjs-lib/issues/890](https://github.com/bitcoinjs/bitcoinjs-lib/issues/890)
+ * @param {string} address Bitcoin address
+ * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * @returns {boolean} If the function does not throw, then it always returns true.
  */
 export function validateAddress(address, network) {
+  validateNetwork(network);
   try {
     bjsAddress.toOutputScript(address, network);
     return true;
