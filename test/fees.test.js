@@ -1,4 +1,4 @@
-import { feeRateSampling } from '../src/fees';
+import { feeRateSampling, pickEsploraFeeEstimate } from '../src/fees';
 
 describe('Fees', () => {
   test('feeRateSampling', () => {
@@ -52,5 +52,31 @@ describe('Fees', () => {
       'Invalid samples'
     );
     expect(() => feeRateSampling({ logScale: 1 })).toThrow('Invalid logScale');
+  });
+  test('pickEsploraFeeEstimate works', () => {
+    expect(pickEsploraFeeEstimate({ 1: 12.2, 2: 23.23 }, 1)).toEqual(12.2);
+    expect(pickEsploraFeeEstimate({ 1: 12.2, 2: 23.23 }, 1200)).toEqual(23.23);
+    expect(pickEsploraFeeEstimate({ 1: 12.2, 2: 23.23 }, 1200 - 1)).toEqual(
+      12.2
+    );
+    expect(pickEsploraFeeEstimate({ 1: 12.2, 2: 23.23 }, 2400)).toEqual(23.23);
+    expect(pickEsploraFeeEstimate({ 1: 12.2, 2: 23.23 }, 0)).toEqual(12.2);
+    expect(pickEsploraFeeEstimate({ 1: 12.2, 2: 23.23 }, 100000)).toEqual(
+      23.23
+    );
+    expect(
+      pickEsploraFeeEstimate({ 1: 12.2, 2: 23.23, 45: 45 }, 100000)
+    ).toEqual(45);
+  });
+  test('pickEsploraFeeEstimate fails', () => {
+    expect(() =>
+      pickEsploraFeeEstimate({ 1: 12.2, 2: 23.23, 45: 45 }, -1)
+    ).toThrow('Invalid targetTime!');
+    expect(() => pickEsploraFeeEstimate({ 1: 12.2, 2: 23.23, 45: 45 })).toThrow(
+      'Invalid targetTime!'
+    );
+    expect(() => pickEsploraFeeEstimate({ 1: 'a' }, 10)).toThrow(
+      'Invalid esplora fee estimates!'
+    );
   });
 });

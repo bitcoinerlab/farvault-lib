@@ -1,24 +1,26 @@
+/** @module coinselect */
+
 import bjsCoinselect from 'coinselect';
 import bjsCoinselectSplit from 'coinselect/split';
 import { parseDerivationPath } from './bip32';
 import { decodeTx } from './decodeTx';
 import { LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT } from './walletConstants';
 import { networks, address as bjsAddress } from 'bitcoinjs-lib';
-import { validateAddress } from './validation';
+import { checkAddress } from './check';
 
 /**
  * Given a set of target addresses where the user wants to send some bitcoin,
  * it selects a subset of utxos so that the targets are funded.
  *
- * This function is basically a wrapper of excellent 
+ * This function is basically a wrapper of excellent
  * [bitcoinjs-lib/coinselect lib](https://github.com/bitcoinjs/coinselect)
  * adding Segwit support and automatically detecting if the user wants to send
  * max-funds to an address.
  *
- * It takes ideas from [Bluewallet](https://github.com/BlueWallet/BlueWallet/)
- * coinselect.
+ * It builds on ideas from [Bluewallet](https://github.com/BlueWallet/BlueWallet/)'s
+ * coinselect for Segwit support.
  *
- * Pass only one target with empty value to send all utxos value (except fee) to
+ * Pass only one target with empty value to send all utxos funds (except fee) to
  * the target's address.
  *
  * Pass a `changeAddress` callback in case it's needed.
@@ -34,9 +36,9 @@ import { validateAddress } from './validation';
  * @param {string} parameters.utxos[].derivationPath Derivation path. F.ex.: `44'/1'/1'/0/0`.
  * @param {string} parameters.utxos[].tx The transaction serialized in hex.
  * @param {number} parameters.utxos[].n The vout index of the tx above.
- * @param {Object[]} parameters.targets List of addresses to send funds.  
- * If `targets.length === 1`' , and `targets[0].value` is `undefined`, then  
- * all funds will be sent to `targets[0].address`, while leaving an appropriate  
+ * @param {Object[]} parameters.targets List of addresses to send funds.
+ * If `targets.length === 1`' , and `targets[0].value` is `undefined`, then
+ * all funds will be sent to `targets[0].address`, while leaving an appropriate
  * amount for the fee.
  * @param {string} parameters.targets[].address The address to send funds.
  * @param {number} parameters.targets[].value Number of satoshis to send the address above.
@@ -121,7 +123,7 @@ export function coinselect({
     if (typeof target.value !== 'undefined') {
       csTarget.value = target.value;
     }
-    validateAddress(target.address, network);
+    checkAddress(target.address, network);
     //console.log('TRACE LENGTH', bjsAddress.toOutputScript(target.address, network).length);
     //Read discussion:
     //https://github.com/BlueWallet/BlueWallet/issues/4352#issuecomment-1102307443
@@ -160,7 +162,7 @@ export function coinselect({
           throw new Error('Invalid changeAddress fn');
         }
         output.address = changeAddress();
-        validateAddress(output.address, network);
+        checkAddress(output.address, network);
       }
       if (output.script) {
         //This is something we added above.

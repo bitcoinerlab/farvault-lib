@@ -1,10 +1,12 @@
+/** @module dataFetchers */
+
 import fetch from 'cross-fetch';
 import {
   BLOCKSTREAM_EXPLORER_BASEURL,
   ESPLORA_BASEURL
 } from './walletConstants';
 import { networks } from 'bitcoinjs-lib';
-import { validateNetwork } from './validation';
+import { checkNetwork, checkFeeEstimates } from './check';
 
 async function esploraFetchJson(...args) {
   const response = await fetch(...args);
@@ -54,8 +56,7 @@ export async function esploraFetchAddress(address, baseUrl = ESPLORA_BASEURL) {
 }
 
 /**
- * Recursively fetches [`/tx/:txid/hex`](https://github.com/Blockstream/esplora/blob/master/API.md#get-txtxidhex)
- * for all the confirmed utxos of a certain address.
+ * Recursively fetches [`/tx/:txid/hex`](https://github.com/Blockstream/esplora/blob/master/API.md#get-txtxidhex) in an esplora service for all the confirmed utxos of a certain address.
  *
  * It first fetches all the unspent outputs of an address with
  * ['/address/:address/utxo'](https://github.com/Blockstream/esplora/blob/master/API.md#get-addressaddressutxo)
@@ -90,38 +91,28 @@ export async function esploraFetchUTXOS(address, baseUrl = ESPLORA_BASEURL) {
  * and the value is the estimated feerate (in sat/vB).
  *
  * The available confirmation targets are `1-25, 144, 504` and `1008` blocks.
+ * @param {string} baseUrl The Base URL of the Esplora server. Defaults to
+ * [http://127.0.0.1:3002](http://127.0.0.1:3002)
+ * @returns {Object} An object where the key is the confirmation target (in number of blocks).
  * For example:
  * ```
  * { "1": 87.882, "2": 87.882, "3": 87.882, "4": 87.882, "5": 81.129, "6": 68.285, ..., "144": 1.027, "504": 1.027, "1008": 1.027 }
  * ```
- * @param {string} baseUrl The Base URL of the Esplora server. Defaults to
- * [http://127.0.0.1:3002](http://127.0.0.1:3002)
- * @returns {Object} An object where the key is the confirmation target (in number of blocks).
  */
 export async function esploraFetchFeeEstimates(baseUrl = ESPLORA_BASEURL) {
   const feeEstimates = await esploraFetchJson(`${baseUrl}/fee-estimates`);
-  Object.keys(feeEstimates).map(key => {
-    if (
-      typeof key !== 'string' ||
-      !Number.isInteger(Number(key)) ||
-      Number(key) <= 0 ||
-      typeof feeEstimates[key] !== 'number' ||
-      feeEstimates[key] < 0
-    ) {
-      throw new Error('Invalid esplora fee estimates!');
-    }
-  });
+  checkFeeEstimates(feeEstimates);
   return feeEstimates;
 }
 
 function blockstreamBaseURL(network = networks.bitcoin) {
-  validateNetwork(network, false);
+  checkNetwork(network, false);
   return `${BLOCKSTREAM_EXPLORER_BASEURL}/${
     network === networks.bitcoin ? '' : 'testnet/'
   }api`;
 }
 /**
- * Calls {@link esploraFetchAddress} particularized for blockstream's esplora
+ * Calls {@link module:dataFetchers.esploraFetchAddress esploraFetchAddress} particularized for blockstream's esplora
  * service.
  * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
  * Only works for bitcoin and testnet. Default is bitcoin.
@@ -134,7 +125,7 @@ export function blockstreamFetchAddress(address, network = networks.bitcoin) {
   return esploraFetchAddress(address, blockstreamBaseURL(network));
 }
 /**
- * Calls {@link esploraFetchUTXOS} particularized for blockstream's esplora
+ * Calls {@link module:dataFetchers.esploraFetchUTXOS esploraFetchUTXOS} particularized for blockstream's esplora
  * service.
  * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
  * Only works for bitcoin and testnet. Default is bitcoin.
@@ -146,7 +137,7 @@ export function blockstreamFetchUTXOS(address, network = networks.bitcoin) {
   return esploraFetchUTXOS(address, blockstreamBaseURL(network));
 }
 /**
- * Calls {@link esploraFetchFeeEstimates} particularized for blockstream's
+ * Calls {@link module:dataFetchers.esploraFetchFeeEstimates esploraFetchFeeEstimates} particularized for blockstream's
  * esplora service.
  * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
  * Only works for bitcoin and testnet. Default is bitcoin.
@@ -154,6 +145,6 @@ export function blockstreamFetchUTXOS(address, network = networks.bitcoin) {
  * (in number of blocks).
  */
 export function blockstreamFetchFeeEstimates(network = networks.bitcoin) {
-  validateNetwork(network, false);
+  checkNetwork(network, false);
   return esploraFetchFeeEstimates(blockstreamBaseURL(network));
 }

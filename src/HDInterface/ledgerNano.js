@@ -24,11 +24,7 @@ import('tiny-secp256k1').then(ecc => {
   fromPublicKey = ECPairFactory(ecc).fromPublicKey;
 });
 
-import {
-  validateNetwork,
-  validatePubType,
-  validateCoinTypePubType
-} from '../validation';
+import { checkNetwork, checkPubType, checkCoinTypePubType } from '../check';
 import {
   changePubType,
   networkCoinType,
@@ -83,9 +79,9 @@ async function getPub_internal(
     network = networks.testnet
   }
 ) {
-  validatePubType(pubType);
-  validateNetwork(network);
-  validateCoinTypePubType(networkCoinType(network), pubType);
+  checkPubType(pubType);
+  checkNetwork(network);
+  checkCoinTypePubType(networkCoinType(network), pubType);
   if (!Number.isInteger(accountNumber) || accountNumber < 0)
     throw new Error('Invalid accountNumber');
 

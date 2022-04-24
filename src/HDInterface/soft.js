@@ -6,11 +6,7 @@ export async function init(
 ) {
   return await mnemonicToSeed(mnemonic);
 }
-import {
-  validateNetwork,
-  validatePubType,
-  validateCoinTypePubType
-} from '../validation';
+import { checkNetwork, checkPubType, checkCoinTypePubType } from '../check';
 
 import { changePubType, networkCoinType, fromSeed } from '../bip32';
 
@@ -18,9 +14,9 @@ export async function getPub(
   seed,
   { pubType, accountNumber, network = networks.testnet }
 ) {
-  validatePubType(pubType);
-  validateNetwork(network);
-  validateCoinTypePubType(networkCoinType(network), pubType);
+  checkPubType(pubType);
+  checkNetwork(network);
+  checkCoinTypePubType(networkCoinType(network), pubType);
   if (!Number.isInteger(accountNumber) || accountNumber < 0)
     throw new Error('Invalid accountNumber');
 

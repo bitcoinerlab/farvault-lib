@@ -1,4 +1,4 @@
-import { validatePubType } from './validation';
+import { checkPubType } from './check';
 import b58 from 'bs58check';
 import {
   PUBVERSIONSIZE,
@@ -22,7 +22,7 @@ export async function fromSeed(seed) {
 }
 
 export function changePubType(pub, pubType) {
-  validatePubType(pubType);
+  checkPubType(pubType);
   let data = b58.decode(pub);
   data = data.slice(4);
   data = Buffer.concat([

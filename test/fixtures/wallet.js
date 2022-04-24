@@ -43,5 +43,7 @@ export const fixtures = {
       //0.0002 BTC
       value: 20000
     }
-  ]
+  ],
+  //36 minutes
+  txAcceptedTargetTime: 36 * 60 //This should pick the fee for the next 3 blocks
 };

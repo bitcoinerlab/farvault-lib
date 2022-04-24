@@ -35,11 +35,7 @@ import {
 } from './walletConstants';
 
 import { blockstreamFetchAddress, blockstreamFetchUTXOS } from './dataFetchers';
-import {
-  validateNetwork,
-  validatePubType,
-  validateCoinTypePubType
-} from './validation';
+import { checkNetwork, checkPubType, checkCoinTypePubType } from './check';
 
 export function getPubAddress(
   pub,
@@ -49,8 +45,8 @@ export function getPubAddress(
   network = networks.bitcoin
 ) {
   const pubType = getPubType(pub);
-  validateNetwork(network);
-  validateCoinTypePubType(networkCoinType(network), pubType);
+  checkNetwork(network);
+  checkCoinTypePubType(networkCoinType(network), pubType);
   let functionCall;
   if (pubType === XPUB || pubType === TPUB) {
     functionCall = getLegacyAddress;
@@ -111,7 +107,7 @@ function getNativeSegwitAddress(
 
 function getPubType(pub) {
   const pubType = pub.slice(0, 4);
-  validatePubType(pubType);
+  checkPubType(pubType);
   return pubType;
 }
 
@@ -123,8 +119,8 @@ async function fetchPubBalance(
   const addresses = [];
   let balance = 0;
   let pubUsed = false;
-  validateNetwork(network);
-  validateCoinTypePubType(networkCoinType(network), getPubType(pub));
+  checkNetwork(network);
+  checkCoinTypePubType(networkCoinType(network), getPubType(pub));
 
   for (const change of [true, false]) {
     for (

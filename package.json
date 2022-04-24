@@ -16,6 +16,7 @@
     "@babel/plugin-transform-modules-commonjs": "^7.17.7",
     "child_process": "^1.0.2",
     "concurrently": "^7.0.0",
+    "docdash": "^1.2.0",
     "jest": "^27.5.1",
     "jest-fetch-mock": "^3.0.3",
     "jsdoc": "^3.6.10",

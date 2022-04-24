@@ -1,3 +1,5 @@
+/** @module test/integration/farvault.test */
+
 //Take inspitation from this: https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/test/integration/csv.spec.ts
 //
 //Create a bip32 wallet
@@ -16,6 +18,7 @@ import bJs, { networks } from 'bitcoinjs-lib';
 import { RegtestUtils } from 'regtest-client';
 import { spawn, spawnSync } from 'child_process';
 import { kill } from 'process';
+import { blockstreamFetchFeeEstimates } from '../../src/dataFetchers';
 
 import {
   initHDInterface,
@@ -36,6 +39,8 @@ import {
 import { networkCoinType } from '../../src/bip32';
 
 import { fixtures } from '../fixtures/wallet';
+
+import { pickEsploraFeeEstimate } from '../../src/fees';
 
 const regtestUtils = new RegtestUtils(bJs);
 const network = networks.regtest;
@@ -143,13 +148,20 @@ describe('FarVault full pipe', () => {
         expect(walletAddresses).toEqual(expect.arrayContaining(addresses));
         expect(walletAddresses.length).toEqual(addresses.length);
 
+        const feeEstimates = await blockstreamFetchFeeEstimates();
+        const feeRate = pickEsploraFeeEstimate(
+          feeEstimates,
+          fixtures.txAcceptedTargetTime
+        );
+        //console.log({ feeEstimates, feeRate });
+
         const { utxos: selectedUtxos, fee, targets } = coinselect({
           utxos: walletUtxos,
           targets: [
             { address: walletAddresses[0].address, value: 33432423432 }
           ],
           changeAddress: () => 'bcrt1qlckxrvk56kezy35xuw3tk5w5gkvnmjl0cahw3u',
-          feeRate: 1,
+          feeRate,
           network
         });
         expect(selectedUtxos).not.toBeUndefined();
