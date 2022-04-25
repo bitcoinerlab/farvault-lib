@@ -61,7 +61,7 @@ const TEST_TIME = 120000;
  * @param {boolean} addressesDescriptors[].isChange - whether this address is a change address or not.
  * @param {number} addressesDescriptors[].value - number of sats that this address will receive.
  */
-async function createWallet(mnemonic, addressesDescriptors) {
+async function createMockWallet(mnemonic, addressesDescriptors) {
   const HDInterface = await initHDInterface(SOFT_HD_INTERFACE, { mnemonic });
   const pubs = [];
   const addresses = [];
@@ -113,7 +113,7 @@ describe('FarVault full pipe', () => {
         //wait until the command finishes:
         spawnSync('./testing_environment/createwallet.sh');
 
-        const { HDInterface, addresses, utxos } = await createWallet(
+        const { HDInterface, addresses, utxos } = await createMockWallet(
           fixtures.mnemonic,
           fixtures.addressesDescriptors
         );
@@ -138,6 +138,7 @@ describe('FarVault full pipe', () => {
             })
           );
         }
+        console.log({ walletAddresses, walletUtxos });
 
         kill(-bitcoind.pid, 'SIGKILL');
         kill(-electrs.pid, 'SIGKILL');
@@ -151,14 +152,17 @@ describe('FarVault full pipe', () => {
         const feeEstimates = await blockstreamFetchFeeEstimates();
         const feeRate = pickEsploraFeeEstimate(
           feeEstimates,
-          fixtures.txAcceptedTargetTime
+          fixtures.freezeTxTargetTime
         );
         //console.log({ feeEstimates, feeRate });
 
         const { utxos: selectedUtxos, fee, targets } = coinselect({
           utxos: walletUtxos,
           targets: [
-            { address: walletAddresses[0].address, value: 33432423432 }
+            {
+              address: walletAddresses[0].address,
+              value: fixtures.savingsValue
+            }
           ],
           changeAddress: () => 'bcrt1qlckxrvk56kezy35xuw3tk5w5gkvnmjl0cahw3u',
           feeRate,
