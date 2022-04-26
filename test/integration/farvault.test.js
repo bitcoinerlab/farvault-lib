@@ -40,7 +40,7 @@ import {
   LEGACY,
   ESPLORA_BASEURL
 } from '../../src/walletConstants';
-import { getNetworkCoinType } from '../../src/bip32';
+import { getNetworkCoinType, serializeDerivationPath } from '../../src/bip32';
 
 import { fixtures } from '../fixtures/wallet';
 
@@ -86,9 +86,13 @@ async function createMockWallet(mnemonic, fixtureAddresses) {
       isChange,
       network
     );
-    const derivationPath = `${purpose}'/${getNetworkCoinType(
-      network
-    )}'/${accountNumber}'/${isChange ? 1 : 0}/${index}`;
+    const derivationPath = serializeDerivationPath({
+      purpose,
+      coinType: getNetworkCoinType(network),
+      accountNumber,
+      isChange,
+      index
+    });
     addressesDescriptors.push({ derivationPath, network });
     const unspent = await regtestUtils.faucet(address, addressFixture.value);
     const utxo = {

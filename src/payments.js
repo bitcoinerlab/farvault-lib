@@ -36,7 +36,11 @@ import('tiny-secp256k1').then(ecc => {
   fromPublicKey = ECPairFactory(ecc).fromPublicKey;
 });
 
-import { getNetworkCoinType, parseDerivationPath } from './bip32';
+import {
+  getNetworkCoinType,
+  parseDerivationPath,
+  serializeDerivationPath
+} from './bip32';
 
 import { NESTED_SEGWIT, NATIVE_SEGWIT, LEGACY } from './walletConstants';
 
@@ -235,7 +239,9 @@ async function createFreezePSBT({
       const p2wpkh = payments.p2wpkh({ pubkey, network });
       redeemScript = payments.p2sh({ redeem: p2wpkh, network }).redeem.output;
     } else if (purpose !== NATIVE_SEGWIT && purpose !== LEGACY) {
-      throw new Error('Can only freeze P2WPKH, P2SH-P2WPKH and P2PKH addresses');
+      throw new Error(
+        'Can only freeze P2WPKH, P2SH-P2WPKH and P2PKH addresses'
+      );
     }
     psbt.addInput({
       hash: decodedFundTx.txid,
@@ -312,9 +318,13 @@ export async function ledgerPayment(network = networks.testnet) {
     frozenHDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
       mnemonic
     });
-    frozenDerivationPath = `${NATIVE_SEGWIT}'/${getNetworkCoinType(
-      network
-    )}'/0'/0/0`;
+    frozenDerivationPath = serializeDerivationPath({
+      purpose: NATIVE_SEGWIT,
+      coinType: getNetworkCoinType(network),
+      accountNumber: 0,
+      isChange: false,
+      index: 0
+    });
   } else {
     frozenDerivationPath = unusedDerivationPaths[0]; //Native Segwit
     frozenHDInterface = HDInterface;

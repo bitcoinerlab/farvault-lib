@@ -12,7 +12,8 @@ import {
   getNetworkCoinType,
   getExtendedPubAccountNumber,
   getExtendedPubPurpose,
-  parseDerivationPath
+  parseDerivationPath,
+  serializeDerivationPath
 } from './bip32';
 
 import { payments, networks } from 'bitcoinjs-lib';
@@ -161,9 +162,14 @@ async function fetchExtendedPubFundedAddressesDescriptors(
       );
       const accountNumber = getExtendedPubAccountNumber(extendedPub, network);
       const purpose = getExtendedPubPurpose(extendedPub, network);
-      const derivationPath = `${purpose}'/${getNetworkCoinType(
-        network
-      )}'/${accountNumber}'/${isChange ? 1 : 0}/${index}`;
+      const derivationPath = serializeDerivationPath({
+        purpose,
+        coinType: getNetworkCoinType(network),
+        accountNumber,
+        isChange,
+        index
+      });
+
       if (addressBalance !== 0) {
         addressesDescriptors.push({
           network,

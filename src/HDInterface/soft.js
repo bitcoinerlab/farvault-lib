@@ -7,7 +7,12 @@ export async function init(
 }
 import { checkNetwork, checkPurpose } from '../check';
 
-import { setExtendedPubPrefix, getNetworkCoinType, fromSeed } from '../bip32';
+import {
+  setExtendedPubPrefix,
+  getNetworkCoinType,
+  fromSeed,
+  serializeDerivationPath
+} from '../bip32';
 
 export async function getExtendedPub(
   seed,
@@ -22,7 +27,11 @@ export async function getExtendedPub(
   return setExtendedPubPrefix(
     root
       .derivePath(
-        `${purpose}'/${getNetworkCoinType(network)}'/${accountNumber}'`
+        serializeDerivationPath({
+          purpose,
+          coinType: getNetworkCoinType(network),
+          accountNumber
+        })
       )
       .neutered()
       .toBase58(),

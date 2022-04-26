@@ -24,7 +24,8 @@ import {
   setExtendedPubPrefix,
   getNetworkCoinType,
   parseDerivationPath,
-  deriveExtendedPub
+  deriveExtendedPub,
+  serializeDerivationPath
 } from '../bip32';
 
 export async function init() {
@@ -76,7 +77,11 @@ async function getExtendedPub_internal(
   return setExtendedPubPrefix(
     await ledgerAppBtc.getWalletXpub({
       //Note below the ' after accountNumber (it's hardened)
-      path: `${purpose}'/${getNetworkCoinType(network)}'/${accountNumber}'`,
+      path: serializeDerivationPath({
+        purpose,
+        coinType: getNetworkCoinType(network),
+        accountNumber
+      }),
       //Ledger only accepts xpub or tpub byte version for xpubVersion as in
       //the original BIP32 implementation
       //bitcoinjs-lib (network.bip32.public) also only references xpub or tpub

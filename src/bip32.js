@@ -146,6 +146,31 @@ export function parseDerivationPath(derivationPath) {
   return { purpose, coinType, accountNumber, index, isChange };
 }
 
+export function serializeDerivationPath({
+  purpose,
+  coinType,
+  accountNumber,
+  isChange,
+  index
+}) {
+  if (
+    typeof purpose === 'undefined' ||
+    typeof coinType === 'undefined' ||
+    typeof accountNumber === 'undefined'
+  )
+    throw new Error('Incorrect parameters');
+  if (typeof isChange === 'undefined') {
+    if (typeof index !== 'undefined') {
+      throw new Error('Incompatible parameters');
+    }
+    return `${purpose}'/${coinType}'/${accountNumber}'`;
+  } else {
+    return `${purpose}'/${coinType}'/${accountNumber}'/${
+      isChange ? 1 : 0
+    }/${index}`;
+  }
+}
+
 /** Extracts the purpose from an extended pub.
  * It assumes that the extended pub will have xpub, ypub, zpub, tpub, upub vpub
  * prefixes as defined in BIP44, BIP49 and BIP84.
