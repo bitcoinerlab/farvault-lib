@@ -42,7 +42,7 @@ import { checkAddress } from './check';
  * amount for the fee.
  * @param {string} parameters.targets[].address The address to send funds.
  * @param {number} parameters.targets[].value Number of satoshis to send the address above.
- * @param {number} parameters.feeRate satoshis per vbyte. Must be `>= 1`. Round it up in case of doubt. It is better to pay an extra 0.x satoshi/byte than be under-measuring and miss some cut off for some miner.
+ * @param {number} parameters.feeRate satoshis per vbyte. Must be `>= 1`. It will be rounded up. It is better to pay an extra 0.x satoshi/byte than be under-measuring and miss some cut off for some miner.
  * @param {function} parameters.changeAddress Callback function that returns a string with a change address where change will go. Might not be called.
  * @param {Object} parameters.network A [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js). Default is testnet.
  * @returns {Object[]} return.utxos The subset of input utxos selected. Undefined if no solution is found.
@@ -56,6 +56,8 @@ export function coinselect({
   changeAddress,
   network = networks.testnet
 }) {
+  //Important! coinselect does not work with floating point numbers. Must be integer.
+  feeRate = Math.ceil(feeRate);
   let addedWitness = false;
   const csUtxos = utxos.map(utxo => {
     const { purpose } = parseDerivationPath(utxo.derivationPath);
@@ -134,9 +136,11 @@ export function coinselect({
     //  (target.address.startsWith('bcrt1') && network === networks.regtest)
     //) {
     //console.log('TRACE LENGTH', bjsAddress.toOutputScript(target.address, network).length);
+
     csTarget.script = {
       length: bjsAddress.toOutputScript(target.address, network).length
     };
+
     //}
     return csTarget;
   });
@@ -146,10 +150,11 @@ export function coinselect({
   //Pro-tip: if you want to send-all inputs to an output address, coinselect/split with a partial output (.address defined, no .value) can be used to send-all, while leaving an appropriate amount for the fee.
 
   const coinSelectAlgo =
-    targets.length === 1 && typeof targets[0].value === 'undefined'
+    csTargets.length === 1 && typeof csTargets[0].value === 'undefined'
       ? bjsCoinselectSplit
       : bjsCoinselect;
 
+  //console.log({ csUtxos, csTargets, feeRate });
   const { inputs, outputs, fee } = coinSelectAlgo(csUtxos, csTargets, feeRate);
   // .inputs and .outputs will be undefined if no solution was found
   if (!inputs || !outputs) {
@@ -158,7 +163,7 @@ export function coinselect({
     outputs.forEach(output => {
       if (!output.address) {
         if (typeof changeAddress !== 'function') {
-          console.log(typeof changeAddress, changeAddress);
+          //console.log(typeof changeAddress, changeAddress);
           throw new Error('Invalid changeAddress fn');
         }
         output.address = changeAddress();

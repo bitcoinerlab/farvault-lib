@@ -1,11 +1,17 @@
-import { TPUB, UPUB, VPUB } from '../../src/walletConstants';
+import {
+  LEGACY,
+  NATIVE_SEGWIT,
+  NESTED_SEGWIT
+} from '../../src/walletConstants';
+import { networks } from 'bitcoinjs-lib';
 export const fixtures = {
   mnemonic:
     'pulp ritual farm danger swarm topple foil zone limb mail smoke lawsuit rent jungle grain step giraffe inmate outer embrace please lift powder trigger',
-  addressesDescriptors: [
+  addresses: [
     {
-      pub: {
-        pubType: TPUB,
+      extendedPub: {
+        network: networks.regtest,
+        purpose: LEGACY,
         accountNumber: 0
       },
       index: 0,
@@ -14,8 +20,9 @@ export const fixtures = {
       value: 200000000
     },
     {
-      pub: {
-        pubType: TPUB,
+      extendedPub: {
+        network: networks.regtest,
+        purpose: LEGACY,
         accountNumber: 0
       },
       index: 3,
@@ -24,8 +31,9 @@ export const fixtures = {
       value: 100000000
     },
     {
-      pub: {
-        pubType: VPUB,
+      extendedPub: {
+        network: networks.regtest,
+        purpose: NATIVE_SEGWIT,
         accountNumber: 0
       },
       index: 5,
@@ -34,8 +42,9 @@ export const fixtures = {
       value: 20000000
     },
     {
-      pub: {
-        pubType: VPUB,
+      extendedPub: {
+        network: networks.regtest,
+        purpose: NATIVE_SEGWIT,
         accountNumber: 1
       },
       index: 8,
@@ -44,8 +53,9 @@ export const fixtures = {
       value: 90000000
     },
     {
-      pub: {
-        pubType: UPUB,
+      extendedPub: {
+        network: networks.regtest,
+        purpose: NESTED_SEGWIT,
         accountNumber: 0
       },
       index: 1,
@@ -55,7 +65,11 @@ export const fixtures = {
     }
   ],
   //This is the account where change and final recovered funds will go.
-  defaultAccount: { pubType: VPUB, accountNumber: 1 },
+  defaultAccount: {
+    network: networks.regtest,
+    purpose: NATIVE_SEGWIT,
+    accountNumber: 1
+  },
   //36 minutes - This should pick the fee for the next 3 blocks
   //Note that tests will always query the mainnet. Esplora won't give estimates
   //for regtest.

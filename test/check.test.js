@@ -1,5 +1,13 @@
-import { checkNetwork, checkFeeEstimates } from '../src/check';
+import {
+  checkAccount,
+  checkAccountType,
+  checkNetwork,
+  checkPurpose,
+  checkFeeEstimates
+} from '../src/check';
+import { LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT } from '../src/walletConstants';
 import { networks } from 'bitcoinjs-lib';
+//import { P2PKH, P2WPKH, P2SH_P2WPKH } from '../src/accounts';
 describe('data check', () => {
   test('checkNetwork', () => {
     expect(() => checkNetwork(networks.bitcoin)).not.toThrow();
@@ -24,6 +32,49 @@ describe('data check', () => {
       'Network must be mainnet or testnet'
     );
   });
+  test('checkPurpose fails', () => {
+    expect(() => checkPurpose()).toThrow('Invalid purpose!');
+    expect(() => checkPurpose('legacy')).toThrow('Invalid purpose!');
+  });
+  test('checkPurpose passes', () => {
+    expect(checkPurpose(LEGACY)).toEqual(true);
+    expect(checkPurpose(NESTED_SEGWIT)).toEqual(true);
+    expect(checkPurpose(NATIVE_SEGWIT)).toEqual(true);
+  });
+  //test('checkAccount', () => {
+  //  expect(() => checkAccount()).toThrow();
+  //  expect(() =>
+  //    checkAccount({ accountNumber: 0, accountType: P2WPKH })
+  //  ).toThrow();
+  //  expect(() =>
+  //    checkAccount({
+  //      accountNumber: 2.1,
+  //      accountType: P2WPKH,
+  //      network: networks.bitcoin
+  //    })
+  //  ).toThrow();
+  //  expect(() =>
+  //    checkAccount({
+  //      accountNumber: -1,
+  //      accountType: P2WPKH,
+  //      network: networks.bitcoin
+  //    })
+  //  ).toThrow();
+  //  expect(
+  //    checkAccount({
+  //      accountNumber: 0,
+  //      accountType: P2WPKH,
+  //      network: networks.bitcoin
+  //    })
+  //  ).toEqual(true);
+  //});
+  //test('checkAccountType', () => {
+  //  [P2PKH, P2WPKH, P2SH_P2WPKH].map(accountType =>
+  //    expect(checkAccountType(accountType)).toEqual(true)
+  //  );
+  //  expect(() => checkAccountType()).toThrow('Invalid account type!');
+  //  expect(() => checkAccountType('P2SH')).toThrow('Invalid account type!');
+  //});
 
   test('checkFeeEstimates', () => {
     expect(() => checkFeeEstimates('hello world')).toThrow(
@@ -39,6 +90,9 @@ describe('data check', () => {
       'Invalid esplora fee estimates!'
     );
     expect(() => checkFeeEstimates({ 12: 'a' })).toThrow(
+      'Invalid esplora fee estimates!'
+    );
+    expect(() => checkFeeEstimates({ 12: 0 })).not.toThrow(
       'Invalid esplora fee estimates!'
     );
     expect(() => checkFeeEstimates({ 12: -1 })).toThrow(

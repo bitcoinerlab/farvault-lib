@@ -1,21 +1,20 @@
+/** @module wallet */
 //Good explanation of bips
 //https://learnmeabitcoin.com/technical/derivation-paths#fn1
 
-import LedgerTransport from '@ledgerhq/hw-transport-webusb';
-import LedgerAppBtc from '@ledgerhq/hw-app-btc';
 import {
   initHDInterface,
   LEDGER_NANO_INTERFACE,
   SOFT_HD_INTERFACE
 } from './HDInterface';
 import {
-  changePubType,
-  derivePubKey,
-  networkCoinType,
-  pubAccountNumber
+  deriveExtendedPub,
+  getNetworkCoinType,
+  getExtendedPubAccountNumber,
+  getExtendedPubPurpose,
+  parseDerivationPath
 } from './bip32';
 
-import b58 from 'bs58check';
 import { payments, networks } from 'bitcoinjs-lib';
 const { p2sh, p2wpkh, p2pkh } = payments;
 
@@ -26,136 +25,155 @@ import {
   TPUB,
   UPUB,
   VPUB,
-  PUBVERSION,
-  PUBVERSIONSIZE,
-  BIP32_PURPOSE,
   GAP_LIMIT,
   GAP_ACCOUNT_LIMIT,
-  PUBTYPES
+  LEGACY,
+  NESTED_SEGWIT,
+  NATIVE_SEGWIT
 } from './walletConstants';
 
 import { blockstreamFetchAddress, blockstreamFetchUTXOS } from './dataFetchers';
-import { checkNetwork, checkPubType, checkCoinTypePubType } from './check';
+import { checkNetwork } from './check';
 
-export function getPubAddress(
-  pub,
+export async function getDerivationPathAddress(
+  HDInterface,
+  derivationPath,
+  network = networks.testnet
+) {
+  const { purpose, accountNumber, index, isChange } = parseDerivationPath(
+    derivationPath
+  );
+  const extendedPub = await HDInterface.getExtendedPub({
+    purpose,
+    accountNumber,
+    network
+  });
+  return getExtendedPubAddress(extendedPub, index, isChange, network);
+}
+
+export function getExtendedPubAddress(
+  extendedPub,
   index = 0,
   isChange = false,
-  //Specify the network since BCH and other shitcoins may use the same pubType
   network = networks.bitcoin
 ) {
-  const pubType = getPubType(pub);
-  checkNetwork(network);
-  checkCoinTypePubType(networkCoinType(network), pubType);
+  const purpose = getExtendedPubPurpose(extendedPub, network);
   let functionCall;
-  if (pubType === XPUB || pubType === TPUB) {
+  if (purpose === LEGACY) {
     functionCall = getLegacyAddress;
-  } else if (pubType === YPUB || pubType === UPUB) {
+  } else if (purpose === NESTED_SEGWIT) {
     functionCall = getNestedSegwitAddress;
-  } else if (pubType === ZPUB || pubType === VPUB) {
+  } else if (purpose === NATIVE_SEGWIT) {
     functionCall = getNativeSegwitAddress;
   } else {
-    throw new Error('Invalid pubType');
+    throw new Error('Invalid purpose!');
   }
-  return functionCall(pub, index, isChange, network);
+  return functionCall(extendedPub, index, isChange, network);
 }
 function getLegacyAddress(
-  pub,
+  extendedPub,
   index = 0,
   isChange = false,
-  //Specify the network since BCH and other shitcoins may use the same pubType
   network = networks.bitcoin
 ) {
-  if (pub.slice(0, 4) !== XPUB && pub.slice(0, 4) !== TPUB)
+  if (extendedPub.slice(0, 4) !== XPUB && extendedPub.slice(0, 4) !== TPUB)
     throw new Error('Not xpub or tpub');
   return p2pkh({
-    pubkey: derivePubKey(pub, index, isChange, network),
+    pubkey: deriveExtendedPub(extendedPub, index, isChange, network),
     network
   }).address;
 }
 function getNestedSegwitAddress(
-  pub,
+  extendedPub,
   index = 0,
   isChange = false,
-  //Specify the network since BCH and other shitcoins may use the same pubType
   network = networks.bitcoin
 ) {
-  if (pub.slice(0, 4) !== YPUB && pub.slice(0, 4) !== UPUB)
+  if (extendedPub.slice(0, 4) !== YPUB && extendedPub.slice(0, 4) !== UPUB)
     throw new Error('Not ypub or upub');
   return p2sh({
     redeem: p2wpkh({
-      pubkey: derivePubKey(pub, index, isChange, network),
+      pubkey: deriveExtendedPub(extendedPub, index, isChange, network),
       network
     }),
     network
   }).address;
 }
 function getNativeSegwitAddress(
-  pub,
+  extendedPub,
   index = 0,
   isChange = false,
-  //Specify the network since BCH and other shitcoins may use the same pubType
   network = networks.bitcoin
 ) {
-  if (pub.slice(0, 4) !== ZPUB && pub.slice(0, 4) !== VPUB)
+  if (extendedPub.slice(0, 4) !== ZPUB && extendedPub.slice(0, 4) !== VPUB)
     throw new Error('Not zpub or vpub');
   return p2wpkh({
-    pubkey: derivePubKey(pub, index, isChange, network),
+    pubkey: deriveExtendedPub(extendedPub, index, isChange, network),
     network
   }).address;
 }
 
-function getPubType(pub) {
-  const pubType = pub.slice(0, 4);
-  checkPubType(pubType);
-  return pubType;
-}
-
-async function fetchPubBalance(
-  pub,
+/**
+ * Queries an Internet service to get all the addresses of an extended pub key
+ * that have funds.
+ *
+ * This gets all the funds of particular extended pub. For example, to get the
+ * funds of account 0 of LEGACY addresses.
+ *
+ * It returns the `balance` in satoshis, the funded `addressesDescriptors`,
+ * and it also returns whether it has been `used`. Note that "used" here means
+ * that this extendedPub account might have had some funds in the past even if
+ * it does not have anymore.
+ *
+ * @param {string} extendedPub An extended pub key.
+ * @param {Object} network A [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
+ * @param {function} addressFetcher One function that conforms to the values returned by {@link module:dataFetchers.esploraFetchAddress esploraFetchAddress}.
+ * @returns {object} return
+ * @returns {boolean} return.used Whether that extended pub ever received sats (event if it's current balance is now 0)
+ * @returns {number} return.balance Number of sats controlled by this extended pub key
+ * @returns {object[]} return.addressesDescriptors An array of addressDescriptor objects corresponding to addresses with funds (>0 sats). An `addressDescriptor = {derivationPath, network}`.
+ */
+async function fetchExtendedPubFundedAddressesDescriptors(
+  extendedPub,
   network = networks.bitcoin,
   addressFetcher = blockstreamFetchAddress
 ) {
-  const addresses = [];
+  const addressesDescriptors = [];
   let balance = 0;
-  let pubUsed = false;
+  let extendedPubUsed = false;
   checkNetwork(network);
-  checkCoinTypePubType(networkCoinType(network), getPubType(pub));
 
-  for (const change of [true, false]) {
+  for (const isChange of [true, false]) {
     for (
       let index = 0, consecutiveUnusedAddresses = 0;
       consecutiveUnusedAddresses < GAP_LIMIT;
       index++
     ) {
-      const address = getPubAddress(pub, index, change, network);
+      const address = getExtendedPubAddress(
+        extendedPub,
+        index,
+        isChange,
+        network
+      );
       const { used, balance: addressBalance } = await addressFetcher(
         address,
         network
       );
-      const accountNumber = pubAccountNumber(pub, network);
-      const derivationPath = `${
-        BIP32_PURPOSE[getPubType(pub)]
-      }'/${networkCoinType(network)}'/${accountNumber}'/${
-        change ? 1 : 0
-      }/${index}`;
-      //console.log({
-      //  address,
-      //  derivationPath,
-      //  pubType: getPubType(pub),
-      //  accountNumber,
-      //  change,
-      //  index,
-      //  used,
-      //  addressBalance
-      //});
+      const accountNumber = getExtendedPubAccountNumber(extendedPub, network);
+      const purpose = getExtendedPubPurpose(extendedPub, network);
+      const derivationPath = `${purpose}'/${getNetworkCoinType(
+        network
+      )}'/${accountNumber}'/${isChange ? 1 : 0}/${index}`;
       if (addressBalance !== 0) {
-        addresses.push({ address, derivationPath });
+        addressesDescriptors.push({
+          network,
+          derivationPath
+        });
         balance += addressBalance;
       }
       if (used === true) {
         consecutiveUnusedAddresses = 0;
-        pubUsed = true;
+        extendedPubUsed = true;
       } else {
         consecutiveUnusedAddresses++;
       }
@@ -163,45 +181,92 @@ async function fetchPubBalance(
   }
 
   return {
-    addresses,
+    addressesDescriptors,
     balance,
-    used: pubUsed /*has this pub been used (even if balance is zero)?*/
+    //has this extendedPub been used (even if balance is zero)?
+    used: extendedPubUsed
   };
 }
 
-//This should be bip32UTXO(network, addressFetcher, HDInterface)
-export async function bip32UnspentAddresses(
+/**
+ * Queries an Internet service to get all the addresses descriptors with
+ * positive funds that can be derived from a HD wallet. This includes P2WPKH,
+ * P2SH-P2WPKH and P2PKH extended pub types.
+ *
+ * This gets all the funds of a HD Wallet (including all accounts).
+ * It tries to get funds from LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT wallets.
+ *
+ * For each address type, it starts checking if account number #0 has funds.
+ * Every time that one acount number has been used, then this function tries to
+ * get funds from the following account number. This is done even if the current
+ * account number has no funds (because they have been spent).
+ *
+ * @param {object} HDInterface An HDInterface as the one in {@link module:HDInterface}.
+ * @param {Object} network A [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
+ * @param {function} addressFetcher One function that conforms to the values returned by {@link module:dataFetchers.esploraFetchAddress esploraFetchAddress}.
+ * @returns {object[]} return.addressesDescriptors An array of addressDescriptor objects corresponding to addresses with funds (>0 sats). An `addressDescriptor = {derivationPath, network}`.
+ */
+export async function fetchFundedAddressesDescriptors(
   HDInterface,
   network = networks.bitcoin,
   addressFetcher = blockstreamFetchAddress
 ) {
-  //let bip32Balance = 0;
-  const bip32Addresses = [];
-  for (const pubType of Object.values(PUBTYPES[networkCoinType(network)])) {
-    //console.log('TRACE', 'bip32UnspentAddresses pubType', { pubType });
+  const fundedAddressesDescriptors = [];
+  for (const purpose of [LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT]) {
     for (
       let accountNumber = 0, consecutiveUnusedAccounts = 0;
       consecutiveUnusedAccounts < GAP_ACCOUNT_LIMIT;
       accountNumber++
     ) {
-      const pub = await HDInterface.getPub({ pubType, accountNumber, network });
-      //console.log('TRACE', 'bip32UnspentAddresses pubType', { accountNumber, consecutiveUnusedAccounts, pub });
-      //This should be fetchPubUTXO(pub, network, addressFetcher)
-      const { balance, addresses, used } = await fetchPubBalance(
-        pub,
+      const extendedPub = await HDInterface.getExtendedPub({
+        purpose,
+        accountNumber,
+        network
+      });
+      const {
+        balance,
+        addressesDescriptors,
+        used
+      } = await fetchExtendedPubFundedAddressesDescriptors(
+        extendedPub,
         network,
         addressFetcher
       );
-      //console.log({ accountNumber, pubType, pub, balance, used });
       if (used) {
         consecutiveUnusedAccounts = 0;
-        bip32Addresses.push(...addresses);
+        fundedAddressesDescriptors.push(...addressesDescriptors);
       } else {
         consecutiveUnusedAccounts++;
       }
     }
   }
-  return bip32Addresses;
+  return fundedAddressesDescriptors;
+}
+
+export async function fetchUTXOSDescriptors(
+  HDInterface,
+  addressesDescriptors,
+  utxoFetcher = blockstreamFetchUTXOS
+) {
+  const utxosDescritptors = [];
+  for (const addressDescriptor of addressesDescriptors) {
+    const utxos = await utxoFetcher(
+      await getDerivationPathAddress(
+        HDInterface,
+        addressDescriptor.derivationPath,
+        addressDescriptor.network
+      )
+    );
+    utxos.map(utxo =>
+      utxosDescritptors.push({
+        tx: utxo.tx,
+        n: utxo.vout,
+        derivationPath: addressDescriptor.derivationPath,
+        network: addressDescriptor.network
+      })
+    );
+  }
+  return utxosDescritptors;
 }
 
 export async function ledgerBalance(
@@ -218,20 +283,23 @@ export async function ledgerBalance(
 
   const utxos = [];
   const HDInterface = await initHDInterface(LEDGER_NANO_INTERFACE);
-  const uAddresses = await bip32UnspentAddresses(
+  const addressesDescriptors = await fetchFundedAddressesDescriptors(
     HDInterface,
     network,
     addressFetcher
   );
-  //console.log({ uAddresses });
-  for (const address of uAddresses) {
-    const addressUtxos = await utxoFetcher(address.address, network);
+  //console.log({ addressesDescriptors });
+  for (const addressDescriptor of addressesDescriptors) {
+    const addressUtxos = await utxoFetcher(addressDescriptor.address, network);
     addressUtxos.map(addressUtxo =>
-      utxos.push({ ...addressUtxo, derivationPath: address.derivationPath })
+      utxos.push({
+        ...addressUtxo,
+        derivationPath: addressDescriptor.derivationPath
+      })
     );
   }
   //console.log({ utxos });
-  return uAddresses;
+  return addressesDescriptors;
 }
 
 export async function softwareBalance(
@@ -240,18 +308,18 @@ export async function softwareBalance(
   utxoFetcher = blockstreamFetchUTXOS
 ) {
   const HDInterface = await initHDInterface(SOFT_HD_INTERFACE);
-  const uAddresses = await bip32UnspentAddresses(
+  const addressesDescriptors = await fetchFundedAddressesDescriptors(
     HDInterface,
     network,
     addressFetcher
   );
-  //console.log({ uAddresses });
-  for (const address of uAddresses) {
+  //console.log({ addressesDescriptors });
+  for (const address of addressesDescriptors) {
     const addressUtxos = await utxoFetcher(address.address, network);
     addressUtxos.map(addressUtxo =>
       utxos.push({ ...addressUtxo, derivationPath: address.derivationPath })
     );
   }
   //console.log({ utxos });
-  return uAddresses;
+  return addressesDescriptors;
 }

@@ -1,36 +1,33 @@
 import { mnemonicToSeed } from 'bip39';
 import { networks } from 'bitcoinjs-lib';
-import { BIP32_PURPOSE } from '../walletConstants';
 export async function init(
   mnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
 ) {
   return await mnemonicToSeed(mnemonic);
 }
-import { checkNetwork, checkPubType, checkCoinTypePubType } from '../check';
+import { checkNetwork, checkPurpose } from '../check';
 
-import { changePubType, networkCoinType, fromSeed } from '../bip32';
+import { setExtendedPubPrefix, getNetworkCoinType, fromSeed } from '../bip32';
 
-export async function getPub(
+export async function getExtendedPub(
   seed,
-  { pubType, accountNumber, network = networks.testnet }
+  { purpose, accountNumber, network = networks.testnet }
 ) {
-  checkPubType(pubType);
+  checkPurpose(purpose);
   checkNetwork(network);
-  checkCoinTypePubType(networkCoinType(network), pubType);
   if (!Number.isInteger(accountNumber) || accountNumber < 0)
     throw new Error('Invalid accountNumber');
 
   const root = await fromSeed(seed, network);
-  return changePubType(
+  return setExtendedPubPrefix(
     root
       .derivePath(
-        `${BIP32_PURPOSE[pubType]}'/${networkCoinType(
-          network
-        )}'/${accountNumber}'`
+        `${purpose}'/${getNetworkCoinType(network)}'/${accountNumber}'`
       )
       .neutered()
       .toBase58(),
-    pubType
+    purpose,
+    network
   );
 }
 

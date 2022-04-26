@@ -1,15 +1,20 @@
-import { checkPubType } from './check';
+import {
+  checkPurpose,
+  checkNetwork,
+  checkExtendedPubType,
+  checkCoinTypeExtendedPubType
+} from './check';
 import b58 from 'bs58check';
 import {
+  PURPOSES,
   PUBVERSIONSIZE,
-  PUBVERSION,
-  XPUB,
-  TPUB,
+  PUBVERSIONS,
   LEGACY,
   NESTED_SEGWIT,
   NATIVE_SEGWIT,
   BITCOIN_COINTYPE,
-  TESTNET_COINTYPE
+  TESTNET_COINTYPE,
+  REGTEST_COINTYPE
 } from './walletConstants';
 import { networks } from 'bitcoinjs-lib';
 
@@ -21,13 +26,16 @@ export async function fromSeed(seed) {
   return await bjsBip32.fromSeed(seed);
 }
 
-export function changePubType(pub, pubType) {
-  checkPubType(pubType);
-  let data = b58.decode(pub);
+export function setExtendedPubPrefix(extendedPub, purpose, network) {
+  checkPurpose(purpose);
+  checkNetwork(network);
+  let data = b58.decode(extendedPub);
   data = data.slice(4);
   data = Buffer.concat([
     Buffer.from(
-      PUBVERSION[pubType].toString(16).padStart(PUBVERSIONSIZE, 0),
+      PUBVERSIONS[getNetworkCoinType(network)][purpose]
+        .toString(16)
+        .padStart(PUBVERSIONSIZE, 0),
       'hex'
     ),
     data
@@ -35,38 +43,33 @@ export function changePubType(pub, pubType) {
   return b58.encode(data);
 }
 
-//Input must be an X or T pub, even when trying to derive segwit addresses
+//NOTE on the implementation: There's a limitation on bitcoinjs. It forces the
+//prefix to be xpub even for Segwit (BIP84) or Nested Segwit (BIP49)
+//Input must be an X or T extendedPub, even when trying to derive segwit addresses
 //fromBase58(inString, network) checks that the network byte matches with xpub
 //or tpub
 //https://github.com/bitcoinjs/bip32/blob/master/src/bip32.js
 //Note there's a difference between BIP32 and SLIP132. SLIP132 defined vpub,zpub
 //But these are not part of BIP32. And here we're gonna call BIP32 functions
-export function derivePubKey(pub, index, isChange, network = networks.bitcoin) {
-  let bip32PubType;
-  if (network === networks.bitcoin) {
-    bip32PubType = XPUB;
-  } else if (network === networks.testnet || network === networks.regtest) {
-    bip32PubType = TPUB;
-  } else {
-    throw new Error('Cannot find public bip32 version bytes for this network');
-  }
+export function deriveExtendedPub(
+  extendedPub,
+  index,
+  isChange,
+  network = networks.bitcoin
+) {
   return bjsBip32
-    .fromBase58(changePubType(pub, bip32PubType), network)
+    .fromBase58(setExtendedPubPrefix(extendedPub, LEGACY, network), network)
     .derive(isChange ? 1 : 0)
     .derive(index).publicKey;
 }
 
-export function pubAccountNumber(pub, network = networks.testnet) {
-  let bip32PubType;
-  if (network === networks.bitcoin) {
-    bip32PubType = XPUB;
-  } else if (network === networks.testnet || network === networks.regtest) {
-    bip32PubType = TPUB;
-  } else {
-    throw new Error('Cannot find public bip32 version bytes for this network');
-  }
+export function getExtendedPubAccountNumber(
+  extendedPub,
+  network = networks.testnet
+) {
+  checkNetwork(network);
   const decoded = bjsBip32.fromBase58(
-    changePubType(pub, bip32PubType),
+    setExtendedPubPrefix(extendedPub, LEGACY, network),
     network
   );
   if (decoded.depth !== 3) {
@@ -78,11 +81,13 @@ export function pubAccountNumber(pub, network = networks.testnet) {
   return accountNumber;
 }
 
-export function networkCoinType(network = network.testnet) {
+export function getNetworkCoinType(network = network.testnet) {
   if (network === networks.bitcoin) {
     return BITCOIN_COINTYPE;
-  } else if (network === networks.testnet || network === networks.regtest) {
+  } else if (network === networks.testnet) {
     return TESTNET_COINTYPE;
+  } else if (network === networks.regtest) {
+    return REGTEST_COINTYPE;
   } else {
     throw new Error('Unknown network');
   }
@@ -114,8 +119,9 @@ export function parseDerivationPath(derivationPath) {
   }
 
   if (
-    path[1] !== `${networkCoinType(networks.bitcoin)}'` &&
-    path[1] !== `${networkCoinType(networks.testnet)}'`
+    path[1] !== `${getNetworkCoinType(networks.bitcoin)}'` &&
+    path[1] !== `${getNetworkCoinType(networks.testnet)}'` &&
+    path[1] !== `${getNetworkCoinType(networks.regtest)}'`
   ) {
     throw new Error('Invalid coin type: ' + path[1]);
   } else {
@@ -138,4 +144,29 @@ export function parseDerivationPath(derivationPath) {
   }
 
   return { purpose, coinType, accountNumber, index, isChange };
+}
+
+/** Extracts the purpose from an extended pub.
+ * It assumes that the extended pub will have xpub, ypub, zpub, tpub, upub vpub
+ * prefixes as defined in BIP44, BIP49 and BIP84.
+ *
+ * Note that the network is not needed to extract the purpose. It's optional.
+ * Pass it if you want to make an additional check and make sure that the prefix
+ * matches with the network
+ * @param {string} extendedPub An extended pub key string
+ * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js). This is an optional parameter. Use it only to make an additional check and make sure that the extendedPub format matches this `network`
+ * @returns {string} The purpose. Can be LEGACY, NESTED_SEGWIT or NATIVE_SEGWIT
+ */
+export function getExtendedPubPurpose(extendedPub, network) {
+  //throw new Error(extendedPub);
+  if (typeof extendedPub !== 'string') {
+    throw new Error('Incorrect extendedPub: ' + extendedPub);
+  }
+  const extendedPubType = extendedPub.slice(0, 4);
+  checkExtendedPubType(extendedPubType);
+  if (typeof network !== undefined) {
+    checkNetwork(network);
+    checkCoinTypeExtendedPubType(getNetworkCoinType(network), extendedPubType);
+  }
+  return PURPOSES[extendedPubType];
 }

@@ -7,9 +7,21 @@ import {
   TPUB,
   UPUB,
   VPUB,
-  PUBTYPES
+  EXTENDEDPUBTYPES,
+  LEGACY,
+  NESTED_SEGWIT,
+  NATIVE_SEGWIT
 } from './walletConstants';
+
+//import { P2PKH, P2WPKH, P2SH_P2WPKH } from './accounts';
+
 import { networks, address as bjsAddress } from 'bitcoinjs-lib';
+/**
+ * Throws an error if the network not valid.
+ * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * @param {boolean} includeRegtest Include regtest in the pool of possible networks. Default is true.
+ * @returns {boolean} If the function does not throw, then it always returns true.
+ */
 export function checkNetwork(network, includeRegtest = true) {
   if (includeRegtest) {
     if (
@@ -22,23 +34,39 @@ export function checkNetwork(network, includeRegtest = true) {
     if (network !== networks.bitcoin && network !== networks.testnet)
       throw new Error('Network must be mainnet or testnet');
   }
+  return true;
 }
-export function checkPubType(pubType) {
+/**
+ * Throws an error if the purpose not valid.
+ * @param {srting} purpose LEGACY, NATIVE_SEGWIT or NESTED_SEGWIT
+ * @returns {boolean} If the function does not throw, then it always returns true.
+ */
+export function checkPurpose(purpose) {
   if (
-    pubType !== XPUB &&
-    pubType !== YPUB &&
-    pubType !== ZPUB &&
-    pubType !== TPUB &&
-    pubType !== UPUB &&
-    pubType !== VPUB
+    typeof purpose !== 'number' ||
+    (purpose === LEGACY ||
+      purpose === NESTED_SEGWIT ||
+      purpose === NATIVE_SEGWIT) === false
   )
-    throw new Error('Pub type must be x/y/z/t/u/vpub: ' + pubType);
+    throw new Error('Invalid purpose!');
   return true;
 }
 
-export function checkCoinTypePubType(coinType, pubType) {
-  if (!Object.values(PUBTYPES[coinType]).includes(pubType))
-    throw new Error('PubType does not belong to this coinType');
+export function checkExtendedPubType(extendedPubType) {
+  if (
+    extendedPubType !== XPUB &&
+    extendedPubType !== YPUB &&
+    extendedPubType !== ZPUB &&
+    extendedPubType !== TPUB &&
+    extendedPubType !== UPUB &&
+    extendedPubType !== VPUB
+  )
+    throw new Error('Pub type must be x/y/z/t/u/vpub: ' + extendedPubType);
+  return true;
+}
+export function checkCoinTypeExtendedPubType(coinType, extendedPubType) {
+  if (!Object.values(EXTENDEDPUBTYPES[coinType]).includes(extendedPubType))
+    throw new Error('ExtendedPubType does not belong to this coinType');
 }
 
 /**
@@ -93,3 +121,40 @@ export function checkFeeEstimates(feeEstimates) {
   });
   return true;
 }
+
+///**
+// * Throws an error if the accountType is not valid.
+// * @param {string} accountType P2PKH, P2WPKH or P2SH_P2WPKH as defined in accounts.js
+// * @returns {boolean} If the function does not throw, then it always returns true.
+// */
+//export function checkAccountType(accountType) {
+//  if (
+//    typeof accountType !== 'string' ||
+//    (accountType !== P2WPKH &&
+//      accountType !== P2SH_P2WPKH &&
+//      accountType !== P2PKH)
+//  )
+//    throw new Error('Invalid account type!');
+//  return true;
+//}
+//
+///**
+// * Throws an error if the account not valid.
+// * @param {object} account
+// * @param {string} account.accountType See {@link module:check.checkAccountType checkAccountType}
+// * @param {number} account.accountNumber An integer >= 0
+// * @param {object} account.network See {@link module:check.checkNetwork checkNetwork}
+// * @returns {boolean} If the function does not throw, then it always returns true.
+// */
+//export function checkAccount(account) {
+//  if (
+//    typeof account !== 'object' ||
+//    checkAccountType(account.accountType) !== true ||
+//    !Number.isSafeInteger(account.accountNumber) ||
+//    account.accountNumber < 0 ||
+//    checkNetwork(account.network) !== true
+//  )
+//    throw new Error('Invalid account!');
+//
+//  return true;
+//}

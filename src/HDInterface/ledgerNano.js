@@ -9,12 +9,7 @@
 import LedgerTransport from '@ledgerhq/hw-transport-webusb';
 import LedgerAppBtc from '@ledgerhq/hw-app-btc';
 import { crypto, networks } from 'bitcoinjs-lib';
-import {
-  BIP32_PURPOSE,
-  NATIVE_SEGWIT,
-  NESTED_SEGWIT,
-  LEGACY
-} from '../walletConstants';
+import { NATIVE_SEGWIT, NESTED_SEGWIT, LEGACY } from '../walletConstants';
 
 import { Transaction, payments, script, address } from 'bitcoinjs-lib';
 
@@ -24,14 +19,13 @@ import('tiny-secp256k1').then(ecc => {
   fromPublicKey = ECPairFactory(ecc).fromPublicKey;
 });
 
-import { checkNetwork, checkPubType, checkCoinTypePubType } from '../check';
+import { checkNetwork, checkPurpose } from '../check';
 import {
-  changePubType,
-  networkCoinType,
+  setExtendedPubPrefix,
+  getNetworkCoinType,
   parseDerivationPath,
-  derivePubKey
+  deriveExtendedPub
 } from '../bip32';
-import { PUBTYPES } from '../walletConstants';
 
 export async function init() {
   const ledgerTransport = await LedgerTransport.create();
@@ -49,55 +43,48 @@ function compressPublicKey(pk) {
   return publicKey;
 }
 
-//memoizes getPub_internal
-export const getPub = (function () {
-  const pubs = [];
+//memoizes getExtendedPub_internal
+export const getExtendedPub = (function () {
+  const extendedPubs = [];
   return async function (ledgerAppBtc, args) {
     const paramsHash = crypto
       .sha256(
         ledgerAppBtc.instanceId.toString() +
-          args.pubType +
+          args.purpose +
           args.accountNumber.toString() +
           args.network.bip32.public
       )
       .toString('hex');
-    if (pubs[paramsHash]) {
-      return pubs[paramsHash];
+    if (extendedPubs[paramsHash]) {
+      return extendedPubs[paramsHash];
     } else {
-      pubs[paramsHash] = getPub_internal(ledgerAppBtc, args);
-      return pubs[paramsHash];
+      extendedPubs[paramsHash] = getExtendedPub_internal(ledgerAppBtc, args);
+      return extendedPubs[paramsHash];
     }
   };
 })();
 
-async function getPub_internal(
+async function getExtendedPub_internal(
   ledgerAppBtc,
-  {
-    pubType,
-    accountNumber,
-    //Specify the network since BCH and other shitcoins may use the same pubType
-    network = networks.testnet
-  }
+  { purpose, accountNumber, network = networks.testnet }
 ) {
-  checkPubType(pubType);
+  checkPurpose(purpose);
   checkNetwork(network);
-  checkCoinTypePubType(networkCoinType(network), pubType);
   if (!Number.isInteger(accountNumber) || accountNumber < 0)
     throw new Error('Invalid accountNumber');
 
-  return changePubType(
+  return setExtendedPubPrefix(
     await ledgerAppBtc.getWalletXpub({
       //Note below the ' after accountNumber (it's hardened)
-      path: `${BIP32_PURPOSE[pubType]}'/${networkCoinType(
-        network
-      )}'/${accountNumber}'`,
+      path: `${purpose}'/${getNetworkCoinType(network)}'/${accountNumber}'`,
       //Ledger only accepts xpub or tpub byte version for xpubVersion as in
       //the original BIP32 implementation
       //bitcoinjs-lib (network.bip32.public) also only references xpub or tpub
       //for network = bitcoin, and network = testnet, respectively
       xpubVersion: network.bip32.public
     }),
-    pubType
+    purpose,
+    network
   );
 }
 
@@ -113,12 +100,15 @@ async function getPublicKey(
     index,
     isChange
   } = parseDerivationPath(derivationPath);
-  if (networkCoinType(network) !== coinType) {
+  if (getNetworkCoinType(network) !== coinType) {
     throw new Error('Network mismatch');
   }
-  const pubType = PUBTYPES[coinType][purpose];
-  const pub = await getPub(ledgerAppBtc, { pubType, accountNumber, network });
-  return derivePubKey(pub, index, isChange, network);
+  const extendedPub = await getExtendedPub(ledgerAppBtc, {
+    purpose,
+    accountNumber,
+    network
+  });
+  return deriveExtendedPub(extendedPub, index, isChange, network);
 }
 
 /*
@@ -206,7 +196,7 @@ export async function createSigners(ledgerAppBtc, { psbt, utxos, network }) {
       .serializeTransactionOutputs(ledgerTx)
       .toString('hex');
     // From BtcNew.js
-    // segwit for P2SH-P2WPWH.
+    // segwit for P2SH-P2WPKH.
     // additionals["bech32"] for P2WPKH.
     // additionals["bech32m"] for taproot.
     // I believe it cannot mix accounts.

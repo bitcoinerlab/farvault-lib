@@ -1,11 +1,16 @@
+/** @module HDInterface */
 export const LEDGER_NANO_INTERFACE = 'LEDGER_NANO_INTERFACE';
 export const SOFT_HD_INTERFACE = 'SOFT_HD_INTERFACE';
 
 import * as ledgerNano from './ledgerNano';
 import * as soft from './soft';
 
-import { PUBTYPES } from '../walletConstants';
-import { derivePubKey, parseDerivationPath, networkCoinType } from '../bip32';
+import {
+  deriveExtendedPub,
+  parseDerivationPath,
+  getNetworkCoinType
+} from '../bip32';
+
 async function getPublicKey(
   HDInterface,
   derivationPath,
@@ -18,12 +23,15 @@ async function getPublicKey(
     index,
     isChange
   } = parseDerivationPath(derivationPath);
-  if (networkCoinType(network) !== coinType) {
+  if (getNetworkCoinType(network) !== coinType) {
     throw new Error('Network mismatch');
   }
-  const pubType = PUBTYPES[coinType][purpose];
-  const pub = await HDInterface.getPub({ pubType, accountNumber, network });
-  return derivePubKey(pub, index, isChange, network);
+  const extendedPub = await HDInterface.getExtendedPub({
+    purpose,
+    accountNumber,
+    network
+  });
+  return deriveExtendedPub(extendedPub, index, isChange, network);
 }
 
 export async function initHDInterface(type, { mnemonic } = {}) {
@@ -32,7 +40,8 @@ export async function initHDInterface(type, { mnemonic } = {}) {
     const ledgerAppBtc = await ledgerNano.init();
     HDInterface = {
       type,
-      getPub: (...args) => ledgerNano.getPub(ledgerAppBtc, ...args),
+      getExtendedPub: (...args) =>
+        ledgerNano.getExtendedPub(ledgerAppBtc, ...args),
       createSigners: (...args) =>
         ledgerNano.createSigners(ledgerAppBtc, ...args)
     };
@@ -43,7 +52,7 @@ export async function initHDInterface(type, { mnemonic } = {}) {
     const seed = await soft.init(mnemonic);
     HDInterface = {
       type,
-      getPub: (...args) => soft.getPub(seed, ...args),
+      getExtendedPub: (...args) => soft.getExtendedPub(seed, ...args),
       createSigners: (...args) => soft.createSigners(seed, ...args)
     };
   } else throw new Error('Cannot initialize this type of HD Wallet');
