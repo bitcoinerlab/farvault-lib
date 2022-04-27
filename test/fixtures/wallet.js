@@ -17,7 +17,14 @@ export const fixtures = {
       index: 0,
       isChange: false,
       //2 BTC
-      value: 200000000
+      value: 200000000,
+      test: {
+        //Using https://mfcoin.net/recovery_tool/
+        address: 'mgFuvHBMqnmsDFHkr1XPJm3nD4VaakAHkX',
+        derivationPath: "m/44'/1'/0'/0/0",
+        extPub:
+          'tpubDEcKTFgiimhCDQVTjkdK6MVHnmrQ2MQDLc35VZv3FG3gVom9jv3aKjcKnceuadqsPJySEwvQw5nzKCcSQZYfuYSaLhoU1w4H8QxeDzHM9WB'
+      }
     },
     {
       extPub: {
@@ -27,7 +34,14 @@ export const fixtures = {
       index: 3,
       isChange: false,
       //1 BTC
-      value: 100000000
+      value: 100000000,
+      test: {
+        //Using https://mfcoin.net/recovery_tool/
+        address: 'n45eSfCzP8qespuY59Lof91iytfEfBwYek',
+        derivationPath: "m/44'/1'/0'/0/3",
+        extPub:
+          'tpubDEcKTFgiimhCDQVTjkdK6MVHnmrQ2MQDLc35VZv3FG3gVom9jv3aKjcKnceuadqsPJySEwvQw5nzKCcSQZYfuYSaLhoU1w4H8QxeDzHM9WB'
+      }
     },
     {
       extPub: {

@@ -64,16 +64,16 @@ export function checkPurpose(purpose) {
 }
 
 /**
- * Throws an error if some of the following checks are not fulfilled:
+ * Throws an error if any of the following checks are not fulfilled:
  *
  * * Makes sure the extPub corresponds to the network.
- * * Makes sure it can be correctly decoded (using nodejs bip32 fromBase58).
- * * Makes sure it has depth 3 (conforms to BIP44, BIP49 & BIP84).
- * * It checks whether the coin type serialized meets one of the supported networks:
+ * * Makes sure it can be correctly decoded (using npm's bip32.fromBase58).
+ * * Makes sure it has depth: 3 (conforms to BIP44, BIP49 & BIP84).
+ * * It checks whether its coin type meets one of the supported networks:
  * Bitcoin mainnet, testnet or regtest.
  * * Optionally pass an accountNumber to check it's the one encoded in the extPub.
- * * Optionally pass a coinType (0 Bitcoin, 1 Testnet, 2 Regtest, ...) and checks
- * whether it belongs to the network (if passed) and to the prefix.
+ * * Optionally pass a coinType (0 Bitcoin, 1 Testnet &  Regtest, ...) and checks
+ * whether it belongs to the network (if passed) and it matches the prefix.
  *
  * @param {object} params
  * @param {string} params.extPub serialized extended pub

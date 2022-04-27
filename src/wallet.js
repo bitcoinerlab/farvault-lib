@@ -36,11 +36,21 @@ import {
 import { blockstreamFetchAddress, blockstreamFetchUTXOs } from './dataFetchers';
 import { checkNetwork, checkExtPub } from './check';
 
-export async function getDerivationPathAddress(
+/**
+ * Given a {@link module:HDInterface HDInterface} it returns the `address` that
+ * corresponds to a `derivationPath`.
+ *
+ * @param {object} HDInterface See {@link module:HDInterface HDInterface}.
+ * @param {string} derivationPath F.ex.: "84’/0’/0’/0/0", "m/44'/1'/10'/0/0",
+ * "m/49h/1h/8h/1/1"...
+ * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * @returns {string} A Bitcoin address
+ */
+export async function getDerivationPathAddress({
   HDInterface,
   derivationPath,
   network = networks.testnet
-) {
+}) {
   const { purpose, accountNumber, index, isChange } = parseDerivationPath(
     derivationPath
   );
@@ -262,11 +272,11 @@ export async function fetchUTXOs(
 ) {
   const utxos = [];
   for (const derivationPath of derivationPaths) {
-    const address = await getDerivationPathAddress(
+    const address = await getDerivationPathAddress({
       HDInterface,
       derivationPath,
       network
-    );
+    });
     const addressUTXOs = await utxoFetcher(address);
     addressUTXOs.map(utxo =>
       utxos.push({ tx: utxo.tx, n: utxo.vout, derivationPath })
@@ -296,11 +306,11 @@ export async function ledgerBalance(
   );
   //console.log({ derivationPaths });
   for (const derivationPath of derivationPaths) {
-    const address = await getDerivationPathAddress(
+    const address = await getDerivationPathAddress({
       HDInterface,
       derivationPath,
       network
-    );
+    });
     const addressUtxos = await utxoFetcher(address, network);
     addressUtxos.map(addressUtxo =>
       utxos.push({
@@ -326,11 +336,11 @@ export async function softwareBalance(
   );
   //console.log({ derivationPaths });
   for (const derivationPath of derivationPaths) {
-    const address = await getDerivationPathAddress(
+    const address = await getDerivationPathAddress({
       HDInterface,
       derivationPath,
       network
-    );
+    });
     const addressUtxos = await utxoFetcher(address, network);
     addressUtxos.map(addressUtxo =>
       utxos.push({ ...addressUtxo, derivationPath })

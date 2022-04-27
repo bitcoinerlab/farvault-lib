@@ -20,11 +20,7 @@ import { spawn, spawnSync } from 'child_process';
 import { kill } from 'process';
 import { blockstreamFetchFeeEstimates } from '../../src/dataFetchers';
 
-import {
-  initHDInterface,
-  LEDGER_NANO_INTERFACE,
-  SOFT_HD_INTERFACE
-} from '../../src/HDInterface';
+import { initHDInterface, SOFT_HD_INTERFACE } from '../../src/HDInterface';
 import {
   getExtPubAddress,
   getDerivationPathAddress,
@@ -166,11 +162,11 @@ describe('FarVault full pipe', () => {
           utxos: walletUTXOs,
           targets: [
             {
-              address: await getDerivationPathAddress(
+              address: await getDerivationPathAddress({
                 HDInterface,
-                walletDerivationPaths[0],
-                fixtures.network
-              ),
+                derivationPath: walletDerivationPaths[0],
+                network: fixtures.network
+              }),
               value: fixtures.savingsValue
             }
           ],

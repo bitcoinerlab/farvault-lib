@@ -24,7 +24,7 @@ export async function fromSeed(seed) {
 }
 
 /**
- * Returns a new extPub with a new purpose. The `purpose`
+ * Converts and returns an extended pub to use a new `purpose`. The `purpose`
  * specifies whether the extended pub corresponds to a legacy, nested or native
  * segwit wallet.
  *
@@ -214,7 +214,7 @@ export function parseDerivationPath(derivationPath) {
 }
 
 /**
- * Serialized a derivationPath.
+ * Serializes a derivationPath.
  *
  * @param {number} purpose LEGACY, NESTED_SEGWIT, or NATIVE_SEGWIT.
  * @param {number} coinType 0 for Bitcoin mainnet, 1 for regtest or testnet.
