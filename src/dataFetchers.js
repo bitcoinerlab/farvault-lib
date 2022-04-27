@@ -68,7 +68,7 @@ export async function esploraFetchAddress(address, baseUrl = ESPLORA_BASEURL) {
  * @returns {Array} An array of utxos objects like this: `[{ tx, vout },...]`,
  * where `tx` is a string in hex format and `vout` is an integer >= 0.
  */
-export async function esploraFetchUTXOS(address, baseUrl = ESPLORA_BASEURL) {
+export async function esploraFetchUTXOs(address, baseUrl = ESPLORA_BASEURL) {
   const utxos = [];
   const fetchedUtxos = await esploraFetchJson(
     `${baseUrl}/address/${address}/utxo`
@@ -125,7 +125,7 @@ export function blockstreamFetchAddress(address, network = networks.bitcoin) {
   return esploraFetchAddress(address, blockstreamBaseURL(network));
 }
 /**
- * Calls {@link module:dataFetchers.esploraFetchUTXOS esploraFetchUTXOS} particularized for blockstream's esplora
+ * Calls {@link module:dataFetchers.esploraFetchUTXOs esploraFetchUTXOs} particularized for blockstream's esplora
  * service.
  * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
  * Only works for bitcoin and testnet. Default is bitcoin.
@@ -133,8 +133,8 @@ export function blockstreamFetchAddress(address, network = networks.bitcoin) {
  * @returns {Array} An array of utxos objects like this: `[{ tx, vout },...]`,
  * where `tx` is a string in hex format and `vout` is an integer >= 0.
  */
-export function blockstreamFetchUTXOS(address, network = networks.bitcoin) {
-  return esploraFetchUTXOS(address, blockstreamBaseURL(network));
+export function blockstreamFetchUTXOs(address, network = networks.bitcoin) {
+  return esploraFetchUTXOs(address, blockstreamBaseURL(network));
 }
 /**
  * Calls {@link module:dataFetchers.esploraFetchFeeEstimates esploraFetchFeeEstimates} particularized for blockstream's

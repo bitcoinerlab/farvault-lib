@@ -1,9 +1,9 @@
 import {
   checkAccount,
-  checkAccountType,
   checkNetwork,
   checkPurpose,
-  checkFeeEstimates
+  checkFeeEstimates,
+  checkExtPub
 } from '../src/check';
 import { LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT } from '../src/walletConstants';
 import { networks } from 'bitcoinjs-lib';
@@ -41,40 +41,6 @@ describe('data check', () => {
     expect(checkPurpose(NESTED_SEGWIT)).toEqual(true);
     expect(checkPurpose(NATIVE_SEGWIT)).toEqual(true);
   });
-  //test('checkAccount', () => {
-  //  expect(() => checkAccount()).toThrow();
-  //  expect(() =>
-  //    checkAccount({ accountNumber: 0, accountType: P2WPKH })
-  //  ).toThrow();
-  //  expect(() =>
-  //    checkAccount({
-  //      accountNumber: 2.1,
-  //      accountType: P2WPKH,
-  //      network: networks.bitcoin
-  //    })
-  //  ).toThrow();
-  //  expect(() =>
-  //    checkAccount({
-  //      accountNumber: -1,
-  //      accountType: P2WPKH,
-  //      network: networks.bitcoin
-  //    })
-  //  ).toThrow();
-  //  expect(
-  //    checkAccount({
-  //      accountNumber: 0,
-  //      accountType: P2WPKH,
-  //      network: networks.bitcoin
-  //    })
-  //  ).toEqual(true);
-  //});
-  //test('checkAccountType', () => {
-  //  [P2PKH, P2WPKH, P2SH_P2WPKH].map(accountType =>
-  //    expect(checkAccountType(accountType)).toEqual(true)
-  //  );
-  //  expect(() => checkAccountType()).toThrow('Invalid account type!');
-  //  expect(() => checkAccountType('P2SH')).toThrow('Invalid account type!');
-  //});
 
   test('checkFeeEstimates', () => {
     expect(() => checkFeeEstimates('hello world')).toThrow(
@@ -111,5 +77,23 @@ describe('data check', () => {
         1008: 1.027
       })
     ).toEqual(true);
+  });
+
+  test('checkExtPub', () => {
+    expect(() => checkExtPub()).toThrow();
+    for (const pair of [
+      {
+        extPub:
+          'xpub6D4BDPcP2GT577Vvch3R8wDkScZWzQzMMUm3PWbmWvVJrZwQY4VUNgqFJPMM3No2dFDFGTsxxpG5uJh7n7epu4trkrX7x7DogT5Uv6fcLW5',
+        network: networks.bitcoin
+      },
+      {
+        extPub:
+          'vpub5ZF1UXDLjTvu8ChdRQ6TLSLBae2WieUzbVBcgkrwQ9VAgAxGw2PZgzsdFZsafGStDyWmp5ViTJhm7TYwLzsh7MhCtPhvKMcd1FVmv8zvSev',
+        network: networks.regtest
+      }
+    ]) {
+      expect(() => checkExtPub(pair)).not.toThrow();
+    }
   });
 });

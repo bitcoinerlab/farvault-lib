@@ -8,10 +8,10 @@ import {
   SOFT_HD_INTERFACE
 } from './HDInterface';
 import {
-  deriveExtendedPub,
+  deriveExtPub,
   getNetworkCoinType,
-  getExtendedPubAccountNumber,
-  getExtendedPubPurpose,
+  getExtPubAccountNumber,
+  getExtPubPurpose,
   parseDerivationPath,
   serializeDerivationPath
 } from './bip32';
@@ -33,8 +33,8 @@ import {
   NATIVE_SEGWIT
 } from './walletConstants';
 
-import { blockstreamFetchAddress, blockstreamFetchUTXOS } from './dataFetchers';
-import { checkNetwork } from './check';
+import { blockstreamFetchAddress, blockstreamFetchUTXOs } from './dataFetchers';
+import { checkNetwork, checkExtPub } from './check';
 
 export async function getDerivationPathAddress(
   HDInterface,
@@ -44,21 +44,21 @@ export async function getDerivationPathAddress(
   const { purpose, accountNumber, index, isChange } = parseDerivationPath(
     derivationPath
   );
-  const extendedPub = await HDInterface.getExtendedPub({
+  const extPub = await HDInterface.getExtPub({
     purpose,
     accountNumber,
     network
   });
-  return getExtendedPubAddress(extendedPub, index, isChange, network);
+  return getExtPubAddress(extPub, index, isChange, network);
 }
 
-export function getExtendedPubAddress(
-  extendedPub,
+export function getExtPubAddress(
+  extPub,
   index = 0,
   isChange = false,
   network = networks.bitcoin
 ) {
-  const purpose = getExtendedPubPurpose(extendedPub, network);
+  const purpose = getExtPubPurpose({ extPub, network });
   let functionCall;
   if (purpose === LEGACY) {
     functionCall = getLegacyAddress;
@@ -69,47 +69,47 @@ export function getExtendedPubAddress(
   } else {
     throw new Error('Invalid purpose!');
   }
-  return functionCall(extendedPub, index, isChange, network);
+  return functionCall(extPub, index, isChange, network);
 }
 function getLegacyAddress(
-  extendedPub,
+  extPub,
   index = 0,
   isChange = false,
   network = networks.bitcoin
 ) {
-  if (extendedPub.slice(0, 4) !== XPUB && extendedPub.slice(0, 4) !== TPUB)
+  if (extPub.slice(0, 4) !== XPUB && extPub.slice(0, 4) !== TPUB)
     throw new Error('Not xpub or tpub');
   return p2pkh({
-    pubkey: deriveExtendedPub(extendedPub, index, isChange, network),
+    pubkey: deriveExtPub({ extPub, index, isChange, network }),
     network
   }).address;
 }
 function getNestedSegwitAddress(
-  extendedPub,
+  extPub,
   index = 0,
   isChange = false,
   network = networks.bitcoin
 ) {
-  if (extendedPub.slice(0, 4) !== YPUB && extendedPub.slice(0, 4) !== UPUB)
+  if (extPub.slice(0, 4) !== YPUB && extPub.slice(0, 4) !== UPUB)
     throw new Error('Not ypub or upub');
   return p2sh({
     redeem: p2wpkh({
-      pubkey: deriveExtendedPub(extendedPub, index, isChange, network),
+      pubkey: deriveExtPub({ extPub, index, isChange, network }),
       network
     }),
     network
   }).address;
 }
 function getNativeSegwitAddress(
-  extendedPub,
+  extPub,
   index = 0,
   isChange = false,
   network = networks.bitcoin
 ) {
-  if (extendedPub.slice(0, 4) !== ZPUB && extendedPub.slice(0, 4) !== VPUB)
+  if (extPub.slice(0, 4) !== ZPUB && extPub.slice(0, 4) !== VPUB)
     throw new Error('Not zpub or vpub');
   return p2wpkh({
-    pubkey: deriveExtendedPub(extendedPub, index, isChange, network),
+    pubkey: deriveExtPub({ extPub, index, isChange, network }),
     network
   }).address;
 }
@@ -121,28 +121,28 @@ function getNativeSegwitAddress(
  * This gets all the funds of particular extended pub. For example, to get the
  * funds of account 0 of LEGACY addresses.
  *
- * It returns the `balance` in satoshis, the funded `addressesDescriptors`,
+ * It returns the `balance` in satoshis, the funded `derivationPaths`,
  * and it also returns whether it has been `used`. Note that "used" here means
- * that this extendedPub account might have had some funds in the past even if
+ * that this extPub account might have had some funds in the past even if
  * it does not have anymore.
  *
- * @param {string} extendedPub An extended pub key.
+ * @param {string} extPub An extended pub key.
  * @param {Object} network A [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
  * @param {function} addressFetcher One function that conforms to the values returned by {@link module:dataFetchers.esploraFetchAddress esploraFetchAddress}.
  * @returns {object} return
  * @returns {boolean} return.used Whether that extended pub ever received sats (event if it's current balance is now 0)
  * @returns {number} return.balance Number of sats controlled by this extended pub key
- * @returns {object[]} return.addressesDescriptors An array of addressDescriptor objects corresponding to addresses with funds (>0 sats). An `addressDescriptor = {derivationPath, network}`.
+ * @returns {string[]} return.derivationPaths An array of derivationPaths corresponding to addresses with funds (>0 sats).`.
  */
-async function fetchExtendedPubFundedAddressesDescriptors(
-  extendedPub,
+export async function fetchExtPubFundedDerivationPaths(
+  extPub,
   network = networks.bitcoin,
   addressFetcher = blockstreamFetchAddress
 ) {
-  const addressesDescriptors = [];
+  checkExtPub({ extPub, network });
+  const derivationPaths = [];
   let balance = 0;
-  let extendedPubUsed = false;
-  checkNetwork(network);
+  let extPubUsed = false;
 
   for (const isChange of [true, false]) {
     for (
@@ -150,18 +150,13 @@ async function fetchExtendedPubFundedAddressesDescriptors(
       consecutiveUnusedAddresses < GAP_LIMIT;
       index++
     ) {
-      const address = getExtendedPubAddress(
-        extendedPub,
-        index,
-        isChange,
-        network
-      );
+      const address = getExtPubAddress(extPub, index, isChange, network);
       const { used, balance: addressBalance } = await addressFetcher(
         address,
         network
       );
-      const accountNumber = getExtendedPubAccountNumber(extendedPub, network);
-      const purpose = getExtendedPubPurpose(extendedPub, network);
+      const accountNumber = getExtPubAccountNumber({ extPub, network });
+      const purpose = getExtPubPurpose({ extPub, network });
       const derivationPath = serializeDerivationPath({
         purpose,
         coinType: getNetworkCoinType(network),
@@ -171,15 +166,12 @@ async function fetchExtendedPubFundedAddressesDescriptors(
       });
 
       if (addressBalance !== 0) {
-        addressesDescriptors.push({
-          network,
-          derivationPath
-        });
+        derivationPaths.push(derivationPath);
         balance += addressBalance;
       }
       if (used === true) {
         consecutiveUnusedAddresses = 0;
-        extendedPubUsed = true;
+        extPubUsed = true;
       } else {
         consecutiveUnusedAddresses++;
       }
@@ -187,15 +179,14 @@ async function fetchExtendedPubFundedAddressesDescriptors(
   }
 
   return {
-    addressesDescriptors,
+    derivationPaths,
     balance,
-    //has this extendedPub been used (even if balance is zero)?
-    used: extendedPubUsed
+    used: extPubUsed
   };
 }
 
 /**
- * Queries an Internet service to get all the addresses descriptors with
+ * Queries an Internet service to get all the addresses with
  * positive funds that can be derived from a HD wallet. This includes P2WPKH,
  * P2SH-P2WPKH and P2PKH extended pub types.
  *
@@ -207,78 +198,87 @@ async function fetchExtendedPubFundedAddressesDescriptors(
  * get funds from the following account number. This is done even if the current
  * account number has no funds (because they have been spent).
  *
+ * It returns the list of derivationPaths that control the funded addresses.
+ *
  * @param {object} HDInterface An HDInterface as the one in {@link module:HDInterface}.
  * @param {Object} network A [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
  * @param {function} addressFetcher One function that conforms to the values returned by {@link module:dataFetchers.esploraFetchAddress esploraFetchAddress}.
- * @returns {object[]} return.addressesDescriptors An array of addressDescriptor objects corresponding to addresses with funds (>0 sats). An `addressDescriptor = {derivationPath, network}`.
+ * @returns {string[]} return.derivationPaths An array of derivationPaths corresponding to addresses with funds (>0 sats).`.
  */
-export async function fetchFundedAddressesDescriptors(
+export async function fetchFundedDerivationPaths(
   HDInterface,
-  network = networks.bitcoin,
-  addressFetcher = blockstreamFetchAddress
+  addressFetcher = blockstreamFetchAddress,
+  network = networks.bitcoin
 ) {
-  const fundedAddressesDescriptors = [];
+  const fundedDerivationPaths = [];
   for (const purpose of [LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT]) {
     for (
       let accountNumber = 0, consecutiveUnusedAccounts = 0;
       consecutiveUnusedAccounts < GAP_ACCOUNT_LIMIT;
       accountNumber++
     ) {
-      const extendedPub = await HDInterface.getExtendedPub({
+      const extPub = await HDInterface.getExtPub({
         purpose,
         accountNumber,
         network
       });
-      const {
-        balance,
-        addressesDescriptors,
-        used
-      } = await fetchExtendedPubFundedAddressesDescriptors(
-        extendedPub,
+      const { derivationPaths, used } = await fetchExtPubFundedDerivationPaths(
+        extPub,
         network,
         addressFetcher
       );
       if (used) {
         consecutiveUnusedAccounts = 0;
-        fundedAddressesDescriptors.push(...addressesDescriptors);
+        fundedDerivationPaths.push(...derivationPaths);
       } else {
         consecutiveUnusedAccounts++;
       }
     }
   }
-  return fundedAddressesDescriptors;
+  return fundedDerivationPaths;
 }
 
-export async function fetchUTXOSDescriptors(
+/**
+ * Queries an Internet service to get all the UTXOS from a list of
+ * derivationPaths.
+ *
+ * For each address type, it starts checking if account number #0 has funds.
+ * Every time that one acount number has been used, then this function tries to
+ * get funds from the following account number. This is done even if the current
+ * account number has no funds (because they have been spent).
+ *
+ * @param {object} HDInterface An HDInterface as the one in {@link module:HDInterface}.
+ * @param {string[]} derivationPaths An array of derivationPaths from the HDInterface.`.
+ * @param {function} utxoFetcher One function that conforms to the values returned by {@link module:dataFetchers.esploraFetchUTXOs esploraFetchUTXOs}.
+ * @param {Object} network A [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
+ * @returns {object[]} An array of utxos: `[{tx, n, derivationPath}]`, where `tx` is a hex encoded string of the transaction,
+ * `n` is the vout (an integer) and `derivationPath` is a string. F.ex.: "84’/0’/0’/0/0" .
+ */
+export async function fetchUTXOs(
   HDInterface,
-  addressesDescriptors,
-  utxoFetcher = blockstreamFetchUTXOS
+  derivationPaths,
+  utxoFetcher = blockstreamFetchUTXOs,
+  network = networks.bitcoin
 ) {
-  const utxosDescritptors = [];
-  for (const addressDescriptor of addressesDescriptors) {
-    const utxos = await utxoFetcher(
-      await getDerivationPathAddress(
-        HDInterface,
-        addressDescriptor.derivationPath,
-        addressDescriptor.network
-      )
+  const utxos = [];
+  for (const derivationPath of derivationPaths) {
+    const address = await getDerivationPathAddress(
+      HDInterface,
+      derivationPath,
+      network
     );
-    utxos.map(utxo =>
-      utxosDescritptors.push({
-        tx: utxo.tx,
-        n: utxo.vout,
-        derivationPath: addressDescriptor.derivationPath,
-        network: addressDescriptor.network
-      })
+    const addressUTXOs = await utxoFetcher(address);
+    addressUTXOs.map(utxo =>
+      utxos.push({ tx: utxo.tx, n: utxo.vout, derivationPath })
     );
   }
-  return utxosDescritptors;
+  return utxos;
 }
 
 export async function ledgerBalance(
   network = networks.testnet,
   addressFetcher = blockstreamFetchAddress,
-  utxoFetcher = blockstreamFetchUTXOS
+  utxoFetcher = blockstreamFetchUTXOs
 ) {
   //console.log(
   //  await utxoFetcher(
@@ -289,43 +289,53 @@ export async function ledgerBalance(
 
   const utxos = [];
   const HDInterface = await initHDInterface(LEDGER_NANO_INTERFACE);
-  const addressesDescriptors = await fetchFundedAddressesDescriptors(
+  const derivationPaths = await fetchFundedDerivationPaths(
     HDInterface,
-    network,
-    addressFetcher
+    addressFetcher,
+    network
   );
-  //console.log({ addressesDescriptors });
-  for (const addressDescriptor of addressesDescriptors) {
-    const addressUtxos = await utxoFetcher(addressDescriptor.address, network);
+  //console.log({ derivationPaths });
+  for (const derivationPath of derivationPaths) {
+    const address = await getDerivationPathAddress(
+      HDInterface,
+      derivationPath,
+      network
+    );
+    const addressUtxos = await utxoFetcher(address, network);
     addressUtxos.map(addressUtxo =>
       utxos.push({
         ...addressUtxo,
-        derivationPath: addressDescriptor.derivationPath
+        derivationPath
       })
     );
   }
   //console.log({ utxos });
-  return addressesDescriptors;
+  return derivationPaths;
 }
 
 export async function softwareBalance(
   network = networks.testnet,
   addressFetcher = blockstreamFetchAddress,
-  utxoFetcher = blockstreamFetchUTXOS
+  utxoFetcher = blockstreamFetchUTXOs
 ) {
   const HDInterface = await initHDInterface(SOFT_HD_INTERFACE);
-  const addressesDescriptors = await fetchFundedAddressesDescriptors(
+  const derivationPaths = await fetchFundedDerivationPaths(
     HDInterface,
-    network,
-    addressFetcher
+    addressFetcher,
+    network
   );
-  //console.log({ addressesDescriptors });
-  for (const address of addressesDescriptors) {
-    const addressUtxos = await utxoFetcher(address.address, network);
+  //console.log({ derivationPaths });
+  for (const derivationPath of derivationPaths) {
+    const address = await getDerivationPathAddress(
+      HDInterface,
+      derivationPath,
+      network
+    );
+    const addressUtxos = await utxoFetcher(address, network);
     addressUtxos.map(addressUtxo =>
-      utxos.push({ ...addressUtxo, derivationPath: address.derivationPath })
+      utxos.push({ ...addressUtxo, derivationPath })
     );
   }
   //console.log({ utxos });
-  return addressesDescriptors;
+  return derivationPaths;
 }

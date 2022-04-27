@@ -19,12 +19,12 @@ import('tiny-secp256k1').then(ecc => {
   fromPublicKey = ECPairFactory(ecc).fromPublicKey;
 });
 
-import { checkNetwork, checkPurpose } from '../check';
+import { checkNetwork, checkPurpose, checkExtPub } from '../check';
 import {
-  setExtendedPubPrefix,
+  setExtPubPrefix,
   getNetworkCoinType,
   parseDerivationPath,
-  deriveExtendedPub,
+  deriveExtPub,
   serializeDerivationPath
 } from '../bip32';
 
@@ -44,9 +44,9 @@ function compressPublicKey(pk) {
   return publicKey;
 }
 
-//memoizes getExtendedPub_internal
-export const getExtendedPub = (function () {
-  const extendedPubs = [];
+//memoizes getExtPub_internal
+export const getExtPub = (function () {
+  const extPubs = [];
   return async function (ledgerAppBtc, args) {
     const paramsHash = crypto
       .sha256(
@@ -56,16 +56,16 @@ export const getExtendedPub = (function () {
           args.network.bip32.public
       )
       .toString('hex');
-    if (extendedPubs[paramsHash]) {
-      return extendedPubs[paramsHash];
+    if (extPubs[paramsHash]) {
+      return extPubs[paramsHash];
     } else {
-      extendedPubs[paramsHash] = getExtendedPub_internal(ledgerAppBtc, args);
-      return extendedPubs[paramsHash];
+      extPubs[paramsHash] = getExtPub_internal(ledgerAppBtc, args);
+      return extPubs[paramsHash];
     }
   };
 })();
 
-async function getExtendedPub_internal(
+async function getExtPub_internal(
   ledgerAppBtc,
   { purpose, accountNumber, network = networks.testnet }
 ) {
@@ -74,9 +74,8 @@ async function getExtendedPub_internal(
   if (!Number.isInteger(accountNumber) || accountNumber < 0)
     throw new Error('Invalid accountNumber');
 
-  return setExtendedPubPrefix(
-    await ledgerAppBtc.getWalletXpub({
-      //Note below the ' after accountNumber (it's hardened)
+  const extPub = setExtPubPrefix({
+    extPub: await ledgerAppBtc.getWalletXpub({
       path: serializeDerivationPath({
         purpose,
         coinType: getNetworkCoinType(network),
@@ -86,11 +85,16 @@ async function getExtendedPub_internal(
       //the original BIP32 implementation
       //bitcoinjs-lib (network.bip32.public) also only references xpub or tpub
       //for network = bitcoin, and network = testnet, respectively
+      //Read setExtPubPrefix documentation to understand why this is here.
+      //Note that network.bip32.public will be === walletConstants.XPUBVERSION
+      //for mainnet and === walletConstants.TPUBVERSION for testnet and regtest
       xpubVersion: network.bip32.public
     }),
     purpose,
     network
-  );
+  });
+  checkExtPub({ extPub, accountNumber, network });
+  return extPub;
 }
 
 async function getPublicKey(
@@ -108,12 +112,12 @@ async function getPublicKey(
   if (getNetworkCoinType(network) !== coinType) {
     throw new Error('Network mismatch');
   }
-  const extendedPub = await getExtendedPub(ledgerAppBtc, {
+  const extPub = await getExtPub(ledgerAppBtc, {
     purpose,
     accountNumber,
     network
   });
-  return deriveExtendedPub(extendedPub, index, isChange, network);
+  return deriveExtPub({ extPub, index, isChange, network });
 }
 
 /*

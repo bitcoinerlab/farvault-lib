@@ -10,12 +10,22 @@ import {
   EXTENDEDPUBTYPES,
   LEGACY,
   NESTED_SEGWIT,
-  NATIVE_SEGWIT
+  NATIVE_SEGWIT,
+  PUBVERSIONSIZE,
+  PUBVERSIONS,
+  BITCOIN_COINTYPE,
+  TESTNET_COINTYPE,
+  REGTEST_COINTYPE
 } from './walletConstants';
 
 //import { P2PKH, P2WPKH, P2SH_P2WPKH } from './accounts';
 
 import { networks, address as bjsAddress } from 'bitcoinjs-lib';
+import BIP32Factory from 'bip32';
+let bjsBip32;
+import('tiny-secp256k1').then(ecc => (bjsBip32 = BIP32Factory(ecc)));
+import b58 from 'bs58check';
+
 /**
  * Throws an error if the network not valid.
  * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
@@ -25,9 +35,10 @@ import { networks, address as bjsAddress } from 'bitcoinjs-lib';
 export function checkNetwork(network, includeRegtest = true) {
   if (includeRegtest) {
     if (
-      network !== networks.bitcoin &&
-      network !== networks.testnet &&
-      network !== networks.regtest
+      typeof network !== 'object' ||
+      (network !== networks.bitcoin &&
+        network !== networks.testnet &&
+        network !== networks.regtest)
     )
       throw new Error('Network must be mainnet, testnet or regtest');
   } else {
@@ -52,21 +63,96 @@ export function checkPurpose(purpose) {
   return true;
 }
 
-export function checkExtendedPubType(extendedPubType) {
+/**
+ * Throws an error if some of the following checks are not fulfilled:
+ *
+ * * Makes sure the extPub corresponds to the network.
+ * * Makes sure it can be correctly decoded (using nodejs bip32 fromBase58).
+ * * Makes sure it has depth 3 (conforms to BIP44, BIP49 & BIP84).
+ * * It checks whether the coin type serialized meets one of the supported networks:
+ * Bitcoin mainnet, testnet or regtest.
+ * * Optionally pass an accountNumber to check it's the one encoded in the extPub.
+ * * Optionally pass a coinType (0 Bitcoin, 1 Testnet, 2 Regtest, ...) and checks
+ * whether it belongs to the network (if passed) and to the prefix.
+ *
+ * @param {object} params
+ * @param {string} params.extPub serialized extended pub
+ * @param {number} params.coinType 44, 49 or 84 depending on the BIP used.
+ * Optional if you don't want to check it.
+ * @param {number} params.accountNumber Integer >= 0 corresponding to the account
+ * number serialized in the extPub. Optional if you don't want to check it.
+ * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ */
+export function checkExtPub({ extPub, coinType, accountNumber, network }) {
   if (
-    extendedPubType !== XPUB &&
-    extendedPubType !== YPUB &&
-    extendedPubType !== ZPUB &&
-    extendedPubType !== TPUB &&
-    extendedPubType !== UPUB &&
-    extendedPubType !== VPUB
+    typeof extPub !== 'string' ||
+    (extPub.length === 111 || extPub.length === 112) === false
   )
-    throw new Error('Pub type must be x/y/z/t/u/vpub: ' + extendedPubType);
+    throw new Error('Invalid extPub!');
+  const extPubType = extPub.slice(0, 4);
+  if (
+    extPubType !== XPUB &&
+    extPubType !== YPUB &&
+    extPubType !== ZPUB &&
+    extPubType !== TPUB &&
+    extPubType !== UPUB &&
+    extPubType !== VPUB
+  )
+    throw new Error('Invalid extPub. Pub type must be x/y/z/t/u/vpub!');
+
+  checkNetwork(network);
+
+  let _coinType;
+  if (network === networks.bitcoin) {
+    _coinType = BITCOIN_COINTYPE;
+  } else if (network === networks.testnet) {
+    _coinType = TESTNET_COINTYPE;
+  } else if (network === networks.regtest) {
+    _coinType = REGTEST_COINTYPE;
+  } else {
+    throw new Error(
+      'Invalid extPub. This wallet assumes Bitcoin mainnet, testnet or regtest only!'
+    );
+  }
+  if (!Object.values(EXTENDEDPUBTYPES[_coinType]).includes(extPubType))
+    throw new Error(
+      'Invalid extPub. The prefix of the extPub does not match with the network!' +
+        ':' +
+        extPubType +
+        ':' +
+        network.bip32.public
+    );
+  if (typeof coinType !== 'undefined')
+    if (coinType !== _coinType)
+      throw new Error('Invalid extPub. coinType does not match!');
+  coinType = _coinType;
+
+  //Convert the extPub to "xpub" prefixed. This is the way bip32 nodejs module
+  //internally works
+  let data = b58.decode(extPub);
+  data = data.slice(4);
+  data = Buffer.concat([
+    Buffer.from(
+      PUBVERSIONS[coinType][LEGACY].toString(16).padStart(PUBVERSIONSIZE, 0),
+      'hex'
+    ),
+    data
+  ]);
+  const xpubPrefixedExtPub = b58.encode(data);
+
+  //Do the slice thing.
+  //check network
+  //do a setExtPubPrefix and then do a fromBase58
+  //fromBase58 does already a series of checks and throws if it fails.
+  const hd = bjsBip32.fromBase58(xpubPrefixedExtPub, network);
+  if (hd.depth !== 3) {
+    throw new Error('Invalid extPub. This wallet assumes extPub with depth 3!');
+  }
+  if (typeof accountNumber !== 'undefined') {
+    if ((hd.index & 0x7fffffff) /*unharden*/ !== accountNumber)
+      throw new Error('Invalid extPub. accountNumber mismatch!');
+  }
   return true;
-}
-export function checkCoinTypeExtendedPubType(coinType, extendedPubType) {
-  if (!Object.values(EXTENDEDPUBTYPES[coinType]).includes(extendedPubType))
-    throw new Error('ExtendedPubType does not belong to this coinType');
 }
 
 /**
@@ -121,40 +207,3 @@ export function checkFeeEstimates(feeEstimates) {
   });
   return true;
 }
-
-///**
-// * Throws an error if the accountType is not valid.
-// * @param {string} accountType P2PKH, P2WPKH or P2SH_P2WPKH as defined in accounts.js
-// * @returns {boolean} If the function does not throw, then it always returns true.
-// */
-//export function checkAccountType(accountType) {
-//  if (
-//    typeof accountType !== 'string' ||
-//    (accountType !== P2WPKH &&
-//      accountType !== P2SH_P2WPKH &&
-//      accountType !== P2PKH)
-//  )
-//    throw new Error('Invalid account type!');
-//  return true;
-//}
-//
-///**
-// * Throws an error if the account not valid.
-// * @param {object} account
-// * @param {string} account.accountType See {@link module:check.checkAccountType checkAccountType}
-// * @param {number} account.accountNumber An integer >= 0
-// * @param {object} account.network See {@link module:check.checkNetwork checkNetwork}
-// * @returns {boolean} If the function does not throw, then it always returns true.
-// */
-//export function checkAccount(account) {
-//  if (
-//    typeof account !== 'object' ||
-//    checkAccountType(account.accountType) !== true ||
-//    !Number.isSafeInteger(account.accountNumber) ||
-//    account.accountNumber < 0 ||
-//    checkNetwork(account.network) !== true
-//  )
-//    throw new Error('Invalid account!');
-//
-//  return true;
-//}

@@ -5,16 +5,16 @@ export async function init(
 ) {
   return await mnemonicToSeed(mnemonic);
 }
-import { checkNetwork, checkPurpose } from '../check';
+import { checkNetwork, checkPurpose, checkExtPub } from '../check';
 
 import {
-  setExtendedPubPrefix,
+  setExtPubPrefix,
   getNetworkCoinType,
   fromSeed,
   serializeDerivationPath
 } from '../bip32';
 
-export async function getExtendedPub(
+export async function getExtPub(
   seed,
   { purpose, accountNumber, network = networks.testnet }
 ) {
@@ -24,8 +24,8 @@ export async function getExtendedPub(
     throw new Error('Invalid accountNumber');
 
   const root = await fromSeed(seed, network);
-  return setExtendedPubPrefix(
-    root
+  const extPub = setExtPubPrefix({
+    extPub: root
       .derivePath(
         serializeDerivationPath({
           purpose,
@@ -37,7 +37,9 @@ export async function getExtendedPub(
       .toBase58(),
     purpose,
     network
-  );
+  });
+  checkExtPub({ extPub, accountNumber, network });
+  return extPub;
 }
 
 export async function createSigners(seed, { psbt, utxos, network }) {

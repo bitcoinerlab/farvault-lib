@@ -7,10 +7,10 @@ import { networks } from 'bitcoinjs-lib';
 export const fixtures = {
   mnemonic:
     'pulp ritual farm danger swarm topple foil zone limb mail smoke lawsuit rent jungle grain step giraffe inmate outer embrace please lift powder trigger',
+  network: networks.regtest,
   addresses: [
     {
-      extendedPub: {
-        network: networks.regtest,
+      extPub: {
         purpose: LEGACY,
         accountNumber: 0
       },
@@ -20,8 +20,7 @@ export const fixtures = {
       value: 200000000
     },
     {
-      extendedPub: {
-        network: networks.regtest,
+      extPub: {
         purpose: LEGACY,
         accountNumber: 0
       },
@@ -31,8 +30,7 @@ export const fixtures = {
       value: 100000000
     },
     {
-      extendedPub: {
-        network: networks.regtest,
+      extPub: {
         purpose: NATIVE_SEGWIT,
         accountNumber: 0
       },
@@ -42,8 +40,7 @@ export const fixtures = {
       value: 20000000
     },
     {
-      extendedPub: {
-        network: networks.regtest,
+      extPub: {
         purpose: NATIVE_SEGWIT,
         accountNumber: 1
       },
@@ -53,8 +50,7 @@ export const fixtures = {
       value: 90000000
     },
     {
-      extendedPub: {
-        network: networks.regtest,
+      extPub: {
         purpose: NESTED_SEGWIT,
         accountNumber: 0
       },
@@ -66,7 +62,6 @@ export const fixtures = {
   ],
   //This is the account where change and final recovered funds will go.
   defaultAccount: {
-    network: networks.regtest,
     purpose: NATIVE_SEGWIT,
     accountNumber: 1
   },

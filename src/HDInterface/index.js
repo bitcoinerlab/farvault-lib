@@ -6,7 +6,7 @@ import * as ledgerNano from './ledgerNano';
 import * as soft from './soft';
 
 import {
-  deriveExtendedPub,
+  deriveExtPub,
   parseDerivationPath,
   getNetworkCoinType
 } from '../bip32';
@@ -26,12 +26,12 @@ async function getPublicKey(
   if (getNetworkCoinType(network) !== coinType) {
     throw new Error('Network mismatch');
   }
-  const extendedPub = await HDInterface.getExtendedPub({
+  const extPub = await HDInterface.getExtPub({
     purpose,
     accountNumber,
     network
   });
-  return deriveExtendedPub(extendedPub, index, isChange, network);
+  return deriveExtPub({ extPub, index, isChange, network });
 }
 
 export async function initHDInterface(type, { mnemonic } = {}) {
@@ -40,19 +40,18 @@ export async function initHDInterface(type, { mnemonic } = {}) {
     const ledgerAppBtc = await ledgerNano.init();
     HDInterface = {
       type,
-      getExtendedPub: (...args) =>
-        ledgerNano.getExtendedPub(ledgerAppBtc, ...args),
+      getExtPub: (...args) => ledgerNano.getExtPub(ledgerAppBtc, ...args),
       createSigners: (...args) =>
         ledgerNano.createSigners(ledgerAppBtc, ...args)
     };
   } else if (type === SOFT_HD_INTERFACE) {
-    if (typeof mnemonic === undefined) {
+    if (typeof mnemonic === 'undefined') {
       console.log('WARN: Using default mnemonic!');
     }
     const seed = await soft.init(mnemonic);
     HDInterface = {
       type,
-      getExtendedPub: (...args) => soft.getExtendedPub(seed, ...args),
+      getExtPub: (...args) => soft.getExtPub(seed, ...args),
       createSigners: (...args) => soft.createSigners(seed, ...args)
     };
   } else throw new Error('Cannot initialize this type of HD Wallet');

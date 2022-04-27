@@ -26,12 +26,12 @@ import {
   SOFT_HD_INTERFACE
 } from '../../src/HDInterface';
 import {
-  getExtendedPubAddress,
+  getExtPubAddress,
   getDerivationPathAddress,
-  fetchFundedAddressesDescriptors,
-  fetchUTXOSDescriptors
+  fetchFundedDerivationPaths,
+  fetchUTXOs
 } from '../../src/wallet';
-import { esploraFetchAddress, esploraFetchUTXOS } from '../../src/dataFetchers';
+import { esploraFetchAddress, esploraFetchUTXOs } from '../../src/dataFetchers';
 import { coinselect } from '../../src/coinselect';
 
 import {
@@ -47,7 +47,6 @@ import { fixtures } from '../fixtures/wallet';
 import { pickEsploraFeeEstimate } from '../../src/fees';
 
 const regtestUtils = new RegtestUtils(bJs);
-const network = networks.regtest;
 const BITCOIND_CATCH_UP_TIME = 2000;
 const REGTEST_SERVER_CATCH_UP_TIME = 1000;
 const ESPLORA_CATCH_UP_TIME = 10000;
@@ -58,34 +57,29 @@ const TEST_TIME = 120000;
  * It then mines 6 blocks to confirm payments.
  * @param {string} mnemonic - space separated list of BIP39 words used as mnemonic.
  * @param {Object[]} fixtureAddresses - list of address descriptors that will get funds from the faucet.
- * @param {Object} fixtureAddresses[].extendedPub - object containing the purpose and accountNumber of the descriptor.
- * @param {string} fixtureAddresses[].extendedPub[].purpose - LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT.
- * @param {number} fixtureAddresses[].extendedPub[].accountNumber - account number.
+ * @param {Object} fixtureAddresses[].extPub - object containing the purpose and accountNumber of the descriptor.
+ * @param {string} fixtureAddresses[].extPub[].purpose - LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT.
+ * @param {number} fixtureAddresses[].extPub[].accountNumber - account number.
  * @param {number} fixtureAddresses[].index - address number within the accountNumber.
  * @param {boolean} fixtureAddresses[].isChange - whether this address is a change address or not.
  * @param {number} fixtureAddresses[].value - number of sats that this address will receive.
  */
-async function createMockWallet(mnemonic, fixtureAddresses) {
+async function createMockWallet(mnemonic, fixtureAddresses, network) {
   const HDInterface = await initHDInterface(SOFT_HD_INTERFACE, { mnemonic });
-  const extendedPubs = [];
-  const addressesDescriptors = [];
-  const utxosDescritptors = [];
+  const extPubs = [];
+  const derivationPaths = [];
+  const UTXOs = [];
   for (const addressFixture of fixtureAddresses) {
-    const { network, purpose, accountNumber } = addressFixture.extendedPub;
+    const { purpose, accountNumber } = addressFixture.extPub;
     const { index, isChange } = addressFixture;
-    const extendedPub = await HDInterface.getExtendedPub({
+    const extPub = await HDInterface.getExtPub({
       purpose,
       accountNumber,
       network
     });
-    extendedPubs.indexOf(extendedPub) === -1 && extendedPubs.push(extendedPub);
+    if (extPubs.indexOf(extPub) === -1) extPubs.push(extPub);
 
-    const address = getExtendedPubAddress(
-      extendedPub,
-      index,
-      isChange,
-      network
-    );
+    const address = getExtPubAddress(extPub, index, isChange, network);
     const derivationPath = serializeDerivationPath({
       purpose,
       coinType: getNetworkCoinType(network),
@@ -93,20 +87,19 @@ async function createMockWallet(mnemonic, fixtureAddresses) {
       isChange,
       index
     });
-    addressesDescriptors.push({ derivationPath, network });
+    derivationPaths.push(derivationPath);
     const unspent = await regtestUtils.faucet(address, addressFixture.value);
     const utxo = {
-      network,
       tx: (await regtestUtils.fetch(unspent.txId)).txHex,
       n: unspent.vout,
       derivationPath
     };
-    utxosDescritptors.push(utxo);
+    UTXOs.push(utxo);
     //console.log({ unspent, utxo });
   }
   // All of the above faucet payments will confirm
   const results = await regtestUtils.mine(6);
-  return { HDInterface, extendedPubs, utxosDescritptors, addressesDescriptors };
+  return { HDInterface, extPubs, UTXOs, derivationPaths, network };
 }
 
 describe('FarVault full pipe', () => {
@@ -131,42 +124,37 @@ describe('FarVault full pipe', () => {
         //wait until the command finishes:
         spawnSync('./testing_environment/createwallet.sh');
 
-        const {
-          HDInterface,
-          addressesDescriptors,
-          utxosDescritptors
-        } = await createMockWallet(fixtures.mnemonic, fixtures.addresses);
+        const { HDInterface, derivationPaths, UTXOs } = await createMockWallet(
+          fixtures.mnemonic,
+          fixtures.addresses,
+          fixtures.network
+        );
 
         //Give esplora some time to catch up
         await new Promise(r => setTimeout(r, ESPLORA_CATCH_UP_TIME));
 
-        const walletAddressesDescriptors = await fetchFundedAddressesDescriptors(
+        const walletDerivationPaths = await fetchFundedDerivationPaths(
           HDInterface,
-          network,
-          address => esploraFetchAddress(address)
+          address => esploraFetchAddress(address),
+          fixtures.network
         );
 
-        const walletUtxosDescriptors = await fetchUTXOSDescriptors(
+        const walletUTXOs = await fetchUTXOs(
           HDInterface,
-          walletAddressesDescriptors,
-          address => esploraFetchUTXOS(address)
+          walletDerivationPaths,
+          address => esploraFetchUTXOs(address),
+          fixtures.network
         );
         kill(-bitcoind.pid, 'SIGKILL');
         kill(-electrs.pid, 'SIGKILL');
         kill(-regtest_server.pid, 'SIGKILL');
 
-        expect(walletUtxosDescriptors).toEqual(
-          expect.arrayContaining(utxosDescritptors)
+        expect(walletUTXOs).toEqual(expect.arrayContaining(UTXOs));
+        expect(UTXOs.length - walletUTXOs.length >= 0).toEqual(true);
+        expect(walletDerivationPaths).toEqual(
+          expect.arrayContaining(derivationPaths)
         );
-        expect(
-          utxosDescritptors.length - walletUtxosDescriptors.length >= 0
-        ).toEqual(true);
-        expect(walletAddressesDescriptors).toEqual(
-          expect.arrayContaining(addressesDescriptors)
-        );
-        expect(walletAddressesDescriptors.length).toEqual(
-          addressesDescriptors.length
-        );
+        expect(walletDerivationPaths.length).toEqual(derivationPaths.length);
 
         const feeEstimates = await blockstreamFetchFeeEstimates();
         const feeRate = pickEsploraFeeEstimate(
@@ -174,23 +162,23 @@ describe('FarVault full pipe', () => {
           fixtures.freezeTxTargetTime
         );
 
-        const { utxos: selectedUtxosDescriptors, fee, targets } = coinselect({
-          utxos: walletUtxosDescriptors,
+        const { utxos: selectedUTXOs, fee, targets } = coinselect({
+          utxos: walletUTXOs,
           targets: [
             {
               address: await getDerivationPathAddress(
                 HDInterface,
-                walletAddressesDescriptors[0].derivationPath,
-                walletAddressesDescriptors[0].network
+                walletDerivationPaths[0],
+                fixtures.network
               ),
               value: fixtures.savingsValue
             }
           ],
           changeAddress: () => 'bcrt1qlckxrvk56kezy35xuw3tk5w5gkvnmjl0cahw3u',
           feeRate,
-          network
+          network: fixtures.network
         });
-        expect(selectedUtxosDescriptors).not.toBeUndefined();
+        expect(selectedUTXOs).not.toBeUndefined();
         expect(targets).not.toBeUndefined();
       },
       ESPLORA_CATCH_UP_TIME +
