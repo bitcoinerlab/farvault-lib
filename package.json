@@ -6,7 +6,7 @@
   "scripts": {
     "keys": "mkcert localhost",
     "build": "webpack -w",
-    "playground": "concurrently \"node playground/server.js\" \"open-cli https://localhost:3443\"",
+    "playground": "concurrently \"node --openssl-legacy-provider playground/server.js\" \"open-cli https://localhost:3443\"",
     "test": "node --openssl-legacy-provider  --experimental-vm-modules node_modules/.bin/jest",
     "docs": "jsdoc -c jsdoc.json"
   },

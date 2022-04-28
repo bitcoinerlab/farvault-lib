@@ -45,20 +45,22 @@ export async function fromSeed(seed) {
  * ypub, zpub, upub and vpub prefixes. ypub/upub were used to specify nested
  * segwit wallets and vpub/zpub to specify native segwit.
  *
- * Some libs never adapted to this. This is a handy tool to be able to use these
- * libs.
+ * Some libs never adapted to this. This is a handy tool to be able to interact with
+ * these libs.
  *
- * For example Ledger's javascript libraries will always return xpub even when
- * dealing with native Segwit wallets.
+ * For example Ledger's javascript libraries will always expect to be passed an 
+ * xpub even when dealing with native Segwit wallets.
  *
- * Also bitcoin-js and bip32 npm packages assume always xpub and tpub too.
+ * Also bitcoin-js and bip32 npm packages always assume xpub and tpub too.
  *
- * FarVault will always use more modern BIP49 and BIP84 prefixes.
+ * Internally, FarVault works assuming always different BIP44, BIP49 and BIP84
+ * prefixes.
  *
- * @param {string} extPub An extended pub
- * @param {number} purpose The purpose we want to transform to: LEGACY,
+ * @param {object} params
+ * @param {string} params.extPub An extended pub
+ * @param {number} params.purpose The purpose we want to transform to: LEGACY,
  * NATIVE_SEGWIT or NESTED_SEGWIT
- * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
+ * @param {object} params.network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
  * @returns {string} extPub An extended pub converted to `purpose`
  */
 export function setExtPubPrefix({ extPub, purpose, network }) {
@@ -86,10 +88,11 @@ export function setExtPubPrefix({ extPub, purpose, network }) {
  *
  * Returns a pubkey (of type Buffer)
  *
- * @param {string} extPub An extended pub key.
- * @param {number} index The index (an integer >= 0).
- * @param {bool} isChange Whether it is a change address.
- * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
+ * @param {object} params
+ * @param {string} params.extPub An extended pub key.
+ * @param {number} params.index The index (an integer >= 0).
+ * @param {boolean} params.isChange Whether it is a change address.
+ * @param {object} [params.network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
  * @returns {Buffer} a pubkey
  */
 export function deriveExtPub({
@@ -112,11 +115,12 @@ export function deriveExtPub({
  * Takes an extended pub key and extracts its account number
  *
  * See BIP44 to understand how to extract it: {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki}.
- * @param {string} extPub An extended pub key.
- * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
+ * @param {object} params
+ * @param {string} params.extPub An extended pub key.
+ * @param {object} [params.network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
  * @returns {number} The account number extracted
  */
-export function getExtPubAccountNumber({ extPub, network = networks.testnet }) {
+export function getExtPubAccountNumber({ extPub, network = networks.bitcoin }) {
   checkExtPub({ extPub, network });
   const decoded = bjsBip32.fromBase58(
     setExtPubPrefix({ extPub, purpose: LEGACY, network }),
@@ -135,11 +139,11 @@ export function getExtPubAccountNumber({ extPub, network = networks.testnet }) {
  * Gives back the account number used in a network.
  *
  * It returns 0 for the Bitcoin mainnet and 1 for regtest and testnet networks.
- * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
+ * @param {object} [network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
  * @returns {number} 0 for the Bitcoin mainnet and 1 for regtest and testnet
  * networks.
  */
-export function getNetworkCoinType(network = network.testnet) {
+export function getNetworkCoinType(network = networks.bitcoin) {
   if (network === networks.bitcoin) {
     return BITCOIN_COINTYPE;
   } else if (network === networks.testnet) {
@@ -157,7 +161,7 @@ export function getNetworkCoinType(network = network.testnet) {
  *
  * @param {string} derivationPath F.ex.: "84’/0’/0’/0/0" or "m/44'/1H/1h/0/0").
  * Note that "m/" is optional and h, H or ' can be used indistinctably.
- * @returns {object} Returns the `derivationPath` elements: `{ purpose, coinType, accountNumber, index, isChange }`.
+ * @returns {object} Returns the `derivationPath` elements: `{ purpose: number, coinType: number, accountNumber:number, index:number, isChange:boolean }`.
  * See {@link module:bip32.serializeDerivationPath serializeDerivationPath} for further description of the types of the returned object elements.
  */
 export function parseDerivationPath(derivationPath) {
@@ -216,11 +220,12 @@ export function parseDerivationPath(derivationPath) {
 /**
  * Serializes a derivationPath.
  *
- * @param {number} purpose LEGACY, NESTED_SEGWIT, or NATIVE_SEGWIT.
- * @param {number} coinType 0 for Bitcoin mainnet, 1 for regtest or testnet.
- * @param {number} accountNumber The account number as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
- * @param {bool} isChange Whether this is a change address or not as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
- * @param {number} index The addres index within the account as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
+ * @param {object} params
+ * @param {number} params.purpose LEGACY, NESTED_SEGWIT, or NATIVE_SEGWIT.
+ * @param {number} params.coinType 0 for Bitcoin mainnet, 1 for regtest or testnet.
+ * @param {number} params.accountNumber The account number as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
+ * @param {boolean} params.isChange Whether this is a change address or not as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
+ * @param {number} params.index The addres index within the account as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
  *
  * @returns {string} The serialized derivationPath
  */
@@ -256,8 +261,9 @@ export function serializeDerivationPath({
  * Note that the network is not needed to extract the purpose. It's optional.
  * Pass it if you want to make an additional check and make sure that the prefix
  * matches with the network
- * @param {string} extPub An extended pub key string
- * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js). This is an optional parameter. Use it only to make an additional check and make sure that the extPub format matches this `network`
+ * @param {object} params
+ * @param {string} params.extPub An extended pub key string
+ * @param {object} params.network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js). This is an optional parameter. Use it only to make an additional check and make sure that the extPub format matches this `network`
  * @returns {string} The purpose. Can be LEGACY, NESTED_SEGWIT or NATIVE_SEGWIT
  */
 export function getExtPubPurpose({ extPub, network }) {

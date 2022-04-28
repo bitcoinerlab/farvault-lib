@@ -54,7 +54,7 @@ export function coinselect({
   targets,
   feeRate,
   changeAddress,
-  network = networks.testnet
+  network = networks.bitcoin
 }) {
   //Important! coinselect does not work with floating point numbers. Must be integer.
   feeRate = Math.ceil(feeRate);
@@ -70,7 +70,7 @@ export function coinselect({
     if (
       network !== networks.bitcoin &&
       network !== networks.regtest &&
-      networks !== networks.testnet
+      network !== networks.testnet
     )
       throw new Error('Invalid network');
     const csUtxo = {};

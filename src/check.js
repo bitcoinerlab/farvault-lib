@@ -29,7 +29,7 @@ import b58 from 'bs58check';
 /**
  * Throws an error if the network not valid.
  * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
- * @param {boolean} includeRegtest Include regtest in the pool of possible networks. Default is true.
+ * @param {boolean} [includeRegtest=true] Include regtest in the pool of possible networks. Default is true.
  * @returns {boolean} If the function does not throw, then it always returns true.
  */
 export function checkNetwork(network, includeRegtest = true) {
@@ -81,7 +81,7 @@ export function checkPurpose(purpose) {
  * Optional if you don't want to check it.
  * @param {number} params.accountNumber Integer >= 0 corresponding to the account
  * number serialized in the extPub. Optional if you don't want to check it.
- * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * @param {Object} params.network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
  */
 export function checkExtPub({ extPub, coinType, accountNumber, network }) {
   if (

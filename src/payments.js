@@ -43,6 +43,7 @@ import {
 } from './bip32';
 
 import { NESTED_SEGWIT, NATIVE_SEGWIT, LEGACY } from './walletConstants';
+import { getDerivationPathAddress } from './wallet';
 
 import * as bip39 from 'bip39';
 import bip68 from 'bip68';
@@ -141,7 +142,7 @@ function createTimeLockPSBT({
   frozenUTXO,
   relativeTimeLockScript,
   fee,
-  network = networks.testnet
+  network = networks.bitcoin
 }) {
   const decodedFreezeTx = decodeTx(frozenUTXO.tx, network);
   const frozenValue = decodedFreezeTx.vout[frozenUTXO.n].value;
@@ -174,7 +175,7 @@ function createRedeemFromTimeLockedPSBT({
   sequence = undefined,
   relativeTimeLockScript,
   fee,
-  network = networks.testnet
+  network = networks.bitcoin
 }) {
   const decodedTimeLockTx = decodeTx(timeLockedUTXO.tx, network);
   const timeLockedValue = decodedTimeLockTx.vout[timeLockedUTXO.n].value;
@@ -220,7 +221,7 @@ async function createFreezePSBT({
   fundsUTXOs,
   frozenPublicKey,
   fee,
-  network = networks.testnet,
+  network = networks.bitcoin,
   HDInterface
 }) {
   const psbt = new Psbt({ network });
@@ -265,19 +266,19 @@ async function createFreezePSBT({
 const validator = (pubkey, msghash, signature) =>
   fromPublicKey(pubkey).verify(msghash, signature);
 
-export async function ledgerPayment(network = networks.testnet) {
-  const useLedger = true;
-
+//independentFrozenAddress = false to use a fixed path from the HDInterface
+//(it should be accompained with a random path - not yet implemented; not it's
+//a hardocded path - not good). independentFrozenAddress = false with a random
+//path may make sense to not depend on makeRandom.
+//independentFrozenAddress = true to use a totally random path not depandant
+//on the HDInterface. We create a totally independent frozenHDInterface
+export async function playgroundPayment({
+  network = networks.bitcoin,
+  useLedger = true,
+  independentFrozenAddress = true
+}) {
   const mnemonic =
     'find subject time jump river dignity resist water arrange runway purpose question exchange random concert guitar rifle sun slim add pet loud depend view';
-
-  //independentFrozenAddress = false to use a fixed path from the HDInterface
-  //(it should be accompained with a random path - not yet implemented; not it's
-  //a hardocded path - not good). independentFrozenAddress = false with a random
-  //path may make sense to not depend on makeRandom.
-  //independentFrozenAddress = true to use a totally random path not depandant
-  //on the HDInterface. We create a totally independent frozenHDInterface
-  const independentFrozenAddress = true;
 
   const fundsUTXOs = [
     utxos[0] /*p2pkh*/,
@@ -295,21 +296,29 @@ export async function ledgerPayment(network = networks.testnet) {
 
   //const fundsUTXOs = [utxos[6] /*native segwit*/];
 
-  console.log(
-    coinselect({
-      utxos: fundsUTXOs,
-      targets: [unusedDerivationPaths[0]],
-      feeRate: 10,
-      network
-    })
-  );
-
   let frozenDerivationPath;
   let frozenHDInterface;
 
   const HDInterface = useLedger
     ? await initHDInterface(LEDGER_NANO_INTERFACE)
     : await initHDInterface(SOFT_HD_INTERFACE, { mnemonic });
+
+  console.log(
+    coinselect({
+      utxos: fundsUTXOs,
+      targets: [
+        {
+          address: await getDerivationPathAddress({
+            HDInterface,
+            derivationPath: unusedDerivationPaths[0],
+            network
+          })
+        }
+      ],
+      feeRate: 10,
+      network
+    })
+  );
 
   //Random - not tied to the HDInterface of the rest of keys
   if (independentFrozenAddress) {

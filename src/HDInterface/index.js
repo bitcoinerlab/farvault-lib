@@ -14,7 +14,7 @@ import {
 async function getPublicKey(
   HDInterface,
   derivationPath,
-  network = networks.testnet
+  network = networks.bitcoin
 ) {
   const {
     purpose,

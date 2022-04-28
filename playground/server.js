@@ -74,14 +74,14 @@ app.get('/', (req, res) => {
       <button onclick="playgroundLib.requestLogout()">
         Logout
       </button>
-      <button onclick="playgroundLib.ledgerBalance()">
-        Get Balance
+      <button onclick="playgroundLib.softwareBalanceTestnet()">
+        Test softwareBalanceTestnet
       </button>
-      <button onclick="playgroundLib.ledgerPayment()">
-        Test Payment
+      <button onclick="playgroundLib.ledgerBalanceTestnet()">
+        Test ledgerBalanceTestnet
       </button>
-      <button onclick="playgroundLib.softwareBalance()">
-        Test Soft HD Wallet
+      <button onclick="playgroundLib.playgroundPaymentTestnet()">
+        Test playgroundPaymentTestnet - Full Pileline
       </button>
     <div id="protectedContentDisplay"/>
     </body>

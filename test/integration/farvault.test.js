@@ -75,7 +75,7 @@ async function createMockWallet(mnemonic, fixtureAddresses, network) {
     });
     if (extPubs.indexOf(extPub) === -1) extPubs.push(extPub);
 
-    const address = getExtPubAddress(extPub, index, isChange, network);
+    const address = getExtPubAddress({ extPub, index, isChange, network });
     const derivationPath = serializeDerivationPath({
       purpose,
       coinType: getNetworkCoinType(network),
@@ -129,18 +129,18 @@ describe('FarVault full pipe', () => {
         //Give esplora some time to catch up
         await new Promise(r => setTimeout(r, ESPLORA_CATCH_UP_TIME));
 
-        const walletDerivationPaths = await fetchFundedDerivationPaths(
+        const walletDerivationPaths = await fetchFundedDerivationPaths({
           HDInterface,
-          address => esploraFetchAddress(address),
-          fixtures.network
-        );
+          addressFetcher: address => esploraFetchAddress(address),
+          network: fixtures.network
+        });
 
-        const walletUTXOs = await fetchUTXOs(
+        const walletUTXOs = await fetchUTXOs({
           HDInterface,
-          walletDerivationPaths,
-          address => esploraFetchUTXOs(address),
-          fixtures.network
-        );
+          derivationPaths: walletDerivationPaths,
+          utxoFetcher: address => esploraFetchUTXOs(address),
+          network: fixtures.network
+        });
         kill(-bitcoind.pid, 'SIGKILL');
         kill(-electrs.pid, 'SIGKILL');
         kill(-regtest_server.pid, 'SIGKILL');

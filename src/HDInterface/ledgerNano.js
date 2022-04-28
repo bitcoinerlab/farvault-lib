@@ -67,7 +67,7 @@ export const getExtPub = (function () {
 
 async function getExtPub_internal(
   ledgerAppBtc,
-  { purpose, accountNumber, network = networks.testnet }
+  { purpose, accountNumber, network = networks.bitcoin }
 ) {
   checkPurpose(purpose);
   checkNetwork(network);
@@ -100,7 +100,7 @@ async function getExtPub_internal(
 async function getPublicKey(
   ledgerAppBtc,
   derivationPath,
-  network = networks.testnet
+  network = networks.bitcoin
 ) {
   const {
     purpose,

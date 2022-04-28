@@ -16,7 +16,7 @@ import {
 
 export async function getExtPub(
   seed,
-  { purpose, accountNumber, network = networks.testnet }
+  { purpose, accountNumber, network = networks.bitcoin }
 ) {
   checkPurpose(purpose);
   checkNetwork(network);

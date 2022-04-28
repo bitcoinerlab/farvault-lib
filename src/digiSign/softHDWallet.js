@@ -12,7 +12,7 @@ import ECPairFactory from 'ecpair';
 //webassembly used in tiny-secp256k1 is downloaded asynchornously and thus,
 //this package is returned as a promise. Make example a variable and not an
 //object so that we can do stuff like this: example.setCnonce();
-let fromSeed;
+let fromSeed, fromWIF;
 import('tiny-secp256k1').then(ecc => {
   fromSeed = BIP32Factory(ecc).fromSeed;
   fromWIF = ECPairFactory(ecc).fromWIF;
