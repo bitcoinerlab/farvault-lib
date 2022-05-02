@@ -309,7 +309,7 @@ export async function playgroundPayment({
       targets: [
         {
           address: await getDerivationPathAddress({
-            HDInterface,
+            extPubGetter: async params => HDInterface.getExtPub(params),
             derivationPath: unusedDerivationPaths[0],
             network
           })

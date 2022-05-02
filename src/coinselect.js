@@ -43,13 +43,13 @@ import { checkAddress } from './check';
  * @param {string} parameters.targets[].address The address to send funds.
  * @param {number} parameters.targets[].value Number of satoshis to send the address above.
  * @param {number} parameters.feeRate satoshis per vbyte. Must be `>= 1`. It will be rounded up. It is better to pay an extra 0.x satoshi/byte than be under-measuring and miss some cut off for some miner.
- * @param {function} parameters.changeAddress Callback function that returns a string with a change address where change will go. Might not be called.
+ * @param {function} parameters.changeAddress Async callback function that returns a string with a change address where change will go. Might not be called.
  * @param {Object} parameters.network A [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js). Default is testnet.
  * @returns {Object[]} return.utxos The subset of input utxos selected. Undefined if no solution is found.
  * @returns {Object[]} return.targets The input targets plus (if necessary) a new target for the change address. Undefined if no solution is found.
  * @returns {number} return.fee The accumulated fee in vbytes. This is always returned even if no solution was found.
  */
-export function coinselect({
+export async function coinselect({
   utxos,
   targets,
   feeRate,
@@ -160,20 +160,21 @@ export function coinselect({
   if (!inputs || !outputs) {
     return { fee };
   } else {
-    outputs.forEach(output => {
+    for (const output of outputs) {
+      //outputs.forEach(output => {
       if (!output.address) {
         if (typeof changeAddress !== 'function') {
           //console.log(typeof changeAddress, changeAddress);
           throw new Error('Invalid changeAddress fn');
         }
-        output.address = changeAddress();
+        output.address = await changeAddress();
         checkAddress(output.address, network);
       }
       if (output.script) {
         //This is something we added above.
         delete output.script;
       }
-    });
+    } //);
     inputs.forEach(input => {
       if (input.script) {
         //This is something we added above.

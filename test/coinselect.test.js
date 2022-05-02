@@ -13,25 +13,25 @@ describe('Coinselect', () => {
   describe('Coinselect invalid tests', () => {
     fixtures.invalid.map(fixture => {
       test(fixture.description, () => {
-        const t = () =>
-          coinselect({
+        const t = async () =>
+          await coinselect({
             utxos: fixture.utxos,
             targets: fixture.targets,
             feeRate: fixture.feeRate,
-            changeAddress: () => fixture.changeAddress,
+            changeAddress: async () => fixture.changeAddress,
             network: fixture.network
           });
-        expect(t).toThrow(fixture.exception);
+        expect(t).rejects.toThrow(fixture.exception);
       });
     });
   });
   describe('Coinselect valid tests', () => {
     fixtures.valid.map(fixture => {
       test(fixture.description, async () => {
-        const changeAddress = jest.fn(() => fixture.changeAddress);
+        const changeAddress = jest.fn(async () => fixture.changeAddress);
 
         const network = fixture.network;
-        const { utxos, targets, fee } = coinselect({
+        const { utxos, targets, fee } = await coinselect({
           utxos: fixture.utxos,
           targets: fixture.targets,
           feeRate: fixture.feeRate,
@@ -135,12 +135,12 @@ describe('Coinselect', () => {
   });
   describe('Coinselect tests with no solution', () => {
     fixtures.nosolution.map(fixture => {
-      test(fixture.description, () => {
-        const { utxos, targets, fee } = coinselect({
+      test(fixture.description, async () => {
+        const { utxos, targets, fee } = await coinselect({
           utxos: fixture.utxos,
           targets: fixture.targets,
           feeRate: fixture.feeRate,
-          changeAddress: () => fixture.changeAddress,
+          changeAddress: async () => fixture.changeAddress,
           network: fixture.network
         });
         expect(utxos).toBeUndefined();

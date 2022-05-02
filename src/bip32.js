@@ -48,7 +48,7 @@ export async function fromSeed(seed) {
  * Some libs never adapted to this. This is a handy tool to be able to interact with
  * these libs.
  *
- * For example Ledger's javascript libraries will always expect to be passed an 
+ * For example Ledger's javascript libraries will always expect to be passed an
  * xpub even when dealing with native Segwit wallets.
  *
  * Also bitcoin-js and bip32 npm packages always assume xpub and tpub too.
@@ -198,7 +198,7 @@ export function parseDerivationPath(derivationPath) {
   } else {
     coinType = parseInt(path[1]);
   }
-  if (`${parseInt(path[2])}'` !== path[2]) {
+  if (`${Math.abs(parseInt(path[2]))}'` !== path[2]) {
     throw new Error('Invalid account: ' + path[2]);
   } else {
     accountNumber = parseInt(path[2]);
@@ -208,7 +208,7 @@ export function parseDerivationPath(derivationPath) {
   } else {
     isChange = path[3] === '1';
   }
-  if (`${parseInt(path[4])}` !== path[4]) {
+  if (`${Math.abs(parseInt(path[4]))}` !== path[4]) {
     throw new Error('Invalid index: ' + path[4]);
   } else {
     index = parseInt(path[4]);
@@ -236,22 +236,45 @@ export function serializeDerivationPath({
   isChange,
   index
 }) {
+  //verify purpose, coinType and accountNumber:
+  checkPurpose(purpose);
   if (
-    typeof purpose === 'undefined' ||
-    typeof coinType === 'undefined' ||
-    typeof accountNumber === 'undefined'
-  )
+    (coinType === TESTNET_COINTYPE ||
+      coinType === REGTEST_COINTYPE ||
+      coinType === BITCOIN_COINTYPE) === false ||
+    Number.isSafeInteger(accountNumber) === false ||
+    accountNumber < 0
+  ) {
     throw new Error('Incorrect parameters');
+  }
+
+  let derivationPath;
   if (typeof isChange === 'undefined') {
     if (typeof index !== 'undefined') {
       throw new Error('Incompatible parameters');
     }
-    return `${purpose}'/${coinType}'/${accountNumber}'`;
+    derivationPath = `${purpose}'/${coinType}'/${accountNumber}'`;
   } else {
-    return `${purpose}'/${coinType}'/${accountNumber}'/${
+    if (
+      typeof isChange !== 'boolean' ||
+      Number.isSafeInteger(index) === false ||
+      index < 0
+    ) {
+      throw new Error('Incorrect parameters');
+    }
+    derivationPath = `${purpose}'/${coinType}'/${accountNumber}'/${
       isChange ? 1 : 0
     }/${index}`;
+    //Further verification:
+    const parsedDerivationPath = parseDerivationPath(derivationPath);
+    Object.keys(parseDerivationPath).map(key => {
+      if (parseDerivationPath[key] !== arguments[0][key]) {
+        throw new Error('Error serializing a derivation path');
+      }
+    });
   }
+
+  return derivationPath;
 }
 
 /** Extracts the purpose from an extended pub.

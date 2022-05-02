@@ -24,8 +24,10 @@ import { initHDInterface, SOFT_HD_INTERFACE } from '../../src/HDInterface';
 import {
   getExtPubAddress,
   getDerivationPathAddress,
-  fetchFundedDerivationPaths,
-  fetchUTXOs
+  fetchDerivationPaths,
+  fetchUTXOs,
+  getNextExternalDerivationPath,
+  getNextChangeDerivationPath
 } from '../../src/wallet';
 import { esploraFetchAddress, esploraFetchUTXOs } from '../../src/dataFetchers';
 import { coinselect } from '../../src/coinselect';
@@ -38,7 +40,7 @@ import {
 } from '../../src/walletConstants';
 import { getNetworkCoinType, serializeDerivationPath } from '../../src/bip32';
 
-import { fixtures } from '../fixtures/wallet';
+import { fixtures } from '../fixtures/farvault';
 
 import { pickEsploraFeeEstimate } from '../../src/fees';
 
@@ -52,22 +54,22 @@ const TEST_TIME = 120000;
  * Creates an HD wallet and funds it using mined coins from a regtest-server faucet.
  * It then mines 6 blocks to confirm payments.
  * @param {string} mnemonic - space separated list of BIP39 words used as mnemonic.
- * @param {Object[]} fixtureAddresses - list of address descriptors that will get funds from the faucet.
- * @param {Object} fixtureAddresses[].extPub - object containing the purpose and accountNumber of the descriptor.
- * @param {string} fixtureAddresses[].extPub[].purpose - LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT.
- * @param {number} fixtureAddresses[].extPub[].accountNumber - account number.
- * @param {number} fixtureAddresses[].index - address number within the accountNumber.
- * @param {boolean} fixtureAddresses[].isChange - whether this address is a change address or not.
- * @param {number} fixtureAddresses[].value - number of sats that this address will receive.
+ * @param {Object[]} addressesDescriptors - list of address descriptors that will get funds from the faucet.
+ * @param {Object} addressesDescriptors[].extPub - object containing the purpose and accountNumber of the descriptor.
+ * @param {string} addressesDescriptors[].extPub[].purpose - LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT.
+ * @param {number} addressesDescriptors[].extPub[].accountNumber - account number.
+ * @param {number} addressesDescriptors[].index - address number within the accountNumber.
+ * @param {boolean} addressesDescriptors[].isChange - whether this address is a change address or not.
+ * @param {number} addressesDescriptors[].value - number of sats that this address will receive.
  */
-async function createMockWallet(mnemonic, fixtureAddresses, network) {
+async function createMockWallet(mnemonic, addressesDescriptors, network) {
   const HDInterface = await initHDInterface(SOFT_HD_INTERFACE, { mnemonic });
   const extPubs = [];
   const derivationPaths = [];
   const UTXOs = [];
-  for (const addressFixture of fixtureAddresses) {
-    const { purpose, accountNumber } = addressFixture.extPub;
-    const { index, isChange } = addressFixture;
+  for (const descriptor of addressesDescriptors) {
+    const { purpose, accountNumber } = descriptor.extPub;
+    const { index, isChange } = descriptor;
     const extPub = await HDInterface.getExtPub({
       purpose,
       accountNumber,
@@ -84,7 +86,7 @@ async function createMockWallet(mnemonic, fixtureAddresses, network) {
       index
     });
     derivationPaths.push(derivationPath);
-    const unspent = await regtestUtils.faucet(address, addressFixture.value);
+    const unspent = await regtestUtils.faucet(address, descriptor.value);
     const utxo = {
       tx: (await regtestUtils.fetch(unspent.txId)).txHex,
       n: unspent.vout,
@@ -99,6 +101,13 @@ async function createMockWallet(mnemonic, fixtureAddresses, network) {
 }
 
 describe('FarVault full pipe', () => {
+  const {
+    network,
+    mnemonic,
+    freezeTxTargetTime,
+    savingsValue,
+    mockWallet
+  } = fixtures;
   describe('Create a wallet', () => {
     test(
       'Create a blockchain, a wallet, fund it, coinselect X BTC, send to @timeLocked and try to claim from @hot before time',
@@ -121,58 +130,82 @@ describe('FarVault full pipe', () => {
         spawnSync('./testing_environment/createwallet.sh');
 
         const { HDInterface, derivationPaths, UTXOs } = await createMockWallet(
-          fixtures.mnemonic,
-          fixtures.addresses,
-          fixtures.network
+          mnemonic,
+          mockWallet,
+          network
         );
 
         //Give esplora some time to catch up
         await new Promise(r => setTimeout(r, ESPLORA_CATCH_UP_TIME));
 
-        const walletDerivationPaths = await fetchFundedDerivationPaths({
-          HDInterface,
+        const {
+          fundedDerivationPaths,
+          usedDerivationPaths
+        } = await fetchDerivationPaths({
+          extPubGetter: params => HDInterface.getExtPub(params),
           addressFetcher: address => esploraFetchAddress(address),
-          network: fixtures.network
+          network
         });
 
         const walletUTXOs = await fetchUTXOs({
-          HDInterface,
-          derivationPaths: walletDerivationPaths,
+          extPubGetter: params => HDInterface.getExtPub(params),
+          derivationPaths: fundedDerivationPaths,
           utxoFetcher: address => esploraFetchUTXOs(address),
-          network: fixtures.network
+          network
         });
+
         kill(-bitcoind.pid, 'SIGKILL');
         kill(-electrs.pid, 'SIGKILL');
         kill(-regtest_server.pid, 'SIGKILL');
 
+        //Send it to ourselves:
+        const nextDerivationPath = getNextExternalDerivationPath({
+          derivationPaths: usedDerivationPaths,
+          network
+        });
+        //Mark it as used:
+        usedDerivationPaths.push(nextDerivationPath);
+
         expect(walletUTXOs).toEqual(expect.arrayContaining(UTXOs));
         expect(UTXOs.length - walletUTXOs.length >= 0).toEqual(true);
-        expect(walletDerivationPaths).toEqual(
+        expect(fundedDerivationPaths).toEqual(
           expect.arrayContaining(derivationPaths)
         );
-        expect(walletDerivationPaths.length).toEqual(derivationPaths.length);
+        expect(fundedDerivationPaths.length).toEqual(derivationPaths.length);
 
         const feeEstimates = await blockstreamFetchFeeEstimates();
         const feeRate = pickEsploraFeeEstimate(
           feeEstimates,
-          fixtures.freezeTxTargetTime
+          freezeTxTargetTime
         );
 
-        const { utxos: selectedUTXOs, fee, targets } = coinselect({
+        const { utxos: selectedUTXOs, fee, targets } = await coinselect({
           utxos: walletUTXOs,
           targets: [
             {
               address: await getDerivationPathAddress({
-                HDInterface,
-                derivationPath: walletDerivationPaths[0],
-                network: fixtures.network
+                extPubGetter: params => HDInterface.getExtPub(params),
+                derivationPath: nextDerivationPath,
+                network
               }),
-              value: fixtures.savingsValue
+              value: savingsValue
             }
           ],
-          changeAddress: () => 'bcrt1qlckxrvk56kezy35xuw3tk5w5gkvnmjl0cahw3u',
+          changeAddress: async () => {
+            const derivationPath = getNextChangeDerivationPath({
+              derivationPaths: usedDerivationPaths,
+              network
+            });
+            //Mark it as used:
+            derivationPaths.push(derivationPath);
+            return await getDerivationPathAddress({
+              extPubGetter: params => HDInterface.getExtPub(params),
+              derivationPath,
+              network
+            });
+          },
           feeRate,
-          network: fixtures.network
+          network
         });
         expect(selectedUTXOs).not.toBeUndefined();
         expect(targets).not.toBeUndefined();

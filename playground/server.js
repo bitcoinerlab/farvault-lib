@@ -65,25 +65,37 @@ app.get('/', (req, res) => {
     </head>
     <body>
       You might want to add a CSRF-JWT token on the forms/buttons to avoid these type of attacks.<br/>
+      <p>
       <button onclick="playgroundLib.requestNonce()">
         Request nonce (if CORS) - not needed
       </button>
+      </p>
+      <p>
       <button onclick="playgroundLib.requestProtectedContent()">
         Request protected content
       </button>
+      </p>
+      <p>
       <button onclick="playgroundLib.requestLogout()">
         Logout
       </button>
+      </p>
+      <p>
       <button onclick="playgroundLib.softwareBalanceTestnet()">
         Test softwareBalanceTestnet
       </button>
+      </p>
+      <p>
       <button onclick="playgroundLib.ledgerBalanceTestnet()">
         Test ledgerBalanceTestnet
       </button>
+      </p>
+      <p>
       <button onclick="playgroundLib.playgroundPaymentTestnet()">
         Test playgroundPaymentTestnet - Full Pileline
       </button>
-    <div id="protectedContentDisplay"/>
+      </p>
+    <p id="protectedContentDisplay"/>
     </body>
 </html>
     `
