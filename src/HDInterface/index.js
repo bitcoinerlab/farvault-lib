@@ -10,6 +10,7 @@ import {
   parseDerivationPath,
   getNetworkCoinType
 } from '../bip32';
+import { networks } from 'bitcoinjs-lib';
 
 async function getPublicKey(
   HDInterface,

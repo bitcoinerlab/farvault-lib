@@ -108,6 +108,29 @@ export const fixtures = {
         mnemonic: addressesDescriptors[0].mnemonic,
         network: addressesDescriptors[0].network,
         addressesDescriptors: [
+        ],
+        isChange: false,
+        purpose: LEGACY,
+        accountNumber: 10,
+        nextDerivationPath: "44'/1'/10'/0/0",
+        defaultAccount: { accountNumber: 0, purpose: NATIVE_SEGWIT }
+      },
+      {
+        mnemonic: addressesDescriptors[0].mnemonic,
+        network: addressesDescriptors[0].network,
+        addressesDescriptors: [
+          addressesDescriptors[4],
+        ],
+        isChange: true,
+        purpose: NESTED_SEGWIT,
+        accountNumber: 0,
+        nextDerivationPath: "49'/1'/0'/1/0",
+        defaultAccount: { accountNumber: 3, purpose: NESTED_SEGWIT }
+      },
+      {
+        mnemonic: addressesDescriptors[0].mnemonic,
+        network: addressesDescriptors[0].network,
+        addressesDescriptors: [
           addressesDescriptors[0],
           addressesDescriptors[1]
         ],

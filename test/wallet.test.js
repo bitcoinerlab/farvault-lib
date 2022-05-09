@@ -3,9 +3,11 @@ import { initHDInterface, SOFT_HD_INTERFACE } from '../src/HDInterface';
 import {
   getDerivationPathAddress,
   getNextExplicitDerivationPath,
-  getDefaultAccount
+  getDefaultAccount,
+  getNextReceivingDerivationPath
 } from '../src/wallet';
 import { LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT } from '../src/walletConstants';
+import { networks } from 'bitcoinjs-lib';
 
 describe('wallet', () => {
   test('getDerivationPathAddress', async () => {
@@ -28,7 +30,7 @@ describe('wallet', () => {
       ).toEqual(address);
     }
   });
-  test('getNextExplicitDerivationPath works', async () => {
+  test('getNextExplicitDerivationPath works', () => {
     for (const {
       addressesDescriptors,
       isChange,
@@ -53,7 +55,7 @@ describe('wallet', () => {
       );
     }
   });
-  test('getNextExplicitDerivationPath fails', async () => {
+  test('getNextExplicitDerivationPath fails', () => {
     for (const {
       addressesDescriptors,
       isChange,
@@ -88,5 +90,23 @@ describe('wallet', () => {
       }
       expect(getDefaultAccount(derivationPaths)).toEqual(defaultAccount);
     }
+  });
+  test('getNextReceivingDerivationPath works', () => {
+    expect(
+      getNextExplicitDerivationPath({
+        derivationPaths: [],
+        purpose: NATIVE_SEGWIT,
+        accountNumber: 0,
+        isChange: false,
+        network: networks.regtest
+      })
+    ).toEqual("84'/1'/0'/0/0");
+
+    expect(
+      getNextReceivingDerivationPath({
+        derivationPaths: [],
+        network: networks.regtest
+      })
+    ).toEqual("84'/1'/0'/0/0");
   });
 });

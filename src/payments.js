@@ -193,7 +193,8 @@ function createRedeemFromTimeLockedPSBT({
       //nonWitnessUtxo does not mean that this is not a witness transaction
       nonWitnessUtxo: Transaction.fromHex(timeLockedUTXO.tx).toBuffer(),
       witnessScript: Buffer.from(relativeTimeLockScript),
-      ...(sequence ? { sequence } : {})
+      //https://bitcoin.stackexchange.com/questions/45806/why-does-the-time-interval-for-op-csv-need-to-be-in-the-nsequence-field-when-it
+      ...(typeof sequence !== 'undefined' ? { sequence } : {})
     })
     .addOutput({
       address: p2wpkh.address,
@@ -496,6 +497,7 @@ export async function playgroundPayment({
     hotPublicKey,
     relativeTimeLockScript,
     fee: 1000,
+    //https://bitcoin.stackexchange.com/questions/45806/why-does-the-time-interval-for-op-csv-need-to-be-in-the-nsequence-field-when-it
     sequence: LOCKTIME,
     network
   });

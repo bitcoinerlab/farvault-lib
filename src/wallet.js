@@ -1,6 +1,4 @@
 /** @module wallet */
-//Good explanation of bips
-//https://learnmeabitcoin.com/technical/derivation-paths#fn1
 
 import {
   deriveExtPub,
@@ -470,9 +468,12 @@ export function getNextExplicitDerivationPath({
   -1);
 
   return serializeDerivationPath({
-    purpose: purpose || parsedPaths[0].purpose,
+    purpose: typeof purpose !== 'undefined' ? purpose : parsedPaths[0].purpose,
     coinType: getNetworkCoinType(network),
-    accountNumber: accountNumber || parsedPaths[0].accountNumber,
+    accountNumber:
+      typeof accountNumber !== 'undefined'
+        ? accountNumber
+        : parsedPaths[0].accountNumber,
     isChange,
     index: maxIndex + 1
   });
@@ -522,7 +523,7 @@ export function getNextChangeDerivationPath({ derivationPaths, network }) {
  * @param {object} params.network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
  * @returns {string} The next external (receiving) derivation path.
  */
-export function getNextExternalDerivationPath({ derivationPaths, network }) {
+export function getNextReceivingDerivationPath({ derivationPaths, network }) {
   return getNextExplicitDerivationPath({
     derivationPaths,
     ...getDefaultAccount(derivationPaths),

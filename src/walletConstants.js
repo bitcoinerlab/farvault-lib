@@ -80,3 +80,5 @@ export const GAP_ACCOUNT_LIMIT = 1;
 
 export const BLOCKSTREAM_EXPLORER_BASEURL = 'https://blockstream.info';
 export const ESPLORA_BASEURL = 'http://127.0.0.1:3002';
+
+export const PSBT_VERSION = 2;

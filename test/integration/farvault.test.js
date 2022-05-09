@@ -4,7 +4,7 @@
 //
 //Create a bip32 wallet
 //Fund the wallet with a faucet including p2pkh, p2sh-p2wpkh, p2wpkh UTXOs
-//Coinselect up to X Bitcoin from all the UTXOs and send to @frozen
+//Coinselect up to X Bitcoin from all the UTXOs and send to @safe
 //Send to @timeLocked
 
 //Scenario 1: try to send to @hot before the time permits so: fails
@@ -13,202 +13,351 @@
 //
 //Things to check: fees
 
-import bJs, { networks } from 'bitcoinjs-lib';
-//import { generateMnemonic } from 'bip39';
-import { RegtestUtils } from 'regtest-client';
-import { spawn, spawnSync } from 'child_process';
-import { kill } from 'process';
+const MULTIFEE_SAMPLES = 10;
+import fs from 'fs';
+import path from 'path';
+
+import { payments } from 'bitcoinjs-lib';
+import { generateMnemonic } from 'bip39';
+import {
+  createMockWallet,
+  startTestingEnvironment,
+  stopTestingEnvironment,
+  BITCOIND_CATCH_UP_TIME,
+  REGTEST_SERVER_CATCH_UP_TIME
+} from '../tools';
 import { blockstreamFetchFeeEstimates } from '../../src/dataFetchers';
+import {
+  createTransaction,
+  createRelativeTimeLockScript,
+  createMultiFeeTransactions
+} from '../../src/FVTransactions';
+import { decodeTx } from '../../src/decodeTx';
 
 import { initHDInterface, SOFT_HD_INTERFACE } from '../../src/HDInterface';
 import {
-  getExtPubAddress,
   getDerivationPathAddress,
   fetchDerivationPaths,
   fetchUTXOs,
-  getNextExternalDerivationPath,
+  getNextReceivingDerivationPath,
   getNextChangeDerivationPath
 } from '../../src/wallet';
 import { esploraFetchAddress, esploraFetchUTXOs } from '../../src/dataFetchers';
 import { coinselect } from '../../src/coinselect';
 
-import {
-  NESTED_SEGWIT,
-  NATIVE_SEGWIT,
-  LEGACY,
-  ESPLORA_BASEURL
-} from '../../src/walletConstants';
-import { getNetworkCoinType, serializeDerivationPath } from '../../src/bip32';
-
 import { fixtures } from '../fixtures/farvault';
 
 import { pickEsploraFeeEstimate } from '../../src/fees';
 
-const regtestUtils = new RegtestUtils(bJs);
-const BITCOIND_CATCH_UP_TIME = 2000;
-const REGTEST_SERVER_CATCH_UP_TIME = 1000;
 const ESPLORA_CATCH_UP_TIME = 10000;
 const TEST_TIME = 120000;
 
-/**
- * Creates an HD wallet and funds it using mined coins from a regtest-server faucet.
- * It then mines 6 blocks to confirm payments.
- * @param {string} mnemonic - space separated list of BIP39 words used as mnemonic.
- * @param {Object[]} addressesDescriptors - list of address descriptors that will get funds from the faucet.
- * @param {Object} addressesDescriptors[].extPub - object containing the purpose and accountNumber of the descriptor.
- * @param {string} addressesDescriptors[].extPub[].purpose - LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT.
- * @param {number} addressesDescriptors[].extPub[].accountNumber - account number.
- * @param {number} addressesDescriptors[].index - address number within the accountNumber.
- * @param {boolean} addressesDescriptors[].isChange - whether this address is a change address or not.
- * @param {number} addressesDescriptors[].value - number of sats that this address will receive.
- */
-async function createMockWallet(mnemonic, addressesDescriptors, network) {
-  const HDInterface = await initHDInterface(SOFT_HD_INTERFACE, { mnemonic });
-  const extPubs = [];
-  const derivationPaths = [];
-  const UTXOs = [];
-  for (const descriptor of addressesDescriptors) {
-    const { purpose, accountNumber } = descriptor.extPub;
-    const { index, isChange } = descriptor;
-    const extPub = await HDInterface.getExtPub({
-      purpose,
-      accountNumber,
-      network
-    });
-    if (extPubs.indexOf(extPub) === -1) extPubs.push(extPub);
-
-    const address = getExtPubAddress({ extPub, index, isChange, network });
-    const derivationPath = serializeDerivationPath({
-      purpose,
-      coinType: getNetworkCoinType(network),
-      accountNumber,
-      isChange,
-      index
-    });
-    derivationPaths.push(derivationPath);
-    const unspent = await regtestUtils.faucet(address, descriptor.value);
-    const utxo = {
-      tx: (await regtestUtils.fetch(unspent.txId)).txHex,
-      n: unspent.vout,
-      derivationPath
-    };
-    UTXOs.push(utxo);
-    //console.log({ unspent, utxo });
-  }
-  // All of the above faucet payments will confirm
-  const results = await regtestUtils.mine(6);
-  return { HDInterface, extPubs, UTXOs, derivationPaths, network };
-}
+import bip68 from 'bip68';
 
 describe('FarVault full pipe', () => {
   const {
     network,
     mnemonic,
-    freezeTxTargetTime,
-    savingsValue,
-    mockWallet
+    guardTxTargetTime,
+    unlockTxTargetTime,
+    lockTime,
+    safeValue,
+    mockWallet,
+    coldAddress
   } = fixtures;
   describe('Create a wallet', () => {
     test(
       'Create a blockchain, a wallet, fund it, coinselect X BTC, send to @timeLocked and try to claim from @hot before time',
       async () => {
-        const bitcoind = spawn('./testing_environment/bitcoind.sh', {
-          detached: true,
-          stdio: 'ignore'
-        });
-        await new Promise(r => setTimeout(r, BITCOIND_CATCH_UP_TIME));
-        const electrs = spawn('./testing_environment/electrs.sh', {
-          detached: true,
-          stdio: 'ignore'
-        });
-        const regtest_server = spawn(
-          './testing_environment/regtest_server.sh',
-          { detached: true, stdio: 'ignore' }
-        );
-        await new Promise(r => setTimeout(r, REGTEST_SERVER_CATCH_UP_TIME));
-        //wait until the command finishes:
-        spawnSync('./testing_environment/createwallet.sh');
-
-        const { HDInterface, derivationPaths, UTXOs } = await createMockWallet(
-          mnemonic,
-          mockWallet,
-          network
-        );
-
-        //Give esplora some time to catch up
-        await new Promise(r => setTimeout(r, ESPLORA_CATCH_UP_TIME));
-
         const {
-          fundedDerivationPaths,
-          usedDerivationPaths
-        } = await fetchDerivationPaths({
-          extPubGetter: params => HDInterface.getExtPub(params),
-          addressFetcher: address => esploraFetchAddress(address),
-          network
-        });
+          bitcoind,
+          electrs,
+          regtest_server
+        } = await startTestingEnvironment();
 
-        const walletUTXOs = await fetchUTXOs({
-          extPubGetter: params => HDInterface.getExtPub(params),
-          derivationPaths: fundedDerivationPaths,
-          utxoFetcher: address => esploraFetchUTXOs(address),
-          network
-        });
+        try {
+          //Create an initial funded wallet
+          const {
+            HDInterface: hotHDInterface,
+            derivationPaths,
+            UTXOs,
+            regtestUtils
+          } = await createMockWallet(mnemonic, mockWallet, network);
 
-        kill(-bitcoind.pid, 'SIGKILL');
-        kill(-electrs.pid, 'SIGKILL');
-        kill(-regtest_server.pid, 'SIGKILL');
+          //Give esplora some time to catch up
+          await new Promise(r => setTimeout(r, ESPLORA_CATCH_UP_TIME));
 
-        //Send it to ourselves:
-        const nextDerivationPath = getNextExternalDerivationPath({
-          derivationPaths: usedDerivationPaths,
-          network
-        });
-        //Mark it as used:
-        usedDerivationPaths.push(nextDerivationPath);
+          //Get the derivationPaths and UTXOs of the wallet
+          const {
+            fundedDerivationPaths,
+            usedDerivationPaths
+          } = await fetchDerivationPaths({
+            extPubGetter: hotHDInterface.getExtPub,
+            addressFetcher: address => esploraFetchAddress(address),
+            network
+          });
+          const walletUTXOs = await fetchUTXOs({
+            extPubGetter: hotHDInterface.getExtPub,
+            derivationPaths: fundedDerivationPaths,
+            utxoFetcher: address => esploraFetchUTXOs(address),
+            network
+          });
 
-        expect(walletUTXOs).toEqual(expect.arrayContaining(UTXOs));
-        expect(UTXOs.length - walletUTXOs.length >= 0).toEqual(true);
-        expect(fundedDerivationPaths).toEqual(
-          expect.arrayContaining(derivationPaths)
-        );
-        expect(fundedDerivationPaths.length).toEqual(derivationPaths.length);
+          //Create the safeAddress that will keep the funds safe.
+          //We must not save this mnemonic below.
+          const safeHDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
+            mnemonic: generateMnemonic(256)
+          });
+          const safeDerivationPath = getNextReceivingDerivationPath({
+            derivationPaths: [],
+            network
+          });
+          expect(safeDerivationPath).toEqual("84'/1'/0'/0/0");
+          const safeAddress = await getDerivationPathAddress({
+            extPubGetter: safeHDInterface.getExtPub,
+            derivationPath: safeDerivationPath,
+            network
+          });
 
-        const feeEstimates = await blockstreamFetchFeeEstimates();
-        const feeRate = pickEsploraFeeEstimate(
-          feeEstimates,
-          freezeTxTargetTime
-        );
+          expect(walletUTXOs).toEqual(expect.arrayContaining(UTXOs));
+          expect(UTXOs.length - walletUTXOs.length >= 0).toEqual(true);
+          expect(fundedDerivationPaths).toEqual(
+            expect.arrayContaining(derivationPaths)
+          );
+          expect(fundedDerivationPaths.length).toEqual(derivationPaths.length);
 
-        const { utxos: selectedUTXOs, fee, targets } = await coinselect({
-          utxos: walletUTXOs,
-          targets: [
-            {
-              address: await getDerivationPathAddress({
-                extPubGetter: params => HDInterface.getExtPub(params),
-                derivationPath: nextDerivationPath,
+          const rushedMnemonic = generateMnemonic(256);
+          const rushedHDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
+            mnemonic: rushedMnemonic
+          });
+          const rushedDerivationPath = getNextReceivingDerivationPath({
+            derivationPaths: [],
+            network
+          });
+          expect(rushedDerivationPath).toEqual("84'/1'/0'/0/0");
+          const rushedPublicKey = await rushedHDInterface.getPublicKey(
+            rushedDerivationPath,
+            network
+          );
+          const maturedMnemonic = generateMnemonic(256);
+          const maturedHDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
+            mnemonic: maturedMnemonic
+          });
+          const maturedDerivationPath = getNextReceivingDerivationPath({
+            derivationPaths: [],
+            network
+          });
+          expect(maturedDerivationPath).toEqual("84'/1'/0'/0/0");
+          const maturedPublicKey = await maturedHDInterface.getPublicKey(
+            maturedDerivationPath,
+            network
+          );
+
+          //Create the hot address that is P2WPKH that will take funds from hot
+          const hotDerivationPath = getNextReceivingDerivationPath({
+            derivationPaths: usedDerivationPaths,
+            network
+          });
+          //Mark it as used:
+          usedDerivationPaths.push(hotDerivationPath);
+          fundedDerivationPaths.push(hotDerivationPath);
+          const hotPublicKey = await hotHDInterface.getPublicKey(
+            hotDerivationPath,
+            network
+          );
+
+          const feeEstimates = await blockstreamFetchFeeEstimates();
+          const guardTxFeeRate = pickEsploraFeeEstimate(
+            feeEstimates,
+            guardTxTargetTime
+          );
+
+          //Get which UTXOs will be protected. UTXOs are selected based on
+          //the number of sats (safeValue) that the user selected
+          const {
+            utxos: fundsUTXOs,
+            fee: safeFee,
+            targets: guardTargets
+          } = await coinselect({
+            utxos: walletUTXOs,
+            targets: [
+              {
+                address: safeAddress,
+                value: safeValue
+              }
+            ],
+            changeAddress: async () => {
+              const derivationPath = getNextChangeDerivationPath({
+                derivationPaths: usedDerivationPaths,
                 network
-              }),
-              value: savingsValue
-            }
-          ],
-          changeAddress: async () => {
-            const derivationPath = getNextChangeDerivationPath({
-              derivationPaths: usedDerivationPaths,
+              });
+              //Mark it as used:
+              usedDerivationPaths.push(derivationPath);
+              fundedDerivationPaths.push(derivationPath);
+              return await getDerivationPathAddress({
+                extPubGetter: hotHDInterface.getExtPub,
+                derivationPath,
+                network
+              });
+            },
+            feeRate: guardTxFeeRate,
+            network
+          });
+          expect(fundsUTXOs).not.toBeUndefined();
+          expect(guardTargets).not.toBeUndefined();
+
+          console.log(
+            'WARNING! Test it also with send all so that targets.length === 1'
+          );
+
+          //Create the transaction that will send the funds to safeAddress.
+          //We won't keep the keys of this safeAddress. We will save
+          //pre-computed txs that can unlock them based on a contract.
+          const guardTx = await createTransaction({
+            utxos: fundsUTXOs,
+            targets: guardTargets,
+            getPublicKey: hotHDInterface.getPublicKey,
+            createSigners: hotHDInterface.createSigners,
+            network
+          });
+          console.log('WARNING! Should check the fees here somehow');
+
+          const encodedLockTime = bip68.encode({
+            seconds: Math.round(lockTime / 512) * 512
+          }); //seconds must be a multiple of 512
+          const relativeTimeLockScript = createRelativeTimeLockScript({
+            maturedPublicKey,
+            rushedPublicKey,
+            encodedLockTime
+          });
+
+          const recoverTxs = await createMultiFeeTransactions({
+            utxos: [
+              {
+                derivationPath: safeDerivationPath,
+                n: 0,
+                tx: guardTx
+              }
+            ],
+            address: payments.p2wsh({
+              redeem: {
+                output: relativeTimeLockScript,
+                network
+              },
+              network
+            }).address,
+            getPublicKey: safeHDInterface.getPublicKey,
+            createSigners: safeHDInterface.createSigners,
+            samples: MULTIFEE_SAMPLES,
+            network
+          });
+          if (!Array.isArray(recoverTxs) || recoverTxs.length === 0) {
+            throw new Error('Could not create recover funds txs');
+          }
+
+          const setup = { recoverTxs: {} };
+          const hotAddress = await getDerivationPathAddress({
+            //unlock will use hotHDInterface. cancel will use rushedHDInterface
+            extPubGetter: hotHDInterface.getExtPub,
+            //unlock will use hotHDInterface. cancel will use coldDerivationPath
+            derivationPath: hotDerivationPath,
+            network
+          });
+          for (const recoverTx of recoverTxs) {
+            const unlockTxs = await createMultiFeeTransactions({
+              utxos: [
+                {
+                  tx: recoverTx.tx,
+                  n: 0,
+                  derivationPath: maturedDerivationPath,
+                  witnessScript: relativeTimeLockScript
+                }
+              ],
+              address: hotAddress,
+              getPublicKey: maturedHDInterface.getPublicKey,
+              createSigners: maturedHDInterface.createSigners,
+              samples: MULTIFEE_SAMPLES,
               network
             });
-            //Mark it as used:
-            derivationPaths.push(derivationPath);
-            return await getDerivationPathAddress({
-              extPubGetter: params => HDInterface.getExtPub(params),
-              derivationPath,
+            const cancelTxs = await createMultiFeeTransactions({
+              utxos: [
+                {
+                  tx: recoverTx.tx,
+                  n: 0,
+                  derivationPath: rushedDerivationPath,
+                  witnessScript: relativeTimeLockScript
+                }
+              ],
+              address: coldAddress,
+              getPublicKey: rushedHDInterface.getPublicKey,
+              createSigners: rushedHDInterface.createSigners,
+              samples: MULTIFEE_SAMPLES,
               network
             });
-          },
-          feeRate,
-          network
-        });
-        expect(selectedUTXOs).not.toBeUndefined();
-        expect(targets).not.toBeUndefined();
+            setup.recoverTxs[decodeTx(recoverTx.tx).txid] = {
+              tx: recoverTx.tx,
+              decodedTx: decodeTx(recoverTx.tx),
+              feeRate: recoverTx.feeRate,
+              fee: recoverTx.fee,
+              unlockTxs,
+              cancelTxs
+            };
+
+            console.log(Object.keys(setup.recoverTxs).length);
+          }
+          fs.writeFileSync(
+            path.resolve(__dirname, 'setup.json'),
+            JSON.stringify(setup)
+          );
+
+          //CREATE A FUNCTION IN FEES FOR THIS BLOCK
+          //
+          //
+          const unlockTxFeeRate = pickEsploraFeeEstimate(
+            feeEstimates,
+            unlockTxTargetTime
+          );
+          //TODO: encapsulate this into a function and test it.
+          //Pick the best recoverTx as the one with the lowest feeRate that is
+          //larger than the unlockTxFeeRate.
+          //If none of the recoverTx has a feeRate larger than unlockTxFeeRate
+          //then pick the one with largest feeRate.
+          const recoverTx = recoverTxs.reduce((best, curr) =>
+            (curr.feeRate >= unlockTxFeeRate && curr.feeRate < best.feeRate) ||
+            (best.feeRate < unlockTxFeeRate && curr.feeRate > best.feeRate)
+              ? curr
+              : best
+          );
+          //
+          //
+          //CREATE A FUNCTION IN FEES FOR THIS BLOCK
+
+          await regtestUtils.broadcast(guardTx);
+          const recoverTxId = Object.keys(setup.recoverTxs)[3];
+          const unlockTx = setup.recoverTxs[recoverTxId].unlockTxs[5].tx;
+          await regtestUtils.broadcast(setup.recoverTxs[recoverTxId].tx);
+          //Rejection reason should be non-BIP68-final
+          await regtestUtils.broadcast(unlockTx);
+          console.log(await regtestUtils.mine(6));
+          console.log(await regtestUtils.fetch(recoverTxId));
+          console.log(await regtestUtils.fetch(decodeTx(unlockTx).txid));
+
+          //await regtestUtils.broadcast(guardTx);
+          //const recoverTxId = Object.keys(setup.recoverTxs)[3];
+          //const cancelTx = setup.recoverTxs[recoverTxId].cancelTxs[5].tx;
+          //await regtestUtils.broadcast(setup.recoverTxs[recoverTxId].tx);
+          //await regtestUtils.broadcast(cancelTx);
+          //console.log(await regtestUtils.mine(6));
+          //console.log(await regtestUtils.fetch(recoverTxId));
+          //console.log(await regtestUtils.fetch(decodeTx(cancelTx).txid));
+
+          //We can stop the bitcoin and explorer servers
+          stopTestingEnvironment({ bitcoind, electrs, regtest_server });
+        } catch (error) {
+          console.log('Catched an error, stoping testing environment', error);
+          stopTestingEnvironment({ bitcoind, electrs, regtest_server });
+          throw new Error(error);
+        }
       },
       ESPLORA_CATCH_UP_TIME +
         BITCOIND_CATCH_UP_TIME +
