@@ -61,6 +61,7 @@ describe('FarVault full pipe', () => {
     guardTxTargetTime,
     unlockTxTargetTime,
     lockTime,
+    lockNBlocks,
     safeValue,
     mockWallet,
     coldAddress
@@ -223,8 +224,10 @@ describe('FarVault full pipe', () => {
           console.log('WARNING! Should check the fees here somehow');
 
           const encodedLockTime = bip68.encode({
-            seconds: Math.round(lockTime / 512) * 512
-          }); //seconds must be a multiple of 512
+            //seconds must be a multiple of 512
+            //seconds: Math.round(lockTime / 512) * 512
+            blocks: lockNBlocks
+          });
           const relativeTimeLockScript = createRelativeTimeLockScript({
             maturedPublicKey,
             rushedPublicKey,
@@ -337,8 +340,13 @@ describe('FarVault full pipe', () => {
           const unlockTx = setup.recoverTxs[recoverTxId].unlockTxs[5].tx;
           await regtestUtils.broadcast(setup.recoverTxs[recoverTxId].tx);
           //Rejection reason should be non-BIP68-final
-          await regtestUtils.broadcast(unlockTx);
-          console.log(await regtestUtils.mine(6));
+          console.log(await regtestUtils.mine(lockNBlocks - 1));
+          await expect(regtestUtils.broadcast(unlockTx)).rejects.toThrow(
+            'non-BIP68-final'
+          );
+          console.log(await regtestUtils.mine(1));
+          await expect(regtestUtils.broadcast(unlockTx)).resolves.toEqual(null);
+          //console.log(await regtestUtils.mine(1));
           console.log(await regtestUtils.fetch(recoverTxId));
           console.log(await regtestUtils.fetch(decodeTx(unlockTx).txid));
 

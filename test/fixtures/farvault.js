@@ -24,6 +24,7 @@ export const fixtures = {
   cancelTxTargetTime: 0 * 60,
   //4 hours
   lockTime: 4 * 60 * 60,
+  lockNBlocks: 10,
   //3 BTC
   safeValue: 300000000,
   //This is the account where change and final recovered funds will go.

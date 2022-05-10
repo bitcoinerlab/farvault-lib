@@ -9,3 +9,4 @@ localhost.pem
 *.swn
 *.log
 .DS_Store
+test/integration/*.json

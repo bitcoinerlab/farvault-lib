@@ -93,6 +93,15 @@ export function createRelativeTimeLockScript({
   );
 }
 
+//https://github.com/bitcoinjs/bitcoinjs-lib/issues/1799#issuecomment-1121656429
+function decompiledToScriptNumberBuffer(decompiled) {
+  return typeof decompiled === 'number' &&
+    decompiled >= 0x51 && // OP_1 (or OP_TRUE)
+    decompiled <= 0x60 // OP_16
+    ? Buffer.from([decompiled - 0x50])
+    : decompiled; // this is a Buffer
+}
+
 function parseRelativeTimeLockScript(relativeTimeLockScript) {
   const decompiled = script.decompile(relativeTimeLockScript);
   if (
@@ -105,18 +114,20 @@ function parseRelativeTimeLockScript(relativeTimeLockScript) {
     Buffer.byteLength(decompiled[3]) === 33 &&
     decompiled[4] === opcodes.OP_CHECKSIG &&
     decompiled[5] === opcodes.OP_ELSE &&
-    Buffer.isBuffer(decompiled[6]) &&
     bip68.encode(
-      bip68.decode(decompiled[6].readUIntLE(0, decompiled[6].length))
-    ) === decompiled[6].readUIntLE(0, decompiled[6].length) &&
+      bip68.decode(
+        script.number.decode(decompiledToScriptNumberBuffer(decompiled[6]))
+      )
+    ) === script.number.decode(decompiledToScriptNumberBuffer(decompiled[6])) &&
     decompiled[7] === opcodes.OP_CHECKSEQUENCEVERIFY &&
     decompiled[8] === opcodes.OP_ENDIF
   ) {
     return {
       maturedPublicKey: decompiled[0],
       rushedPublicKey: decompiled[3],
-      //Bitcoin is little endian:
-      encodedLockTime: decompiled[6].readUIntLE(0, decompiled[6].length)
+      encodedLockTime: script.number.decode(
+        decompiledToScriptNumberBuffer(decompiled[6])
+      )
     };
   }
   return false;
