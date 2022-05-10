@@ -53,11 +53,66 @@ function witnessStackToScriptWitness(witness) {
   return buffer;
 }
 
+//https://github.com/bitcoinjs/bitcoinjs-lib/issues/1799#issuecomment-1121656429
+function numberEncodeAsm(number) {
+  if (number === 0) {
+    return 'OP_0';
+  } else return script.number.encode(number).toString('hex');
+}
+//https://github.com/bitcoinjs/bitcoinjs-lib/issues/1799#issuecomment-1121656429
+function scriptNumberDecode(decompiled) {
+  if (typeof decompiled === 'number' && decompiled === 0) return 0;
+  if (
+    Buffer.isBuffer(decompiled) &&
+    Buffer.compare(decompiled, Buffer.from('00', 'hex')) === 0
+  ) {
+    return 0;
+  } else {
+    if (
+      typeof decompiled === 'number' &&
+      decompiled >= 0x51 && // OP_1 (or OP_TRUE)
+      decompiled <= 0x60 // OP_16
+    ) {
+      return script.number.decode(Buffer.from([decompiled - 0x50]));
+    } else {
+      if (!Buffer.isBuffer(decompiled))
+        throw new Error('Invalid decompiled number');
+      // this is a Buffer
+      return script.number.decode(decompiled);
+    }
+  }
+}
+
 export function createRelativeTimeLockScript({
   maturedPublicKey,
   rushedPublicKey,
   encodedLockTime
 }) {
+  if (encodedLockTime === 0) {
+    throw new Error('FarVault does not allow sequence to be 0.');
+    /*
+     *
+     * If encodedLockTime is 0
+     * then the script ends up having a zero on the top of the stack.
+     * OP_CHECKSEQUENCEVERIFY behaves as a NOP if the check is ok and it
+     * ends up having a zero on top of the stack. This produces this error
+     * when the miner evaluates the script:
+     *
+     * non-mandatory-script-verify-flag (Script evaluated without error but finished with a false/empty top stack element
+     *
+     *
+     * <MATURED_SIGNATURE>
+     * <MATURED_PUB>
+     * OP_CHECKSIG
+     * OP_NOTIF
+     * <RUSHED_PUB>
+     * OP_CHECKSIG
+     * OP_ELSE
+     * <ENCODED_LOCKTIME>
+     * OP_CHECKSEQUENCEVERIFY
+     * OP_ENDIF
+     */
+  }
   if (
     !Buffer.isBuffer(maturedPublicKey) ||
     Buffer.byteLength(maturedPublicKey) !== 33
@@ -84,22 +139,13 @@ export function createRelativeTimeLockScript({
           ${rushedPublicKey.toString('hex')}
           OP_CHECKSIG 
       OP_ELSE
-          ${script.number.encode(encodedLockTime).toString('hex')}
+          ${numberEncodeAsm(encodedLockTime)}
           OP_CHECKSEQUENCEVERIFY
       OP_ENDIF
     `
       .trim()
       .replace(/\s+/g, ' ')
   );
-}
-
-//https://github.com/bitcoinjs/bitcoinjs-lib/issues/1799#issuecomment-1121656429
-function decompiledToScriptNumberBuffer(decompiled) {
-  return typeof decompiled === 'number' &&
-    decompiled >= 0x51 && // OP_1 (or OP_TRUE)
-    decompiled <= 0x60 // OP_16
-    ? Buffer.from([decompiled - 0x50])
-    : decompiled; // this is a Buffer
 }
 
 function parseRelativeTimeLockScript(relativeTimeLockScript) {
@@ -114,20 +160,15 @@ function parseRelativeTimeLockScript(relativeTimeLockScript) {
     Buffer.byteLength(decompiled[3]) === 33 &&
     decompiled[4] === opcodes.OP_CHECKSIG &&
     decompiled[5] === opcodes.OP_ELSE &&
-    bip68.encode(
-      bip68.decode(
-        script.number.decode(decompiledToScriptNumberBuffer(decompiled[6]))
-      )
-    ) === script.number.decode(decompiledToScriptNumberBuffer(decompiled[6])) &&
+    bip68.encode(bip68.decode(scriptNumberDecode(decompiled[6]))) ===
+      scriptNumberDecode(decompiled[6]) &&
     decompiled[7] === opcodes.OP_CHECKSEQUENCEVERIFY &&
     decompiled[8] === opcodes.OP_ENDIF
   ) {
     return {
       maturedPublicKey: decompiled[0],
       rushedPublicKey: decompiled[3],
-      encodedLockTime: script.number.decode(
-        decompiledToScriptNumberBuffer(decompiled[6])
-      )
+      encodedLockTime: scriptNumberDecode(decompiled[6])
     };
   }
   return false;

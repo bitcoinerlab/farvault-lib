@@ -233,6 +233,7 @@ describe('FarVault full pipe', () => {
             rushedPublicKey,
             encodedLockTime
           });
+          console.log({ relativeTimeLockScript });
 
           const recoverTxs = await createMultiFeeTransactions({
             utxos: [
@@ -340,7 +341,8 @@ describe('FarVault full pipe', () => {
           const unlockTx = setup.recoverTxs[recoverTxId].unlockTxs[5].tx;
           await regtestUtils.broadcast(setup.recoverTxs[recoverTxId].tx);
           //Rejection reason should be non-BIP68-final
-          console.log(await regtestUtils.mine(lockNBlocks - 1));
+          if (lockNBlocks > 1)
+            console.log(await regtestUtils.mine(lockNBlocks - 1));
           await expect(regtestUtils.broadcast(unlockTx)).rejects.toThrow(
             'non-BIP68-final'
           );
