@@ -1,4 +1,4 @@
-/** @module FVtransactions - Specific FarVault transactions.*/
+/** @module transactions */
 
 import {
   NESTED_SEGWIT,
@@ -30,6 +30,13 @@ import { feeRateSampling } from './fees';
 const validator = (pubkey, msghash, signature) =>
   fromPublicKey(pubkey).verify(msghash, signature);
 
+/**
+ * Same utility function used in bitcoinjs-lib for finalizing inputs.
+ * We must use it to finalize custom FarVault timeLockTransactions.
+ *
+ * Refer to {@link https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/psbt.js#L1187 bitcoinjs-lib's implementation}
+ * for the details.
+ */
 function witnessStackToScriptWitness(witness) {
   let buffer = Buffer.allocUnsafe(0);
   function writeSlice(slice) {
@@ -53,18 +60,40 @@ function witnessStackToScriptWitness(witness) {
   return buffer;
 }
 
-//https://github.com/bitcoinjs/bitcoinjs-lib/issues/1799#issuecomment-1121656429
+//
+/**
+ * Take an integer and encode it so that bitcoinjs-lib fromASM can compile it.
+ * It will produce a Buffer for integers !== 0 and OP_0 for number = 0.
+ *
+ * Read more about it {@link https://github.com/bitcoinjs/bitcoinjs-lib/issues/1799#issuecomment-1121656429 here}.
+ *
+ * Use it like this:
+ *
+ * ```javascript
+ * //To produce "0 1 OP_ADD":
+ * fromASM(
+ * `${numberEncodeAsm(0)} ${numberEncodeAsm(1)} OP_ADD`
+ *   .trim().replace(/\s+/g, ' ')
+ * )
+ * ```
+ *
+ * @param {number} number An integer.
+ * @returns {string|Buffer} Returns `"OP_0"` for `number === 0` and a `Buffer` for other numbers.
+ */
 function numberEncodeAsm(number) {
+  if (Number.isSafeInteger(number) === false) {
+    throw new Error('Invalid number');
+  }
   if (number === 0) {
     return 'OP_0';
   } else return script.number.encode(number).toString('hex');
 }
 //https://github.com/bitcoinjs/bitcoinjs-lib/issues/1799#issuecomment-1121656429
 function scriptNumberDecode(decompiled) {
-  if (typeof decompiled === 'number' && decompiled === 0) return 0;
   if (
-    Buffer.isBuffer(decompiled) &&
-    Buffer.compare(decompiled, Buffer.from('00', 'hex')) === 0
+    (typeof decompiled === 'number' && decompiled === 0) ||
+    (Buffer.isBuffer(decompiled) &&
+      Buffer.compare(decompiled, Buffer.from('00', 'hex')) === 0)
   ) {
     return 0;
   } else {
@@ -83,6 +112,7 @@ function scriptNumberDecode(decompiled) {
   }
 }
 
+//I only did some basic tests. The test suite for this must be better!
 export function createRelativeTimeLockScript({
   maturedPublicKey,
   rushedPublicKey,
@@ -91,18 +121,23 @@ export function createRelativeTimeLockScript({
   if (encodedLockTime === 0) {
     throw new Error('FarVault does not allow sequence to be 0.');
     /*
+     * If encodedLockTime is 0 while unlocking a matured pubkey, then
+     * the UNLOCKING + LOCKING script is evaluated
+     * resulting into a zero (where 0 === OP_FALSE) on the top of the stack.
      *
-     * If encodedLockTime is 0
-     * then the script ends up having a zero on the top of the stack.
-     * OP_CHECKSEQUENCEVERIFY behaves as a NOP if the check is ok and it
-     * ends up having a zero on top of the stack. This produces this error
-     * when the miner evaluates the script:
+     * Note that OP_CHECKSEQUENCEVERIFY behaves as a NOP if the check is ok and
+     * it does not consume encodedLockTime value.
+     *
+     * This is fine when encodedLockTime != 0 but if encodedLockTime is zero then
+     * it produces the following error when the miner evaluates the script:
      *
      * non-mandatory-script-verify-flag (Script evaluated without error but finished with a false/empty top stack element
      *
+     * This is how the ulocking is evaluated when unlocking with a matured key.
+     * Note how a zero would be left at the top if ENCODED_LOCKTIME = 0 ->
      *
-     * <MATURED_SIGNATURE>
-     * <MATURED_PUB>
+     * <MATURED_SIGNATURE> <- This is the unlocking script.
+     * <MATURED_PUB> <- Here and below corresponds to the locking script.
      * OP_CHECKSIG
      * OP_NOTIF
      * <RUSHED_PUB>
@@ -111,8 +146,42 @@ export function createRelativeTimeLockScript({
      * <ENCODED_LOCKTIME>
      * OP_CHECKSEQUENCEVERIFY
      * OP_ENDIF
+     *
+     * -> If we're in the matured branch:
+     *
+     * TRUE
+     * OP_NOTIF
+     * <RUSHED_PUB>
+     * OP_CHECKSIG
+     * OP_ELSE
+     * <ENCODED_LOCKTIME>
+     * OP_CHECKSEQUENCEVERIFY
+     * OP_ENDIF
+     *
+     * ->
+     *
+     * TRUE
+     * OP_ELSE
+     * <ENCODED_LOCKTIME>
+     * OP_CHECKSEQUENCEVERIFY
+     * OP_ENDIF
+     *
+     * ->
+     *
+     * <ENCODED_LOCKTIME>
+     * OP_CHECKSEQUENCEVERIFY
+     *
+     * -> OP_CHECKSEQUENCEVERIFY behaves as a NOP if the sequence is ok:
+     *
+     * <ENCODED_LOCKTIME>
+     *
+     * -> If ENCODED_LOCKTIME = 0:
+     *
+     * FALSE
      */
   }
+
+  //Do some more validation before producing the lockins script:
   if (
     !Buffer.isBuffer(maturedPublicKey) ||
     Buffer.byteLength(maturedPublicKey) !== 33
@@ -188,6 +257,7 @@ async function createPSBT({
     let witnessScript = undefined;
     let sequence = undefined;
     if (typeof utxo.witnessScript !== 'undefined') {
+      //This is a P2WSH utxo.
       //This wallet only knows how to spend relativeTimeLockScript's
       const parsedScript = parseRelativeTimeLockScript(
         Buffer.from(utxo.witnessScript, 'hex')
@@ -200,7 +270,7 @@ async function createPSBT({
           rushedPublicKey,
           encodedLockTime
         } = parsedScript;
-        const pubkey = await getPublicKey(utxo.derivationPath, network);
+        const pubkey = await getPublicKey(utxo.path, network);
         if (Buffer.compare(pubkey, maturedPublicKey) === 0) {
           witnessScript = Buffer.from(utxo.witnessScript);
           sequence = encodedLockTime;
@@ -215,9 +285,9 @@ async function createPSBT({
         }
       }
     } else {
-      const purpose = parseDerivationPath(utxo.derivationPath).purpose;
+      const purpose = parseDerivationPath(utxo.path).purpose;
       if (purpose === NESTED_SEGWIT) {
-        const pubkey = await getPublicKey(utxo.derivationPath, network);
+        const pubkey = await getPublicKey(utxo.path, network);
         const p2wpkh = payments.p2wpkh({ pubkey, network });
         redeemScript = payments.p2sh({ redeem: p2wpkh, network }).redeem.output;
       } else if (purpose !== NATIVE_SEGWIT && purpose !== LEGACY) {
@@ -228,7 +298,22 @@ async function createPSBT({
     }
 
     psbt.addInput({
+      //hash param can be either a string or a Buffer.
+      //When it is a string: hash corresponds to the txid:
+      //https://learnmeabitcoin.com/technical/txid
+      //
+      //The txid is what can be commonly found in the Bitcoin explorers and software to refer to transactions.
+      //Note that the txid never includes information about the witness part (because Bitcoin is backwards compatible)
+      //
+      //When hash is a Buffer it corresponds to the binary hash of the transaction
+      //Note that when we convert it to (string) txid, then it must be done
+      //like this for historical reasons:
+      //string_txid = reverseBuffer(buffer_hash).toString('hex')
       hash: txid,
+      //The three below will also work:
+      //hash: Transaction.fromHex(utxo.tx).getHash(false /*forWitness = false*/), //Passes a Buffer. getHash() returns a Buffer
+      //hash: Transaction.fromHex(utxo.tx).getHash(), //Passes a Buffer. forWitness defaults to false anyway so no need to set false.
+      //hash: Transaction.fromHex(utxo.tx).getId(), //Passes a string. This is a string that corresponds to the Buffer above (in reverse order) and serialized.
       index: utxo.n,
       nonWitnessUtxo: Transaction.fromHex(utxo.tx).toBuffer(),
       ...(typeof redeemScript !== 'undefined' ? { redeemScript } : {}),
@@ -261,7 +346,7 @@ export async function createTransaction({
   for (let index = 0; index < utxos.length; index++) {
     psbt.signInput(index, {
       network,
-      publicKey: await getPublicKey(utxos[index].derivationPath, network),
+      publicKey: await getPublicKey(utxos[index].path, network),
       sign: signers[index]
     });
   }
@@ -283,12 +368,14 @@ export async function createTransaction({
         throw new Error('This wallet cannot spend this input witnessScript.');
       } else {
         const { maturedPublicKey, rushedPublicKey } = parsedScript;
-        const pubkey = await getPublicKey(utxo.derivationPath, network);
+        const pubkey = await getPublicKey(utxo.path, network);
         if (Buffer.compare(pubkey, maturedPublicKey) === 0) {
           psbt.finalizeInput(i, (inputIndex, input, scriptParam) => {
             const maturedBranch = payments.p2wsh({
               redeem: {
-                input: script.compile([input.partialSig[i].signature]),
+                //parsedScript[0] has a zero because the input is only signed by
+                //one pubkey. Either rushed or matured. It's not multi-sig
+                input: script.compile([input.partialSig[0].signature]),
                 output: utxo.witnessScript
               }
             });
@@ -304,7 +391,9 @@ export async function createTransaction({
               redeem: {
                 //Force the 1st OP_CHECKSIG to fail. OP_0 === OP_FALSE
                 input: script.compile([
-                  input.partialSig[i].signature,
+                  //parsedScript[0] has a zero because the input is only signed by
+                  //one pubkey. Either rushed or matured. It's not multi-sig
+                  input.partialSig[0].signature,
                   opcodes.OP_0
                 ]),
                 output: utxo.witnessScript
@@ -334,12 +423,11 @@ export async function createMultiFeeTransactions({
   address, //do not set {address, value } because itx max value (it's multifee)
   getPublicKey,
   createSigners,
-  samples,
+  feeRateSamplingParams = {},
   network = networks.bitcoin
 }) {
   const txs = [];
-  const fRO = typeof samples !== undefined ? { samples } : {};
-  const feeRates = feeRateSampling(fRO);
+  const feeRates = feeRateSampling(feeRateSamplingParams);
   const value = utxos.reduce(
     (acc, utxo) => acc + decodeTx(utxo.tx).vout[utxo.n].value,
     0

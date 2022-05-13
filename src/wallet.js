@@ -31,11 +31,11 @@ import { checkPurpose, checkNetwork, checkExtPub } from './check';
 
 /**
  * Given an extended pub key it returns the `address` that
- * corresponds to a `derivationPath`.
+ * corresponds to a derivation `path`.
  *
  * @param {object} params
  * @param {module:HDInterface.extPubGetter} params.extPubGetter An **async** function that resolves the extended pub key.
- * @param {string} params.derivationPath F.ex.: "84’/0’/0’/0/0", "m/44'/1'/10'/0/0",
+ * @param {string} params.path F.ex.: "84’/0’/0’/0/0", "m/44'/1'/10'/0/0",
  * "m/49h/1h/8h/1/1"...
  * @param {object} [params.network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
  *
@@ -43,12 +43,10 @@ import { checkPurpose, checkNetwork, checkExtPub } from './check';
  */
 export async function getDerivationPathAddress({
   extPubGetter,
-  derivationPath,
+  path,
   network = networks.bitcoin
 }) {
-  const { purpose, accountNumber, index, isChange } = parseDerivationPath(
-    derivationPath
-  );
+  const { purpose, accountNumber, index, isChange } = parseDerivationPath(path);
   const extPub = await extPubGetter({ purpose, accountNumber, network });
   return getExtPubAddress({ extPub, index, isChange, network });
 }
@@ -132,14 +130,14 @@ function getNativeSegwitAddress({
  * array that is finally returned. It also puses the used addresses
  * derivation paths to another array.
  *
- * Appart from the funded `fundedDerivationPaths` and `usedDerivationPaths`,
+ * Appart from the funded `fundedPaths` and used `usedPaths`,
  * it also returns the `balance` in satoshis, and it also returns whether the
  * extPub has been `used` or not.
  *
  * Note that `used` denotes whether the extPub account has ever had any
  * funds at any point in the history even if it is currently unfunded. So it
  * might be the case that `used === true` and
- * `fundedDerivationPaths.length === 0`.
+ * `fundedPaths.length === 0`.
  *
  * @param {object} params
  * @param {string} params.extPub An extended pub key.
@@ -149,24 +147,29 @@ function getNativeSegwitAddress({
  *
  * @returns {boolean} return.used Whether that extended pub ever received sats (event if it's current balance is now 0)
  * @returns {number} return.balance Number of sats controlled by this extended pub key
- * @returns {string[]} return.usedDerivationPaths An array of derivationPaths corresponding to addresses that have had funds at some point in the past.`.
- * @returns {string[]} return.fundedDerivationPaths An array of derivationPaths corresponding to addresses with funds (>0 sats).`.
+ * @returns {string[]} return.usedPaths An array of derivation paths corresponding to addresses that have had funds at some point in the past.`.
+ * @returns {string[]} return.fundedPaths An array of derivation paths corresponding to addresses with funds (>0 sats).`.
  */
 async function fetchExtPubDerivationPaths({
   extPub,
   network = networks.bitcoin,
-  addressFetcher = blockstreamFetchAddress
+  addressFetcher = blockstreamFetchAddress,
+  gapLimit = GAP_LIMIT
 }) {
   checkExtPub({ extPub, network });
-  const fundedDerivationPaths = [];
-  const usedDerivationPaths = [];
+  const fundedPaths = [];
+  const usedPaths = [];
   let balance = 0;
   let extPubUsed = false;
 
+  //GAP_LIMIT  minimum value must be 1, which means that GAPS are not allowed.
+  //https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki#Address_gap_limit
+  //If the software hits GAP_LIMIT unused addresses in a row, it expects there
+  //are no used addresses beyond this point.
   for (const isChange of [true, false]) {
     for (
       let index = 0, consecutiveUnusedAddresses = 0;
-      consecutiveUnusedAddresses < GAP_LIMIT;
+      consecutiveUnusedAddresses < gapLimit;
       index++
     ) {
       const address = getExtPubAddress({ extPub, index, isChange, network });
@@ -176,7 +179,7 @@ async function fetchExtPubDerivationPaths({
       );
       const accountNumber = getExtPubAccountNumber({ extPub, network });
       const purpose = getExtPubPurpose({ extPub, network });
-      const derivationPath = serializeDerivationPath({
+      const path = serializeDerivationPath({
         purpose,
         coinType: getNetworkCoinType(network),
         accountNumber,
@@ -185,11 +188,11 @@ async function fetchExtPubDerivationPaths({
       });
 
       if (addressBalance !== 0) {
-        fundedDerivationPaths.push(derivationPath);
+        fundedPaths.push(path);
         balance += addressBalance;
       }
       if (used === true) {
-        usedDerivationPaths.push(derivationPath);
+        usedPaths.push(path);
         consecutiveUnusedAddresses = 0;
         extPubUsed = true;
       } else {
@@ -199,8 +202,8 @@ async function fetchExtPubDerivationPaths({
   }
 
   return {
-    fundedDerivationPaths,
-    usedDerivationPaths,
+    fundedPaths,
+    usedPaths,
     balance,
     used: extPubUsed
   };
@@ -212,9 +215,9 @@ async function fetchExtPubDerivationPaths({
  * * Currently have positive funds: `funded`.
  * * Either now or at any point in history have had positive funds: `used`.
  * Instead of returning the addresses it returns the derivation paths of these
- * addresses: `fundedDerivationPaths` and `usedDerivationPaths`.
+ * addresses: `fundedPaths` and `usedPaths`.
  *
- * Note that `fundedDerivationPaths` is a subset of `usedDerivationPaths`.
+ * Note that `fundedPaths` is a subset of `usedPaths`.
  *
  * The way this function works is as follows:
  *
@@ -237,114 +240,227 @@ async function fetchExtPubDerivationPaths({
  * @param {function} [params.addressFetcher=blockstreamFetchAddress] One function that conforms to the values returned by {@link module:dataFetchers.esploraFetchAddress esploraFetchAddress}.
  *
  * @returns {object} return
- * @returns {string[]} return.usedDerivationPaths An array of derivationPaths corresponding to addresses that have had funds at some point in the past.`.
- * @returns {string[]} return.fundedDerivationPaths An array of derivationPaths corresponding to addresses with funds (>0 sats).`.
+ * @returns {string[]} return.usedPaths An array of derivation paths corresponding to addresses that have had funds at some point in the past.`.
+ * @returns {string[]} return.fundedPaths An array of derivation paths corresponding to addresses with funds (>0 sats).`.
  */
 export async function fetchDerivationPaths({
   extPubGetter,
   addressFetcher = blockstreamFetchAddress,
-  network = networks.bitcoin
+  network = networks.bitcoin,
+  gapLimit = GAP_LIMIT,
+  gapAccountLimit = GAP_ACCOUNT_LIMIT
 }) {
-  const fundedDerivationPaths = [];
-  const usedDerivationPaths = [];
+  const fundedPaths = [];
+  const usedPaths = [];
   for (const purpose of [LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT]) {
     for (
       let accountNumber = 0, consecutiveUnusedAccounts = 0;
-      consecutiveUnusedAccounts < GAP_ACCOUNT_LIMIT;
+      consecutiveUnusedAccounts < gapAccountLimit;
       accountNumber++
     ) {
       const extPub = await extPubGetter({ purpose, accountNumber, network });
       const {
-        fundedDerivationPaths: extPubFundedDerivationPaths,
-        usedDerivationPaths: extPubUsedDerivationPaths,
+        fundedPaths: extPubFundedDerivationPaths,
+        usedPaths: extPubUsedDerivationPaths,
         used
       } = await fetchExtPubDerivationPaths({
         extPub,
         network,
-        addressFetcher
+        addressFetcher,
+        gapLimit
       });
       if (used) {
         consecutiveUnusedAccounts = 0;
-        usedDerivationPaths.push(...extPubUsedDerivationPaths);
+        usedPaths.push(...extPubUsedDerivationPaths);
         //Might be empty if used but not funded:
-        fundedDerivationPaths.push(...extPubFundedDerivationPaths);
+        fundedPaths.push(...extPubFundedDerivationPaths);
       } else {
         consecutiveUnusedAccounts++;
       }
     }
   }
-  return { fundedDerivationPaths, usedDerivationPaths };
+  return { fundedPaths, usedPaths };
 }
 
 /**
  * Queries an online API to get all the UTXOS from a list of
- * derivationPaths.
+ * derivation paths.
  *
  * @param {object} params
  * @param {module:HDInterface.extPubGetter} params.extPubGetter An **async** function that resolves the extended pub key.
- * @param {string[]} params.derivationPaths An array of funded derivationPaths.`.
+ * @param {string[]} params.paths An array of derivation paths.`.
  * @param {function} [params.utxoFetcher=blockstreamFetchUTXOs] One function that conforms to the values returned by {@link module:dataFetchers.esploraFetchUTXOs esploraFetchUTXOs}.
  * @param {object} [params.network=networks.bitcoin] A [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
- * @returns {object[]} An array of utxos: `[{tx, n, derivationPath}]`, where
+ * @returns {object[]} An array of utxos: `[{tx, n, path}]`, where
  * `tx` is a hex encoded string of the transaction, `n` is the vout (an integer)
- * and `derivationPath` is a string. F.ex.: "84’/0’/0’/0/0" .
+ * and `path` is a string. F.ex.: "84’/0’/0’/0/0" .
  */
 export async function fetchUTXOs({
   extPubGetter,
-  derivationPaths,
+  paths,
   utxoFetcher = blockstreamFetchUTXOs,
   network = networks.bitcoin
 }) {
   const utxos = [];
-  for (const derivationPath of derivationPaths) {
+  for (const path of paths) {
     const address = await getDerivationPathAddress({
       extPubGetter,
-      derivationPath,
+      path,
       network
     });
     const addressUTXOs = await utxoFetcher(address);
-    addressUTXOs.map(utxo =>
-      utxos.push({ tx: utxo.tx, n: utxo.vout, derivationPath })
-    );
+    addressUTXOs.map(utxo => utxos.push({ tx: utxo.tx, n: utxo.vout, path }));
   }
   return utxos;
 }
 
 /**
- * Given a set of derivationPaths for the same mnemonic and network, an account
+ * Return the usedPaths in canonical form: parsed, de-duplicated and sorted.
+ *
+ * Parse an array of serialized usedPaths (array of strings) and
+ * return an array of parsed objects:
+ * `[{ purpose, coinType, accountNumber, index, isChange }]`.
+ *
+ * It removes duplicated derivation paths and it throws if 
+ * usedPaths do not respect the GAP_LIMIT or the GAP_ACCOUNT_LIMIT.
+ *
+ * In addition paths sorted in this order: coinType, purpose, accountNumber,
+ * isChange, index ASC.
+ *
+ * @param {string[]} usedPaths An array of usedPaths.
+ * Note that usedPaths may have been written using different formatting
+ * options. For example:
+ * ```
+ * ["84’/0’/0’/0/0", "m/84'/0'/0'/0/0", "M/84'/0'/0'/0/0", "84H/0H/0H/0/0"]
+ * ```
+ * This function reads them, parses them and removes duplicates.
+ * In addition it checks bad formatting and throws.
+
+ * @returns {object[]} An array of used parsed paths without duplicates and
+ * sorted in this order: coinType, purpose, accountNumber, isChange, index ASC.
+ */
+function normalizeDerivationPaths({
+  usedPaths,
+  gapLimit = GAP_LIMIT,
+  gapAccountLimit = GAP_ACCOUNT_LIMIT
+}) {
+  const usedParsedPaths = [];
+  //serialized using a canonical (unique) form.
+  const _usedPaths = [];
+  for (const usedPath of usedPaths) {
+    //This will throw if bad formatted derivation path
+    const usedParsedPath = parseDerivationPath(usedPath);
+    const _usedPath = serializeDerivationPath(usedParsedPath);
+    if (_usedPaths.indexOf(_usedPath) < 0) {
+      _usedPaths.push(_usedPath);
+      usedParsedPaths.push(usedParsedPath);
+    }
+  }
+
+  //Sort them in this order: coinType, purpose, accountNumber, isChange, index ASC
+  usedParsedPaths.sort((a, b) => a.coinType - b.coinType);
+  usedParsedPaths.sort((a, b) =>
+    a.coinType === b.coinType ? a.purpose - b.purpose : 0
+  );
+  usedParsedPaths.sort((a, b) =>
+    a.coinType === b.coinType && a.purpose === b.purpose
+      ? a.accountNumber - b.accountNumber
+      : 0
+  );
+  usedParsedPaths.sort((a, b) =>
+    a.coinType === b.coinType &&
+    a.purpose === b.purpose &&
+    a.accountNumber === b.accountNumber
+      ? a.isChange - b.isChange
+      : 0
+  );
+  usedParsedPaths.sort((a, b) =>
+    a.coinType === b.coinType &&
+    a.purpose === b.purpose &&
+    a.accountNumber === b.accountNumber &&
+    a.isChange === b.isChange
+      ? a.index - b.index
+      : 0
+  );
+  if (usedParsedPaths.length > 1) {
+    //Check GAP_ACCOUNT_LIMIT
+    usedParsedPaths.reduce((prevParsedPath, parsedPath) => {
+      if (
+        parsedPath.coinType === prevParsedPath.coinType &&
+        parsedPath.purpose === prevParsedPath.purpose &&
+        parsedPath.accountNumber - prevParsedPath.accountNumber >
+          gapAccountLimit
+      ) {
+        throw new Error(
+          'Unreachable derivation path. Increase the GAP_ACCOUNT_LIMIT.'
+        );
+      }
+      return parsedPath;
+    });
+    //Check GAP_LIMIT
+    usedParsedPaths.reduce((prevParsedPath, parsedPath) => {
+      if (
+        parsedPath.coinType === prevParsedPath.coinType &&
+        parsedPath.purpose === prevParsedPath.purpose &&
+        parsedPath.accountNumber === prevParsedPath.accountNumber &&
+        parsedPath.isChange === prevParsedPath.isChange &&
+        parsedPath.index - prevParsedPath.index > gapLimit
+      ) {
+        throw new Error('Unreachable derivation path. Increase the GAP_LIMIT.');
+      }
+      return parsedPath;
+    });
+  } else if (usedParsedPaths.length === 1) {
+    if (usedParsedPaths[0].accountNumber > gapAccountLimit) {
+      throw new Error(
+        'Unreachable derivation path. Increase the GAP_ACCOUNT_LIMIT.'
+      );
+    }
+    if (usedParsedPaths[0].index > gapLimit) {
+      throw new Error('Unreachable derivation path. Increase the GAP_LIMIT.');
+    }
+  }
+  return usedParsedPaths;
+}
+
+/**
+ * Given a set of usedPaths for the same mnemonic and network, an account
  * can be defined as the pair `{ purpose, accountNumber }`.
  *
  * Given a set of derivation paths with used utxos, this function chooses the
  * a **default account** pair using this criteria:
  *
- * It first selects the purpose used amongst all derivationPaths in this order of
+ * It first selects the purpose used amongst all usedPaths in this order of
  * preference: *Native Segit > Segwit > Legacy.
  *
  * Then, it chooses the largest account number used for the previously selected
  * purpose.
  *
- * @param {string[]} derivationPaths An array derivationPaths.
+ * @param {string[]} usedPaths An array usedPaths.
  * @returns {object} `{ purpose, accountNumber }`.
  */
-export function getDefaultAccount(derivationPaths) {
-  if (!Array.isArray(derivationPaths))
-    throw new Error('Invalid derivationPaths');
-  const parsedPaths = [];
-  for (const derivationPath of derivationPaths) {
-    //This will throw if bad formatted derivationPath
-    parsedPaths.push(parseDerivationPath(derivationPath));
-  }
-  if (parsedPaths.length === 0) {
+export function getDefaultAccount({
+  usedPaths,
+  gapLimit = GAP_LIMIT,
+  gapAccountLimit = GAP_ACCOUNT_LIMIT
+}) {
+  if (!Array.isArray(usedPaths)) throw new Error('Invalid usedPaths');
+  const usedParsedPaths = normalizeDerivationPaths({
+    usedPaths,
+    gapLimit,
+    gapAccountLimit
+  });
+  if (usedParsedPaths.length === 0) {
     return { purpose: NATIVE_SEGWIT, accountNumber: 0 };
   }
   let purpose = LEGACY;
-  for (const parsedPath of parsedPaths) {
+  for (const parsedPath of usedParsedPaths) {
     if (parsedPath.purpose === NESTED_SEGWIT && purpose === LEGACY)
       purpose = NESTED_SEGWIT;
     if (parsedPath.purpose === NATIVE_SEGWIT) purpose = NATIVE_SEGWIT;
   }
   let accountNumber = 0;
-  for (const parsedPath of parsedPaths) {
+  for (const parsedPath of usedParsedPaths) {
     if (
       parsedPath.purpose === purpose &&
       accountNumber < parsedPath.accountNumber
@@ -359,7 +475,7 @@ export function getDefaultAccount(derivationPaths) {
  * `isChange === true`) or the next external address if `isChange === false`.
  *
  * You don't need to pass the purpose or accountNumber. The function internally
- * finds the common purpose or accountNumber amongs all the derivation paths.
+ * finds the common purpose or accountNumber among all the derivation paths.
  *
  * However, you must explicitly pass an account number if the derivation paths
  * that are passed belong to different account numbers.
@@ -373,8 +489,8 @@ export function getDefaultAccount(derivationPaths) {
  * with outputs that belong to different purposes and accountNumbers.
  *
  * @param {object} params
- * @param {string[]} params.derivationPaths An array of used derivationPaths.
- * It's important to pass used derivationPaths (not only the currently funded
+ * @param {string[]} params.usedPaths An array of used usedPaths.
+ * It's important to pass used usedPaths (not only the currently funded
  * ones). Otherwise this function may end up picking an address used in the past
  * compromising the privacy of the user.
  * @param {number} [params.purpose] The purpose we want to transform to: LEGACY,
@@ -387,11 +503,13 @@ export function getDefaultAccount(derivationPaths) {
  */
 
 export function getNextExplicitDerivationPath({
-  derivationPaths,
+  usedPaths,
   purpose,
   accountNumber,
   isChange,
-  network
+  network,
+  gapLimit = GAP_LIMIT,
+  gapAccountLimit = GAP_ACCOUNT_LIMIT
 }) {
   checkNetwork(network);
   if (purpose) {
@@ -399,27 +517,24 @@ export function getNextExplicitDerivationPath({
   }
   if (typeof isChange !== 'boolean')
     throw new Error('Incorrect isChange parameter!');
-  if (!Array.isArray(derivationPaths))
-    throw new Error('Invalid derivationPaths');
+  if (!Array.isArray(usedPaths)) throw new Error('Invalid usedPaths');
 
-  //console.log({ derivationPaths, isChange, accountNumber });
-
-  const parsedPaths = [];
-  for (const derivationPath of derivationPaths) {
-    //{ purpose, coinType, accountNumber, index, isChange }
-    parsedPaths.push(parseDerivationPath(derivationPath));
-  }
+  const usedParsedPaths = normalizeDerivationPaths({
+    usedPaths,
+    gapLimit,
+    gapAccountLimit
+  });
 
   if (
-    parsedPaths.length === 0 &&
+    usedParsedPaths.length === 0 &&
     (typeof purpose === 'undefined' || typeof accountNumber === 'undefined')
   ) {
     throw new Error(
       'Must specify a purpose AND an account number since this wallet has never been used!'
     );
   }
-  if (parsedPaths.length > 1) {
-    parsedPaths.reduce((prevParsedPath, parsedPath) => {
+  if (usedParsedPaths.length > 1) {
+    usedParsedPaths.reduce((prevParsedPath, parsedPath) => {
       if (
         typeof accountNumber === 'undefined' &&
         prevParsedPath.accountNumber !== parsedPath.accountNumber
@@ -445,7 +560,7 @@ export function getNextExplicitDerivationPath({
   }
 
   const filteredParsedPaths = [];
-  for (const parsedPath of parsedPaths) {
+  for (const parsedPath of usedParsedPaths) {
     if (parsedPath.coinType !== getNetworkCoinType(network)) {
       throw new Error('The coin type does not math this network');
     }
@@ -468,43 +583,55 @@ export function getNextExplicitDerivationPath({
   -1);
 
   return serializeDerivationPath({
-    purpose: typeof purpose !== 'undefined' ? purpose : parsedPaths[0].purpose,
+    purpose:
+      typeof purpose !== 'undefined' ? purpose : usedParsedPaths[0].purpose,
     coinType: getNetworkCoinType(network),
     accountNumber:
       typeof accountNumber !== 'undefined'
         ? accountNumber
-        : parsedPaths[0].accountNumber,
+        : usedParsedPaths[0].accountNumber,
     isChange,
     index: maxIndex + 1
   });
 }
 
-function getNextDerivationPath({ derivationPaths, isChange, network }) {
-  return getNextExplicitDerivationPath({
-    derivationPaths,
-    ...getDefaultAccount(derivationPaths),
-    isChange,
-    network
-  });
-}
+//function getNextDerivationPath({
+//  usedPaths,
+//  isChange,
+//  network,
+//  gapLimit = GAP_LIMIT,
+//  gapAccountLimit = GAP_ACCOUNT_LIMIT
+//}) {
+//  return getNextExplicitDerivationPath({
+//    usedPaths,
+//    ...getDefaultAccount({ usedPaths, gapLimit, gapAccountLimit }),
+//    isChange,
+//    network
+//  });
+//}
 
 /**
  * Returns the next change address.
  *
- * It uses {@link module:wallet.getNextExplicitDerivationPath getNextExplicitDerivationPath} particularized for {@link module:wallet.getDefaultAccount the `derivationPaths`' default account} and
+ * It uses {@link module:wallet.getNextExplicitDerivationPath getNextExplicitDerivationPath} particularized for {@link module:wallet.getDefaultAccount the `usedPaths`' default account} and
  * `isChange = true`.
  * @param {object} params
- * @param {string[]} params.derivationPaths An array of used derivationPaths.
- * It's important to pass used derivationPaths (not only the currently funded
+ * @param {string[]} params.usedPaths An array of used usedPaths.
+ * It's important to pass used usedPaths (not only the currently funded
  * ones). Otherwise this function may end up picking an address used in the past
  * compromising the privacy of the user.
  * @param {object} params.network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
  * @returns {string} The next change derivation path.
  */
-export function getNextChangeDerivationPath({ derivationPaths, network }) {
+export function getNextChangeDerivationPath({
+  usedPaths,
+  network,
+  gapLimit = GAP_LIMIT,
+  gapAccountLimit = GAP_ACCOUNT_LIMIT
+}) {
   return getNextExplicitDerivationPath({
-    derivationPaths,
-    ...getDefaultAccount(derivationPaths),
+    usedPaths,
+    ...getDefaultAccount({ usedPaths, gapLimit, gapAccountLimit }),
     isChange: true,
     network
   });
@@ -513,20 +640,25 @@ export function getNextChangeDerivationPath({ derivationPaths, network }) {
 /**
  * Returns the next available receiving address.
  *
- * It uses {@link module:wallet.getNextExplicitDerivationPath getNextExplicitDerivationPath} particularized for {@link module:wallet.getDefaultAccount the `derivationPaths`' default account} and
+ * It uses {@link module:wallet.getNextExplicitDerivationPath getNextExplicitDerivationPath} particularized for {@link module:wallet.getDefaultAccount the `usedPaths`' default account} and
  * `isChange = false`.
  * @param {object} params
- * @param {string[]} params.derivationPaths An array of used derivationPaths.
- * It's important to pass used derivationPaths (not only the currently funded
+ * @param {string[]} params.usedPaths An array of used usedPaths.
+ * It's important to pass used usedPaths (not only the currently funded
  * ones). Otherwise this function may end up picking an address used in the past
  * compromising the privacy of the user.
  * @param {object} params.network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
  * @returns {string} The next external (receiving) derivation path.
  */
-export function getNextReceivingDerivationPath({ derivationPaths, network }) {
+export function getNextReceivingDerivationPath({
+  usedPaths,
+  network,
+  gapLimit = GAP_LIMIT,
+  gapAccountLimit = GAP_ACCOUNT_LIMIT
+}) {
   return getNextExplicitDerivationPath({
-    derivationPaths,
-    ...getDefaultAccount(derivationPaths),
+    usedPaths,
+    ...getDefaultAccount({ usedPaths, gapLimit, gapAccountLimit }),
     isChange: false,
     network
   });

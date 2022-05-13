@@ -58,11 +58,11 @@ describe('Coinselect', () => {
         const psbt = new Psbt({ network });
 
         for (const utxo of utxos) {
-          const purpose = parseDerivationPath(utxo.derivationPath).purpose;
+          const purpose = parseDerivationPath(utxo.path).purpose;
           let redeemScript = undefined;
           if (purpose === NESTED_SEGWIT) {
             const pubkey = await HDInterface.getPublicKey(
-              utxo.derivationPath,
+              utxo.path,
               network
             );
             const p2wpkh = payments.p2wpkh({ pubkey, network });
@@ -93,7 +93,7 @@ describe('Coinselect', () => {
           psbt.signInput(index, {
             network,
             publicKey: await HDInterface.getPublicKey(
-              utxos[index].derivationPath,
+              utxos[index].path,
               network
             ),
             sign: signers[index]

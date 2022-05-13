@@ -97,18 +97,14 @@ async function getExtPub_internal(
   return extPub;
 }
 
-async function getPublicKey(
-  ledgerAppBtc,
-  derivationPath,
-  network = networks.bitcoin
-) {
+async function getPublicKey(ledgerAppBtc, path, network = networks.bitcoin) {
   const {
     purpose,
     coinType,
     accountNumber,
     index,
     isChange
-  } = parseDerivationPath(derivationPath);
+  } = parseDerivationPath(path);
   if (getNetworkCoinType(network) !== coinType) {
     throw new Error('Network mismatch');
   }
@@ -124,7 +120,7 @@ async function getPublicKey(
  * https://github.com/bitcoinjs/bitcoinjs-lib/issues/1517#issuecomment-1064914601
  *
  * redeemScript is conditions that lock the script
- * Use a utxo.derivationPath for P2PKH, P2SH-P2WPKH, P2WPKH.
+ * Use a utxo.path for P2PKH, P2SH-P2WPKH, P2WPKH.
  * utxo.witnessScript for P2WSH. utxo.redeemScript for P2SH.
  * Pass sequence un a utxo if you want to sing an unlocking tx for a timelock
  */
@@ -138,24 +134,24 @@ export async function createSigners(ledgerAppBtc, { psbt, utxos, network }) {
   const segwitInputTypes = [];
 
   for (const utxo of utxos) {
-    if (typeof utxo.derivationPath === 'undefined') {
-      throw new Error('Must pass a derivationPath for signing an input');
+    if (typeof utxo.path === 'undefined') {
+      throw new Error('Must pass a path for signing an input');
     }
     if (utxo.witnessScript && utxo.redeemScript) {
       throw new Error(
-        'Either pass only a utxo.derivationPath for P2PKH, P2SH-P2WPKH, P2WPKH. \
-        Or utxo.derivationPath + utxo.witnessScript for P2WSH. \
-        Or utxo.derivationPath +  utxo.redeemScript for P2SH.'
+        'Either pass only a utxo.path for P2PKH, P2SH-P2WPKH, P2WPKH. \
+        Or utxo.path + utxo.witnessScript for P2WSH. \
+        Or utxo.path +  utxo.redeemScript for P2SH.'
       );
     }
     const purpose =
       !utxo.witnessScript &&
       !utxo.redeemScript &&
-      parseDerivationPath(utxo.derivationPath).purpose;
+      parseDerivationPath(utxo.path).purpose;
 
     let redeemScript;
     /*if (purpose === NESTED_SEGWIT) {
-      const pubkey = await getPublicKey(ledgerAppBtc, utxo.derivationPath);
+      const pubkey = await getPublicKey(ledgerAppBtc, utxo.path);
       redeemScript = payments.p2sh({
         redeem: payments.p2wpkh({ pubkey, network }),
         network
@@ -166,7 +162,7 @@ export async function createSigners(ledgerAppBtc, { psbt, utxos, network }) {
       segwitInputTypes.push(true);
     }*/
     if (purpose === NESTED_SEGWIT || purpose === NATIVE_SEGWIT) {
-      const pubkey = await getPublicKey(ledgerAppBtc, utxo.derivationPath);
+      const pubkey = await getPublicKey(ledgerAppBtc, utxo.path);
       //The redeemScript for NESTED_SEGWIT and NATIVE_SEGWIT must be p2pkh
       //I don't konw why. It's hacky. Who knows what Ledger soft does
       redeemScript = payments.p2pkh({ pubkey, network }).output.toString('hex');
@@ -197,7 +193,7 @@ export async function createSigners(ledgerAppBtc, { psbt, utxos, network }) {
       ...(utxo.sequence ? [utxo.sequence] : [])
     ]);
   }
-  const ledgerDerivationPaths = utxos.map(utxo => utxo.derivationPath);
+  const ledgerDerivationPaths = utxos.map(utxo => utxo.path);
 
   const getLedgerTxSignatures = async isSegwit => {
     const ledgerTx = ledgerAppBtc.splitTransaction(tx.toHex(), isSegwit);

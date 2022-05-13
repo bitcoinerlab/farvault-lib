@@ -3,8 +3,8 @@ import { fixtures } from './fixtures/bip32';
 
 describe('bip32', () => {
   test('parseDerivationPath parses paths correctly', () => {
-    fixtures.derivationPaths.valid.map(derivationPath =>
-      expect(() => parseDerivationPath(derivationPath)).not.toThrow()
+    fixtures.paths.valid.map(path =>
+      expect(() => parseDerivationPath(path)).not.toThrow()
     );
 
     expect(parseDerivationPath("44'/1'/0'/0/0")).toEqual({

@@ -10,3 +10,4 @@ localhost.pem
 *.log
 .DS_Store
 test/integration/*.json
+setup.json

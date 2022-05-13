@@ -9,7 +9,7 @@ const addressesDescriptors = [
     //0
     //https://iancoleman.io/bip39/
     address: 'mgFuvHBMqnmsDFHkr1XPJm3nD4VaakAHkX',
-    derivationPath: "m/44'/1'/0'/0/0",
+    path: "m/44'/1'/0'/0/0",
     extPub:
       'tpubDEcKTFgiimhCDQVTjkdK6MVHnmrQ2MQDLc35VZv3FG3gVom9jv3aKjcKnceuadqsPJySEwvQw5nzKCcSQZYfuYSaLhoU1w4H8QxeDzHM9WB',
     mnemonic:
@@ -20,7 +20,7 @@ const addressesDescriptors = [
     //1
     //https://iancoleman.io/bip39/
     address: 'n45eSfCzP8qespuY59Lof91iytfEfBwYek',
-    derivationPath: "m/44'/1'/0'/0/3",
+    path: "m/44'/1'/0'/0/3",
     extPub:
       'tpubDEcKTFgiimhCDQVTjkdK6MVHnmrQ2MQDLc35VZv3FG3gVom9jv3aKjcKnceuadqsPJySEwvQw5nzKCcSQZYfuYSaLhoU1w4H8QxeDzHM9WB',
     mnemonic:
@@ -32,7 +32,7 @@ const addressesDescriptors = [
     //2
     //From https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki
     address: '2Mww8dCYPUpKHofjgcXcBCEGmniw9CoaiD2',
-    derivationPath: "m/49'/1'/0'/0/0",
+    path: "m/49'/1'/0'/0/0",
     extPub:
       'upub5EFU65HtV5TeiSHmZZm7FUffBGy8UKeqp7vw43jYbvZPpoVsgU93oac7Wk3u6moKegAEWtGNF8DehrnHtv21XXEMYRUocHqguyjknFHYfgY',
     mnemonic:
@@ -43,7 +43,7 @@ const addressesDescriptors = [
     //3
     //https://iancoleman.io/bip39/
     address: '2NGH8tu2EGN2EuDdtRhmFFtWDu817ad4ikz',
-    derivationPath: "m/49'/1'/0'/0/6",
+    path: "m/49'/1'/0'/0/6",
     extPub:
       'upub5EFU65HtV5TeiSHmZZm7FUffBGy8UKeqp7vw43jYbvZPpoVsgU93oac7Wk3u6moKegAEWtGNF8DehrnHtv21XXEMYRUocHqguyjknFHYfgY',
     mnemonic:
@@ -54,7 +54,7 @@ const addressesDescriptors = [
     //4
     //https://iancoleman.io/bip39/
     address: '2NDYJPke9TdPprAgPYrWhcrGrcLMsAFmafy',
-    derivationPath: "m/49'/1'/3'/1/8",
+    path: "m/49'/1'/3'/1/8",
     extPub:
       'upub5Gcm8pAyU7WFMG6oP1HGwiBPM4cDyAH5GEGi7yHhG5XYMeyxtpeZR7ZqvCYtHiuLorwRB2eHrFwMMHCcpndrNm4JJHzqtHstrfPLeqoPg7C',
     mnemonic:
@@ -66,7 +66,7 @@ const addressesDescriptors = [
     //5
     //https://iancoleman.io/bip39/
     address: 'tb1qlzfxxz7rdty42ws2afnlgp2kk007hfevpt3ew4',
-    derivationPath: "84'/1'/3'/1/8",
+    path: "84'/1'/3'/1/8",
     extPub:
       'vpub5Y6cjg78GGuNUV98gipypz6d4rdGzpqhnwCWDYvy2gnULAapQV92CsDdsdM5SKfQxUqwQHUpFYoqrcmarxjkVxiUMJfQW9ZDwgz2iGacU5X',
     mnemonic:
@@ -77,7 +77,7 @@ const addressesDescriptors = [
     //6
     //https://iancoleman.io/bip39/
     address: 'tb1qaj6xxrj2n2ddqxe3a0wncxvc0jrwd3qrf0flx0',
-    derivationPath: "84'/1'/0'/1/8",
+    path: "84'/1'/0'/1/8",
     extPub:
       'vpub5Y6cjg78GGuNLsaPhmYsiw4gYX3HoQiRBiSwDaBXKUafCt9bNwWQiitDk5VZ5BVxYnQdwoTyXSs2JHRPAgjAvtbBrf8ZhDYe2jWAqvZVnsc',
     mnemonic:
@@ -88,7 +88,7 @@ const addressesDescriptors = [
     //7
     //https://iancoleman.io/bip39/
     address: 'tb1qk9ca9jh7a2muk2venu26qsc2an5cvnwpetqelf',
-    derivationPath: "84'/1'/0'/0/8",
+    path: "84'/1'/0'/0/8",
     extPub:
       'vpub5Y6cjg78GGuNLsaPhmYsiw4gYX3HoQiRBiSwDaBXKUafCt9bNwWQiitDk5VZ5BVxYnQdwoTyXSs2JHRPAgjAvtbBrf8ZhDYe2jWAqvZVnsc',
     mnemonic:
@@ -104,23 +104,23 @@ export const fixtures = {
   //speciffic blockchain that mixes different purposes and accountNumbers
   affinedAddressesDescriptors: {
     valid: [
+      //test 0
       {
         mnemonic: addressesDescriptors[0].mnemonic,
         network: addressesDescriptors[0].network,
-        addressesDescriptors: [
-        ],
+        addressesDescriptors: [],
         isChange: false,
         purpose: LEGACY,
         accountNumber: 10,
         nextDerivationPath: "44'/1'/10'/0/0",
         defaultAccount: { accountNumber: 0, purpose: NATIVE_SEGWIT }
       },
+      //test 1
       {
         mnemonic: addressesDescriptors[0].mnemonic,
         network: addressesDescriptors[0].network,
-        addressesDescriptors: [
-          addressesDescriptors[4],
-        ],
+        addressesDescriptors: [addressesDescriptors[4]],
+        gapAccountLimit: 3,
         isChange: true,
         purpose: NESTED_SEGWIT,
         accountNumber: 0,
@@ -146,6 +146,7 @@ export const fixtures = {
           addressesDescriptors[3],
           addressesDescriptors[4]
         ],
+        gapAccountLimit: 3,
         isChange: false,
         accountNumber: 4,
         nextDerivationPath: "49'/1'/4'/0/0",
@@ -159,6 +160,7 @@ export const fixtures = {
           addressesDescriptors[3],
           addressesDescriptors[4]
         ],
+        gapAccountLimit: 3,
         isChange: false,
         accountNumber: 0,
         nextDerivationPath: "49'/1'/0'/0/7",
@@ -172,6 +174,7 @@ export const fixtures = {
           addressesDescriptors[3],
           addressesDescriptors[4]
         ],
+        gapAccountLimit: 3,
         isChange: true,
         accountNumber: 0,
         nextDerivationPath: "49'/1'/0'/1/0",
@@ -206,6 +209,7 @@ export const fixtures = {
           addressesDescriptors[6],
           addressesDescriptors[7]
         ],
+        gapAccountLimit: 3,
         isChange: false,
         accountNumber: 0,
         purpose: LEGACY,
@@ -223,6 +227,7 @@ export const fixtures = {
           addressesDescriptors[6],
           addressesDescriptors[7]
         ],
+        gapAccountLimit: 3,
         isChange: false,
         accountNumber: 0,
         purpose: NESTED_SEGWIT,
@@ -240,6 +245,7 @@ export const fixtures = {
           addressesDescriptors[6],
           addressesDescriptors[7]
         ],
+        gapAccountLimit: 3,
         isChange: true,
         accountNumber: 3,
         purpose: NATIVE_SEGWIT,
@@ -258,6 +264,7 @@ export const fixtures = {
           addressesDescriptors[3],
           addressesDescriptors[4]
         ],
+        gapAccountLimit: 3,
         isChange: false,
         errorMessage:
           'Must specify an account number since derivation paths have a mix of account numbers!'
@@ -272,6 +279,7 @@ export const fixtures = {
           addressesDescriptors[3],
           addressesDescriptors[4]
         ],
+        gapAccountLimit: 3,
         purpose: NATIVE_SEGWIT,
         isChange: false,
         errorMessage:
@@ -285,6 +293,7 @@ export const fixtures = {
           addressesDescriptors[3],
           addressesDescriptors[4]
         ],
+        gapAccountLimit: 3,
         purpose: NATIVE_SEGWIT,
         //Invalid accountnumber
         accountNumber: -1,
@@ -299,6 +308,7 @@ export const fixtures = {
           addressesDescriptors[3],
           addressesDescriptors[4]
         ],
+        gapAccountLimit: 3,
         purpose: NATIVE_SEGWIT,
         accountNumber: 0,
         //Invalid isChange (not boolean)
@@ -355,6 +365,7 @@ export const fixtures = {
           addressesDescriptors[6],
           addressesDescriptors[7]
         ],
+        gapAccountLimit: 3,
         isChange: false,
         errorMessage:
           'Must specify an account number since derivation paths have a mix of account numbers!'
@@ -371,6 +382,7 @@ export const fixtures = {
           addressesDescriptors[6],
           addressesDescriptors[7]
         ],
+        gapAccountLimit: 3,
         isChange: false,
         //without purpose
         accountNumber: 0,
@@ -388,6 +400,7 @@ export const fixtures = {
           addressesDescriptors[6],
           addressesDescriptors[7]
         ],
+        gapAccountLimit: 3,
         isChange: false,
         purpose: LEGACY,
         //without accountNumber
@@ -402,6 +415,7 @@ export const fixtures = {
           addressesDescriptors[5],
           addressesDescriptors[6]
         ],
+        gapAccountLimit: 3,
         isChange: false,
         errorMessage:
           'Must specify an account number since derivation paths have a mix of account numbers!'
@@ -426,6 +440,7 @@ export const fixtures = {
           addressesDescriptors[4],
           addressesDescriptors[5]
         ],
+        gapAccountLimit: 3,
         isChange: false,
         errorMessage:
           'Must specify a purpose AND an account number since derivation paths have a mix of purposes!'

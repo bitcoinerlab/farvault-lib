@@ -159,66 +159,69 @@ export function getNetworkCoinType(network = networks.bitcoin) {
  * Takes a string representation of a derivation path and returns the elements
  * that form it.
  *
- * @param {string} derivationPath F.ex.: "84’/0’/0’/0/0" or "m/44'/1H/1h/0/0").
+ * @param {string} path F.ex.: "84’/0’/0’/0/0" or "m/44'/1H/1h/0/0").
  * Note that "m/" is optional and h, H or ' can be used indistinctably.
- * @returns {object} Returns the `derivationPath` elements: `{ purpose: number, coinType: number, accountNumber:number, index:number, isChange:boolean }`.
+ * @returns {object} Returns the `path` elements: `{ purpose: number, coinType: number, accountNumber:number, index:number, isChange:boolean }`.
  * See {@link module:bip32.serializeDerivationPath serializeDerivationPath} for further description of the types of the returned object elements.
  */
-export function parseDerivationPath(derivationPath) {
+export function parseDerivationPath(path) {
   let purpose;
   let coinType;
   let index;
   let isChange;
   let accountNumber;
+  if (typeof path !== 'string') {
+    throw new Error('Invalid type');
+  }
   //Remove initial m/ or M/ (if present)
-  derivationPath = derivationPath.replace(/^(m\/)/i, '');
+  path = path.replace(/^(m\/)/i, '');
   //Sometimes hardened paths are writen with "h" or "H"
-  derivationPath = derivationPath.replace(/H/gi, "'");
-  const path = derivationPath.split('/');
-  if (path.length !== 5) {
-    throw new Error('Invalid number of elements: ' + path.length);
+  path = path.replace(/H/gi, "'");
+  const pathComponents = path.split('/');
+  if (pathComponents.length !== 5) {
+    throw new Error('Invalid number of elements: ' + pathComponents.length);
   }
 
   if (
-    path[0] !== `${LEGACY}'` &&
-    path[0] !== `${NESTED_SEGWIT}'` &&
-    path[0] !== `${NATIVE_SEGWIT}'`
+    pathComponents[0] !== `${LEGACY}'` &&
+    pathComponents[0] !== `${NESTED_SEGWIT}'` &&
+    pathComponents[0] !== `${NATIVE_SEGWIT}'`
   ) {
-    throw new Error('Invalid purpose: ' + path[0]);
+    throw new Error('Invalid purpose: ' + pathComponents[0]);
   } else {
-    purpose = parseInt(path[0].replace("'", ''));
+    purpose = parseInt(pathComponents[0].replace("'", ''));
   }
 
   if (
-    path[1] !== `${getNetworkCoinType(networks.bitcoin)}'` &&
-    path[1] !== `${getNetworkCoinType(networks.testnet)}'` &&
-    path[1] !== `${getNetworkCoinType(networks.regtest)}'`
+    pathComponents[1] !== `${getNetworkCoinType(networks.bitcoin)}'` &&
+    pathComponents[1] !== `${getNetworkCoinType(networks.testnet)}'` &&
+    pathComponents[1] !== `${getNetworkCoinType(networks.regtest)}'`
   ) {
-    throw new Error('Invalid coin type: ' + path[1]);
+    throw new Error('Invalid coin type: ' + pathComponents[1]);
   } else {
-    coinType = parseInt(path[1]);
+    coinType = parseInt(pathComponents[1]);
   }
-  if (`${Math.abs(parseInt(path[2]))}'` !== path[2]) {
-    throw new Error('Invalid account: ' + path[2]);
+  if (`${Math.abs(parseInt(pathComponents[2]))}'` !== pathComponents[2]) {
+    throw new Error('Invalid account: ' + pathComponents[2]);
   } else {
-    accountNumber = parseInt(path[2]);
+    accountNumber = parseInt(pathComponents[2]);
   }
-  if (path[3] !== '0' && path[3] !== '1') {
-    throw new Error('Invalid change type: ' + path[3]);
+  if (pathComponents[3] !== '0' && pathComponents[3] !== '1') {
+    throw new Error('Invalid change type: ' + pathComponents[3]);
   } else {
-    isChange = path[3] === '1';
+    isChange = pathComponents[3] === '1';
   }
-  if (`${Math.abs(parseInt(path[4]))}` !== path[4]) {
-    throw new Error('Invalid index: ' + path[4]);
+  if (`${Math.abs(parseInt(pathComponents[4]))}` !== pathComponents[4]) {
+    throw new Error('Invalid index: ' + pathComponents[4]);
   } else {
-    index = parseInt(path[4]);
+    index = parseInt(pathComponents[4]);
   }
 
   return { purpose, coinType, accountNumber, index, isChange };
 }
 
 /**
- * Serializes a derivationPath.
+ * Serializes a derivation path.
  *
  * @param {object} params
  * @param {number} params.purpose LEGACY, NESTED_SEGWIT, or NATIVE_SEGWIT.
@@ -227,7 +230,7 @@ export function parseDerivationPath(derivationPath) {
  * @param {boolean} params.isChange Whether this is a change address or not as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
  * @param {number} params.index The addres index within the account as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
  *
- * @returns {string} The serialized derivationPath
+ * @returns {string} The serialized derivation path
  */
 export function serializeDerivationPath({
   purpose,
@@ -248,12 +251,12 @@ export function serializeDerivationPath({
     throw new Error('Incorrect parameters');
   }
 
-  let derivationPath;
+  let path;
   if (typeof isChange === 'undefined') {
     if (typeof index !== 'undefined') {
       throw new Error('Incompatible parameters');
     }
-    derivationPath = `${purpose}'/${coinType}'/${accountNumber}'`;
+    path = `${purpose}'/${coinType}'/${accountNumber}'`;
   } else {
     if (
       typeof isChange !== 'boolean' ||
@@ -262,11 +265,11 @@ export function serializeDerivationPath({
     ) {
       throw new Error('Incorrect parameters');
     }
-    derivationPath = `${purpose}'/${coinType}'/${accountNumber}'/${
+    path = `${purpose}'/${coinType}'/${accountNumber}'/${
       isChange ? 1 : 0
     }/${index}`;
     //Further verification:
-    const parsedDerivationPath = parseDerivationPath(derivationPath);
+    const parsedDerivationPath = parseDerivationPath(path);
     Object.keys(parseDerivationPath).map(key => {
       if (parseDerivationPath[key] !== arguments[0][key]) {
         throw new Error('Error serializing a derivation path');
@@ -274,7 +277,7 @@ export function serializeDerivationPath({
     });
   }
 
-  return derivationPath;
+  return path;
 }
 
 /** Extracts the purpose from an extended pub.

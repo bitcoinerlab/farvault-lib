@@ -33,7 +33,7 @@ import { checkAddress } from './check';
  * * [https://github.com/BlueWallet/BlueWallet/pull/3810](https://github.com/BlueWallet/BlueWallet/pull/3810)
  * @param {Object} parameters
  * @param {Object[]} parameters.utxos List of spendable utxos.
- * @param {string} parameters.utxos[].derivationPath Derivation path. F.ex.: `44'/1'/1'/0/0`.
+ * @param {string} parameters.utxos[].path Derivation path. F.ex.: `44'/1'/1'/0/0`.
  * @param {string} parameters.utxos[].tx The transaction serialized in hex.
  * @param {number} parameters.utxos[].n The vout index of the tx above.
  * @param {Object[]} parameters.targets List of addresses to send funds.
@@ -60,7 +60,7 @@ export async function coinselect({
   feeRate = Math.ceil(feeRate);
   let addedWitness = false;
   const csUtxos = utxos.map(utxo => {
-    const { purpose } = parseDerivationPath(utxo.derivationPath);
+    const { purpose } = parseDerivationPath(utxo.path);
     let decodedTx;
     try {
       decodedTx = decodeTx(utxo.tx, network);
@@ -77,7 +77,7 @@ export async function coinselect({
     csUtxo.value = decodedTx.vout[utxo.n].value;
     csUtxo.vout = utxo.n;
     csUtxo.tx = utxo.tx;
-    csUtxo.derivationPath = utxo.derivationPath;
+    csUtxo.path = utxo.path;
     // compensating for coinselect inability to deal with segwit inputs,
     // and overriding script length for proper vbytes calculation
     // based on https://github.com/BlueWallet/BlueWallet/blob/master/class/wallets/abstract-hd-electrum-wallet.js

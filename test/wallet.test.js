@@ -13,7 +13,7 @@ describe('wallet', () => {
   test('getDerivationPathAddress', async () => {
     for (const {
       address,
-      derivationPath,
+      path,
       extPub,
       network,
       mnemonic
@@ -24,77 +24,90 @@ describe('wallet', () => {
       expect(
         await getDerivationPathAddress({
           extPubGetter: async params => HDInterface.getExtPub(params),
-          derivationPath,
+          path,
           network
         })
       ).toEqual(address);
     }
   });
-  test('getNextExplicitDerivationPath works', () => {
-    for (const {
-      addressesDescriptors,
-      isChange,
-      accountNumber,
-      purpose,
-      nextDerivationPath,
-      network,
-      mnemonic
-    } of fixtures.affinedAddressesDescriptors.valid) {
-      const derivationPaths = [];
+  let i = 0;
+  for (const {
+    addressesDescriptors,
+    isChange,
+    accountNumber,
+    purpose,
+    nextDerivationPath,
+    network,
+    mnemonic,
+    gapAccountLimit
+  } of fixtures.affinedAddressesDescriptors.valid) {
+    test(`getNextExplicitDerivationPath works - test ${i}`, () => {
+      const usedPaths = [];
       for (const addressDescriptor of addressesDescriptors) {
-        derivationPaths.push(addressDescriptor.derivationPath);
+        usedPaths.push(addressDescriptor.path);
       }
       expect(nextDerivationPath).toEqual(
         getNextExplicitDerivationPath({
-          derivationPaths,
+          usedPaths,
           isChange,
           network,
           purpose,
-          accountNumber
+          accountNumber,
+          gapAccountLimit
         })
       );
-    }
-  });
-  test('getNextExplicitDerivationPath fails', () => {
-    for (const {
-      addressesDescriptors,
-      isChange,
-      accountNumber,
-      purpose,
-      nextDerivationPath,
-      network,
-      mnemonic,
-      errorMessage
-    } of fixtures.affinedAddressesDescriptors.invalid) {
-      const derivationPaths = [];
+    });
+    i++;
+  }
+  i = 0;
+  for (const {
+    addressesDescriptors,
+    isChange,
+    accountNumber,
+    purpose,
+    nextDerivationPath,
+    network,
+    mnemonic,
+    gapAccountLimit,
+    errorMessage
+  } of fixtures.affinedAddressesDescriptors.invalid) {
+    test(`getNextExplicitDerivationPath fails - test ${i}`, () => {
+      const usedPaths = [];
       for (const addressDescriptor of addressesDescriptors) {
-        derivationPaths.push(addressDescriptor.derivationPath);
+        usedPaths.push(addressDescriptor.path);
       }
       expect(() =>
         getNextExplicitDerivationPath({
-          derivationPaths,
+          usedPaths,
           isChange,
           network,
           purpose,
-          accountNumber
+          accountNumber,
+          gapAccountLimit
         })
       ).toThrow(errorMessage);
-    }
-  });
+    });
+    i++;
+  }
   test('getDefaultAccount', () => {
-    for (const { addressesDescriptors, defaultAccount } of fixtures
-      .affinedAddressesDescriptors.valid) {
-      const derivationPaths = [];
+    for (const {
+      addressesDescriptors,
+      defaultAccount,
+      gapAccountLimit
+    } of fixtures.affinedAddressesDescriptors.valid) {
+      const usedPaths = [];
       for (const addressDescriptor of addressesDescriptors) {
-        derivationPaths.push(addressDescriptor.derivationPath);
+        usedPaths.push(addressDescriptor.path);
       }
-      expect(getDefaultAccount(derivationPaths)).toEqual(defaultAccount);
+      expect(getDefaultAccount({ usedPaths, gapAccountLimit })).toEqual(
+        defaultAccount
+      );
     }
   });
   test('getNextReceivingDerivationPath works', () => {
     expect(
       getNextExplicitDerivationPath({
-        derivationPaths: [],
+        usedPaths: [],
         purpose: NATIVE_SEGWIT,
         accountNumber: 0,
         isChange: false,
@@ -104,7 +117,7 @@ describe('wallet', () => {
 
     expect(
       getNextReceivingDerivationPath({
-        derivationPaths: [],
+        usedPaths: [],
         network: networks.regtest
       })
     ).toEqual("84'/1'/0'/0/0");

@@ -14,8 +14,6 @@
 //Things to check: fees
 
 const MULTIFEE_SAMPLES = 10;
-import fs from 'fs';
-import path from 'path';
 
 import { payments } from 'bitcoinjs-lib';
 import { generateMnemonic } from 'bip39';
@@ -31,7 +29,7 @@ import {
   createTransaction,
   createRelativeTimeLockScript,
   createMultiFeeTransactions
-} from '../../src/FVTransactions';
+} from '../../src/transactions';
 import { decodeTx } from '../../src/decodeTx';
 
 import { initHDInterface, SOFT_HD_INTERFACE } from '../../src/HDInterface';
@@ -53,6 +51,8 @@ const ESPLORA_CATCH_UP_TIME = 10000;
 const TEST_TIME = 120000;
 
 import bip68 from 'bip68';
+
+import { readSetup, writeSetup } from '../../src/serialization';
 
 describe('FarVault full pipe', () => {
   const {
@@ -77,10 +77,11 @@ describe('FarVault full pipe', () => {
         } = await startTestingEnvironment();
 
         try {
-          //Create an initial funded wallet
+          //Create an initial funded wallet.
+          //This is my hot wallet.
           const {
             HDInterface: hotHDInterface,
-            derivationPaths,
+            mockWalletPaths,
             UTXOs,
             regtestUtils
           } = await createMockWallet(mnemonic, mockWallet, network);
@@ -88,18 +89,15 @@ describe('FarVault full pipe', () => {
           //Give esplora some time to catch up
           await new Promise(r => setTimeout(r, ESPLORA_CATCH_UP_TIME));
 
-          //Get the derivationPaths and UTXOs of the wallet
-          const {
-            fundedDerivationPaths,
-            usedDerivationPaths
-          } = await fetchDerivationPaths({
+          //Get the derivation paths and UTXOs of the wallet
+          const { fundedPaths, usedPaths } = await fetchDerivationPaths({
             extPubGetter: hotHDInterface.getExtPub,
             addressFetcher: address => esploraFetchAddress(address),
             network
           });
           const walletUTXOs = await fetchUTXOs({
             extPubGetter: hotHDInterface.getExtPub,
-            derivationPaths: fundedDerivationPaths,
+            paths: fundedPaths,
             utxoFetcher: address => esploraFetchUTXOs(address),
             network
           });
@@ -109,61 +107,79 @@ describe('FarVault full pipe', () => {
           const safeHDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
             mnemonic: generateMnemonic(256)
           });
-          const safeDerivationPath = getNextReceivingDerivationPath({
-            derivationPaths: [],
+          const safePath = getNextReceivingDerivationPath({
+            usedPaths: [],
             network
           });
-          expect(safeDerivationPath).toEqual("84'/1'/0'/0/0");
+          expect(safePath).toEqual("84'/1'/0'/0/0");
           const safeAddress = await getDerivationPathAddress({
             extPubGetter: safeHDInterface.getExtPub,
-            derivationPath: safeDerivationPath,
+            path: safePath,
             network
           });
 
           expect(walletUTXOs).toEqual(expect.arrayContaining(UTXOs));
           expect(UTXOs.length - walletUTXOs.length >= 0).toEqual(true);
-          expect(fundedDerivationPaths).toEqual(
-            expect.arrayContaining(derivationPaths)
-          );
-          expect(fundedDerivationPaths.length).toEqual(derivationPaths.length);
+          expect(fundedPaths).toEqual(expect.arrayContaining(mockWalletPaths));
+          expect(fundedPaths.length).toEqual(mockWalletPaths.length);
 
-          const rushedMnemonic = generateMnemonic(256);
           const rushedHDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
-            mnemonic: rushedMnemonic
+            mnemonic: generateMnemonic(256)
           });
-          const rushedDerivationPath = getNextReceivingDerivationPath({
-            derivationPaths: [],
+          const rushedPath = getNextReceivingDerivationPath({
+            usedPaths: [],
             network
           });
-          expect(rushedDerivationPath).toEqual("84'/1'/0'/0/0");
+          expect(rushedPath).toEqual("84'/1'/0'/0/0");
           const rushedPublicKey = await rushedHDInterface.getPublicKey(
-            rushedDerivationPath,
-            network
-          );
-          const maturedMnemonic = generateMnemonic(256);
-          const maturedHDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
-            mnemonic: maturedMnemonic
-          });
-          const maturedDerivationPath = getNextReceivingDerivationPath({
-            derivationPaths: [],
-            network
-          });
-          expect(maturedDerivationPath).toEqual("84'/1'/0'/0/0");
-          const maturedPublicKey = await maturedHDInterface.getPublicKey(
-            maturedDerivationPath,
+            rushedPath,
             network
           );
 
-          //Create the hot address that is P2WPKH that will take funds from hot
-          const hotDerivationPath = getNextReceivingDerivationPath({
-            derivationPaths: usedDerivationPaths,
+          const maturedHDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
+            mnemonic: generateMnemonic(256)
+          });
+          const maturedPath = getNextReceivingDerivationPath({
+            usedPaths: [],
+            network
+          });
+          expect(maturedPath).toEqual("84'/1'/0'/0/0");
+          const maturedPublicKey = await maturedHDInterface.getPublicKey(
+            maturedPath,
+            network
+          );
+
+          //Get the list of paths that may receive funds from the setup file
+          //Try not to re-use addresses that may be used as destinataries of
+          //other vaults.
+          const reservedPaths = Object.values(readSetup().vaults).map(
+            vault => vault.hotPath
+          );
+          //TODO
+          //TODO
+          //TODO
+          //TODO
+          //TODO
+          //TODO
+          //TODO
+          //TODO
+          //TODO
+          //TODO
+          //See if it is safe to ignore some of these reservedPaths
+          //read pointer
+          console.log({ reservedPaths });
+
+          //Create the hot address that is P2WPKH that will take funds when
+          //the uer wants again to have access to them:
+          const hotPath = getNextReceivingDerivationPath({
+            usedPaths: usedPaths.concat(reservedPaths),
             network
           });
           //Mark it as used:
-          usedDerivationPaths.push(hotDerivationPath);
-          fundedDerivationPaths.push(hotDerivationPath);
+          usedPaths.push(hotPath);
+          fundedPaths.push(hotPath);
           const hotPublicKey = await hotHDInterface.getPublicKey(
-            hotDerivationPath,
+            hotPath,
             network
           );
 
@@ -188,16 +204,16 @@ describe('FarVault full pipe', () => {
               }
             ],
             changeAddress: async () => {
-              const derivationPath = getNextChangeDerivationPath({
-                derivationPaths: usedDerivationPaths,
+              const path = getNextChangeDerivationPath({
+                usedPaths,
                 network
               });
               //Mark it as used:
-              usedDerivationPaths.push(derivationPath);
-              fundedDerivationPaths.push(derivationPath);
+              usedPaths.push(path);
+              fundedPaths.push(path);
               return await getDerivationPathAddress({
                 extPubGetter: hotHDInterface.getExtPub,
-                derivationPath,
+                path,
                 network
               });
             },
@@ -221,6 +237,7 @@ describe('FarVault full pipe', () => {
             createSigners: hotHDInterface.createSigners,
             network
           });
+          const guardTxid = decodeTx(guardTx).txid;
           console.log('WARNING! Should check the fees here somehow');
 
           const encodedLockTime = bip68.encode({
@@ -238,7 +255,7 @@ describe('FarVault full pipe', () => {
           const recoverTxs = await createMultiFeeTransactions({
             utxos: [
               {
-                derivationPath: safeDerivationPath,
+                path: safePath,
                 n: 0,
                 tx: guardTx
               }
@@ -252,35 +269,46 @@ describe('FarVault full pipe', () => {
             }).address,
             getPublicKey: safeHDInterface.getPublicKey,
             createSigners: safeHDInterface.createSigners,
-            samples: MULTIFEE_SAMPLES,
+            feeRateSamplingParams: { samples: MULTIFEE_SAMPLES },
             network
           });
           if (!Array.isArray(recoverTxs) || recoverTxs.length === 0) {
             throw new Error('Could not create recover funds txs');
           }
 
-          const setup = { recoverTxs: {} };
           const hotAddress = await getDerivationPathAddress({
             //unlock will use hotHDInterface. cancel will use rushedHDInterface
             extPubGetter: hotHDInterface.getExtPub,
             //unlock will use hotHDInterface. cancel will use coldDerivationPath
-            derivationPath: hotDerivationPath,
+            path: hotPath,
             network
           });
+          const setup = {
+            vaults: {
+              [guardTxid]: {
+                hotPath,
+                hotAddress,
+                coldAddress,
+                guardTx,
+                guardTxid,
+                recoverTxs: {}
+              }
+            }
+          };
           for (const recoverTx of recoverTxs) {
             const unlockTxs = await createMultiFeeTransactions({
               utxos: [
                 {
                   tx: recoverTx.tx,
                   n: 0,
-                  derivationPath: maturedDerivationPath,
+                  path: maturedPath,
                   witnessScript: relativeTimeLockScript
                 }
               ],
               address: hotAddress,
               getPublicKey: maturedHDInterface.getPublicKey,
               createSigners: maturedHDInterface.createSigners,
-              samples: MULTIFEE_SAMPLES,
+              feeRateSamplingParams: { samples: MULTIFEE_SAMPLES },
               network
             });
             const cancelTxs = await createMultiFeeTransactions({
@@ -288,31 +316,27 @@ describe('FarVault full pipe', () => {
                 {
                   tx: recoverTx.tx,
                   n: 0,
-                  derivationPath: rushedDerivationPath,
+                  path: rushedPath,
                   witnessScript: relativeTimeLockScript
                 }
               ],
               address: coldAddress,
               getPublicKey: rushedHDInterface.getPublicKey,
               createSigners: rushedHDInterface.createSigners,
-              samples: MULTIFEE_SAMPLES,
+              feeRateSamplingParams: { samples: MULTIFEE_SAMPLES },
               network
             });
-            setup.recoverTxs[decodeTx(recoverTx.tx).txid] = {
+
+            setup.vaults[guardTxid].recoverTxs[decodeTx(recoverTx.tx).txid] = {
+              txid: decodeTx(recoverTx.tx).txid,
               tx: recoverTx.tx,
-              decodedTx: decodeTx(recoverTx.tx),
               feeRate: recoverTx.feeRate,
               fee: recoverTx.fee,
               unlockTxs,
               cancelTxs
             };
-
-            console.log(Object.keys(setup.recoverTxs).length);
           }
-          fs.writeFileSync(
-            path.resolve(__dirname, 'setup.json'),
-            JSON.stringify(setup)
-          );
+          writeSetup(setup);
 
           //CREATE A FUNCTION IN FEES FOR THIS BLOCK
           //
@@ -322,6 +346,7 @@ describe('FarVault full pipe', () => {
             unlockTxTargetTime
           );
           //TODO: encapsulate this into a function and test it.
+          //Note that we will het a setup object (not an array)
           //Pick the best recoverTx as the one with the lowest feeRate that is
           //larger than the unlockTxFeeRate.
           //If none of the recoverTx has a feeRate larger than unlockTxFeeRate
@@ -335,11 +360,16 @@ describe('FarVault full pipe', () => {
           //
           //
           //CREATE A FUNCTION IN FEES FOR THIS BLOCK
+          //Note that we're picking 5 below. Use the function to get the correct tx based on fee.
+
+          const recoverTxid = decodeTx(recoverTx.tx).txid;
 
           await regtestUtils.broadcast(guardTx);
-          const recoverTxId = Object.keys(setup.recoverTxs)[3];
-          const unlockTx = setup.recoverTxs[recoverTxId].unlockTxs[5].tx;
-          await regtestUtils.broadcast(setup.recoverTxs[recoverTxId].tx);
+          const unlockTx =
+            setup.vaults[guardTxid].recoverTxs[recoverTxid].unlockTxs[5].tx;
+          await regtestUtils.broadcast(
+            setup.vaults[guardTxid].recoverTxs[recoverTxid].tx
+          );
           //Rejection reason should be non-BIP68-final
           if (lockNBlocks > 1)
             console.log(await regtestUtils.mine(lockNBlocks - 1));
@@ -349,16 +379,15 @@ describe('FarVault full pipe', () => {
           console.log(await regtestUtils.mine(1));
           await expect(regtestUtils.broadcast(unlockTx)).resolves.toEqual(null);
           //console.log(await regtestUtils.mine(1));
-          console.log(await regtestUtils.fetch(recoverTxId));
+          console.log(await regtestUtils.fetch(recoverTxid));
           console.log(await regtestUtils.fetch(decodeTx(unlockTx).txid));
 
           //await regtestUtils.broadcast(guardTx);
-          //const recoverTxId = Object.keys(setup.recoverTxs)[3];
-          //const cancelTx = setup.recoverTxs[recoverTxId].cancelTxs[5].tx;
-          //await regtestUtils.broadcast(setup.recoverTxs[recoverTxId].tx);
+          //const cancelTx = setup.vaults.[guardTxid].recoverTxs[recoverTxid].cancelTxs[5].tx;
+          //await regtestUtils.broadcast(setup.vaults.[guardTxid].recoverTxs[recoverTxid].tx);
           //await regtestUtils.broadcast(cancelTx);
           //console.log(await regtestUtils.mine(6));
-          //console.log(await regtestUtils.fetch(recoverTxId));
+          //console.log(await regtestUtils.fetch(recoverTxid));
           //console.log(await regtestUtils.fetch(decodeTx(cancelTx).txid));
 
           //We can stop the bitcoin and explorer servers

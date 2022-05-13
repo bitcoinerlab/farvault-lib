@@ -12,18 +12,14 @@ import {
 } from '../bip32';
 import { networks } from 'bitcoinjs-lib';
 
-async function getPublicKey(
-  HDInterface,
-  derivationPath,
-  network = networks.bitcoin
-) {
+async function getPublicKey(HDInterface, path, network = networks.bitcoin) {
   const {
     purpose,
     coinType,
     accountNumber,
     index,
     isChange
-  } = parseDerivationPath(derivationPath);
+  } = parseDerivationPath(path);
   if (getNetworkCoinType(network) !== coinType) {
     throw new Error('Network mismatch');
   }
@@ -61,7 +57,7 @@ async function getPublicKey(
  * @returns {object} An object containing the following functions:
  *
  * * `getExtPub` (as defined in {@link module:HDInterface.extPubGetter})
- * * `getPublicKey`: `(derivationPath, network) => publicKey`
+ * * `getPublicKey`: `(path, network) => publicKey`
  * * `createSigners`: `({ psbt, utxos, network }) => [(hash_utxo_0)=>signature_utxo_0, (hash_utxo_1)=>signature_utxo_1, ...]`
  */
 export async function initHDInterface(type, { mnemonic } = {}) {

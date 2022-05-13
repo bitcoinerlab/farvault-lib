@@ -1,5 +1,5 @@
 export const fixtures = {
-  derivationPaths: {
+  paths: {
     valid: [
       "44'/1'/0'/0/0",
       "44'/1'/0'/0/3",

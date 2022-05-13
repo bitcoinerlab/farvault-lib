@@ -45,7 +45,7 @@ export async function getExtPub(
 export async function createSigners(seed, { psbt, utxos, network }) {
   const root = await fromSeed(seed, network);
   return utxos.map(utxo => $hash => {
-    const signature = root.derivePath(utxo.derivationPath).sign($hash);
+    const signature = root.derivePath(utxo.path).sign($hash);
     return signature;
   });
 }

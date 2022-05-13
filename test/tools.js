@@ -27,7 +27,7 @@ export async function createMockWallet(
 ) {
   const HDInterface = await initHDInterface(SOFT_HD_INTERFACE, { mnemonic });
   const extPubs = [];
-  const derivationPaths = [];
+  const mockWalletPaths = [];
   const UTXOs = [];
   for (const descriptor of addressesDescriptors) {
     const { purpose, accountNumber } = descriptor.extPub;
@@ -40,26 +40,33 @@ export async function createMockWallet(
     if (extPubs.indexOf(extPub) === -1) extPubs.push(extPub);
 
     const address = getExtPubAddress({ extPub, index, isChange, network });
-    const derivationPath = serializeDerivationPath({
+    const path = serializeDerivationPath({
       purpose,
       coinType: getNetworkCoinType(network),
       accountNumber,
       isChange,
       index
     });
-    derivationPaths.push(derivationPath);
+    mockWalletPaths.push(path);
     const unspent = await regtestUtils.faucet(address, descriptor.value);
     const utxo = {
       tx: (await regtestUtils.fetch(unspent.txId)).txHex,
       n: unspent.vout,
-      derivationPath
+      path
     };
     UTXOs.push(utxo);
     //console.log({ unspent, utxo });
   }
   // All of the above faucet payments will confirm
   const results = await regtestUtils.mine(6);
-  return { HDInterface, extPubs, UTXOs, derivationPaths, network, regtestUtils };
+  return {
+    HDInterface,
+    extPubs,
+    UTXOs,
+    mockWalletPaths,
+    network,
+    regtestUtils
+  };
 }
 
 export async function startTestingEnvironment() {

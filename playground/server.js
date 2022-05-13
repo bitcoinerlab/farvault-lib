@@ -90,11 +90,6 @@ app.get('/', (req, res) => {
         Test ledgerBalanceTestnet
       </button>
       </p>
-      <p>
-      <button onclick="playgroundLib.playgroundPaymentTestnet()">
-        Test playgroundPaymentTestnet - Full Pileline
-      </button>
-      </p>
     <p id="protectedContentDisplay"/>
     </body>
 </html>

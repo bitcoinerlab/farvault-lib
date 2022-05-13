@@ -5,7 +5,7 @@ export function decodeTx(hex, network) {
   const tx = Transaction.fromHex(hex);
   return {
     txid: tx.getId(),
-    hash: tx.getHash(true /*for witness*/).toString('hex'),
+    witnesshash: tx.getHash(true /*for witness*/).toString('hex'),
     size: tx.byteLength(),
     vsize: tx.virtualSize(),
     weight: tx.weight(),

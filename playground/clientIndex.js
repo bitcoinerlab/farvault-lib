@@ -5,7 +5,6 @@ import {
 } from '../src/HDInterface';
 
 import { networks } from 'bitcoinjs-lib';
-import { playgroundPayment } from '../src/payments';
 import { fetchDerivationPaths, getDerivationPathAddress } from '../src/wallet';
 import {
   blockstreamFetchAddress,
@@ -20,18 +19,15 @@ async function ledgerBalance({
   const addresses = [];
   const utxos = [];
   const HDInterface = await initHDInterface(LEDGER_NANO_INTERFACE);
-  const { fundedDerivationPaths: derivationPaths } = await fetchDerivationPaths(
-    {
-      extPubGetter: async params => HDInterface.getExtPub(params),
-      addressFetcher,
-      network
-    }
-  );
-  //console.log({ derivationPaths });
-  for (const derivationPath of derivationPaths) {
+  const { fundedPaths } = await fetchDerivationPaths({
+    extPubGetter: async params => HDInterface.getExtPub(params),
+    addressFetcher,
+    network
+  });
+  for (const path of fundedPaths) {
     const address = await getDerivationPathAddress({
       extPubGetter: async params => HDInterface.getExtPub(params),
-      derivationPath,
+      path,
       network
     });
     addresses.push(address);
@@ -39,7 +35,7 @@ async function ledgerBalance({
     addressUtxos.map(addressUtxo => utxos.push(addressUtxo));
   }
   console.log({ addresses, utxos });
-  return derivationPaths;
+  return fundedPaths;
 }
 
 async function softwareBalance({
@@ -50,18 +46,15 @@ async function softwareBalance({
   const addresses = [];
   const utxos = [];
   const HDInterface = await initHDInterface(SOFT_HD_INTERFACE);
-  const { fundedDerivationPaths: derivationPaths } = await fetchDerivationPaths(
-    {
-      extPubGetter: async params => HDInterface.getExtPub(params),
-      addressFetcher,
-      network
-    }
-  );
-  //console.log({ derivationPaths });
-  for (const derivationPath of derivationPaths) {
+  const { fundedPaths } = await fetchDerivationPaths({
+    extPubGetter: async params => HDInterface.getExtPub(params),
+    addressFetcher,
+    network
+  });
+  for (const path of fundedPaths) {
     const address = await getDerivationPathAddress({
       extPubGetter: async params => HDInterface.getExtPub(params),
-      derivationPath,
+      path,
       network
     });
     addresses.push(address);
@@ -69,7 +62,7 @@ async function softwareBalance({
     addressUtxos.map(addressUtxo => utxos.push(addressUtxo));
   }
   console.log({ addresses, utxos });
-  return derivationPaths;
+  return fundedPaths;
 }
 
 const ledgerBalanceTestnet = () => ledgerBalance({ network: networks.testnet });
@@ -77,13 +70,7 @@ const ledgerBalanceTestnet = () => ledgerBalance({ network: networks.testnet });
 const softwareBalanceTestnet = () =>
   softwareBalance({ network: networks.testnet });
 
-const playgroundPaymentTestnet = () =>
-  playgroundPayment({ network: networks.testnet, useLedger: false });
-export {
-  ledgerBalanceTestnet,
-  softwareBalanceTestnet,
-  playgroundPaymentTestnet
-};
+export { ledgerBalanceTestnet, softwareBalanceTestnet };
 
 import {
   requestNonce,
