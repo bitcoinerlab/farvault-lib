@@ -1,9 +1,12 @@
 import {
   LEGACY,
   NATIVE_SEGWIT,
-  NESTED_SEGWIT
+  NESTED_SEGWIT,
+  GAP_LIMIT,
+  SKIP
 } from '../../src/walletConstants';
 import { networks } from 'bitcoinjs-lib';
+import { parseDerivationPath } from '../../src/bip32';
 const addressesDescriptors = [
   {
     //0
@@ -96,6 +99,7 @@ const addressesDescriptors = [
     network: networks.testnet
   }
 ];
+
 export const fixtures = {
   addressesDescriptors,
   //An affine set of addresses are those that share network and mnemonic.
@@ -113,6 +117,7 @@ export const fixtures = {
         purpose: LEGACY,
         accountNumber: 10,
         nextDerivationPath: "44'/1'/10'/0/0",
+        lastDerivationPath: -1,
         defaultAccount: { accountNumber: 0, purpose: NATIVE_SEGWIT }
       },
       //test 1
@@ -120,11 +125,12 @@ export const fixtures = {
         mnemonic: addressesDescriptors[0].mnemonic,
         network: addressesDescriptors[0].network,
         addressesDescriptors: [addressesDescriptors[4]],
-        gapAccountLimit: 3,
+        gapAccountLimit: 4,
         isChange: true,
         purpose: NESTED_SEGWIT,
         accountNumber: 0,
         nextDerivationPath: "49'/1'/0'/1/0",
+        lastDerivationPath: -1,
         defaultAccount: { accountNumber: 3, purpose: NESTED_SEGWIT }
       },
       {
@@ -136,6 +142,7 @@ export const fixtures = {
         ],
         isChange: false,
         nextDerivationPath: "44'/1'/0'/0/4",
+        lastDerivationPath: "44'/1'/0'/0/3",
         defaultAccount: { accountNumber: 0, purpose: LEGACY }
       },
       {
@@ -150,6 +157,7 @@ export const fixtures = {
         isChange: false,
         accountNumber: 4,
         nextDerivationPath: "49'/1'/4'/0/0",
+        lastDerivationPath: -1,
         defaultAccount: { accountNumber: 3, purpose: NESTED_SEGWIT }
       },
       {
@@ -164,6 +172,7 @@ export const fixtures = {
         isChange: false,
         accountNumber: 0,
         nextDerivationPath: "49'/1'/0'/0/7",
+        lastDerivationPath: "49'/1'/0'/0/6",
         defaultAccount: { accountNumber: 3, purpose: NESTED_SEGWIT }
       },
       {
@@ -178,6 +187,7 @@ export const fixtures = {
         isChange: true,
         accountNumber: 0,
         nextDerivationPath: "49'/1'/0'/1/0",
+        lastDerivationPath: -1,
         defaultAccount: { accountNumber: 3, purpose: NESTED_SEGWIT }
       },
       {
@@ -188,6 +198,7 @@ export const fixtures = {
         accountNumber: 15,
         purpose: LEGACY,
         nextDerivationPath: "44'/1'/15'/0/0",
+        lastDerivationPath: -1,
         defaultAccount: { accountNumber: 0, purpose: NATIVE_SEGWIT }
       },
       {
@@ -196,6 +207,7 @@ export const fixtures = {
         addressesDescriptors: [addressesDescriptors[1]],
         isChange: false,
         nextDerivationPath: "44'/1'/0'/0/4",
+        lastDerivationPath: "44'/1'/0'/0/3",
         defaultAccount: { accountNumber: 0, purpose: LEGACY }
       },
       {
@@ -214,6 +226,7 @@ export const fixtures = {
         accountNumber: 0,
         purpose: LEGACY,
         nextDerivationPath: "44'/1'/0'/0/0",
+        lastDerivationPath: -1,
         defaultAccount: { accountNumber: 3, purpose: NATIVE_SEGWIT }
       },
       {
@@ -232,6 +245,7 @@ export const fixtures = {
         accountNumber: 0,
         purpose: NESTED_SEGWIT,
         nextDerivationPath: "49'/1'/0'/0/7",
+        lastDerivationPath: "49'/1'/0'/0/6",
         defaultAccount: { accountNumber: 3, purpose: NATIVE_SEGWIT }
       },
       {
@@ -250,10 +264,12 @@ export const fixtures = {
         accountNumber: 3,
         purpose: NATIVE_SEGWIT,
         nextDerivationPath: "84'/1'/3'/1/9",
+        lastDerivationPath: "84'/1'/3'/1/8",
         defaultAccount: { accountNumber: 3, purpose: NATIVE_SEGWIT }
       }
     ],
     invalid: [
+      //test 0
       {
         //This should throw because they correspond to different purposes
         //and account numbers and we did not specify any
@@ -269,6 +285,7 @@ export const fixtures = {
         errorMessage:
           'Must specify an account number since derivation paths have a mix of account numbers!'
       },
+      //test 1
       {
         //This should throw because they correspond to different purposes
         //and account numbers and we did not specify any
@@ -285,6 +302,7 @@ export const fixtures = {
         errorMessage:
           'Must specify an account number since derivation paths have a mix of account numbers!'
       },
+      //test 2
       {
         mnemonic: addressesDescriptors[2].mnemonic,
         network: addressesDescriptors[2].network,
@@ -300,6 +318,7 @@ export const fixtures = {
         isChange: true,
         errorMessage: 'Incorrect parameters' //thown by parseDerivationPath
       },
+      //test 3
       {
         mnemonic: addressesDescriptors[2].mnemonic,
         network: addressesDescriptors[2].network,
@@ -315,6 +334,7 @@ export const fixtures = {
         isChange: 1,
         errorMessage: 'Incorrect isChange parameter!'
       },
+      //test 4
       {
         mnemonic: addressesDescriptors[2].mnemonic,
         network: addressesDescriptors[2].network,
@@ -324,6 +344,7 @@ export const fixtures = {
         purpose: LEGACY,
         errorMessage: 'Incorrect isChange parameter!'
       },
+      //test 5
       {
         mnemonic: addressesDescriptors[2].mnemonic,
         network: addressesDescriptors[2].network,
@@ -334,6 +355,7 @@ export const fixtures = {
         errorMessage:
           'Must specify a purpose AND an account number since this wallet has never been used!'
       },
+      //test 6
       {
         mnemonic: addressesDescriptors[2].mnemonic,
         network: addressesDescriptors[2].network,
@@ -344,6 +366,7 @@ export const fixtures = {
         errorMessage:
           'Must specify a purpose AND an account number since this wallet has never been used!'
       },
+      //test 7
       {
         mnemonic: addressesDescriptors[2].mnemonic,
         network: addressesDescriptors[2].network,
@@ -354,6 +377,7 @@ export const fixtures = {
         errorMessage:
           'Must specify a purpose AND an account number since this wallet has never been used!'
       },
+      //test 8
       {
         mnemonic: addressesDescriptors[2].mnemonic,
         network: addressesDescriptors[2].network,
@@ -371,6 +395,7 @@ export const fixtures = {
           'Must specify an account number since derivation paths have a mix of account numbers!'
         //without account number and purpose
       },
+      //test 9
       {
         mnemonic: addressesDescriptors[2].mnemonic,
         network: addressesDescriptors[2].network,
@@ -389,6 +414,7 @@ export const fixtures = {
         errorMessage:
           'Must specify a purpose AND an account number since derivation paths have a mix of purposes!'
       },
+      //test 10
       {
         mnemonic: addressesDescriptors[2].mnemonic,
         network: addressesDescriptors[2].network,
@@ -407,6 +433,7 @@ export const fixtures = {
         errorMessage:
           'Must specify an account number since derivation paths have a mix of account numbers!'
       },
+      //test 11
       {
         //Different account number and same purpose
         mnemonic: addressesDescriptors[2].mnemonic,
@@ -420,6 +447,7 @@ export const fixtures = {
         errorMessage:
           'Must specify an account number since derivation paths have a mix of account numbers!'
       },
+      //test 12
       {
         //Different account number and different purpose
         mnemonic: addressesDescriptors[2].mnemonic,
@@ -432,6 +460,7 @@ export const fixtures = {
         errorMessage:
           'Must specify an account number since derivation paths have a mix of account numbers!'
       },
+      //test 13
       {
         //different purpose, same account number
         mnemonic: addressesDescriptors[2].mnemonic,
@@ -440,10 +469,611 @@ export const fixtures = {
           addressesDescriptors[4],
           addressesDescriptors[5]
         ],
-        gapAccountLimit: 3,
+        gapAccountLimit: 4,
         isChange: false,
         errorMessage:
           'Must specify a purpose AND an account number since derivation paths have a mix of purposes!'
+      }
+    ]
+  },
+  normalizeDerivationPaths: {
+    invalid: [
+      {
+        description: 'Bad formatted entry - number of elements',
+        usedPaths: ["44'/0'/1'/0"],
+        errorMessage: 'Invalid number of elements'
+      },
+      {
+        description: 'Bad formatted entry - invalid isChange',
+        usedPaths: ["44'/1'/0'/2/0"],
+        errorMessage: 'Invalid change type'
+      },
+      {
+        description: 'Not set usedPaths',
+        usedPaths: undefined,
+        errorMessage: 'Invalid usedPaths'
+      },
+      {
+        description: 'Invalid type gapLimit',
+        gapLimit: '3',
+        errorMessage: 'Invalid gapLimit'
+      },
+      {
+        description: 'Invalid type gapAccountLimit',
+        gapAccountLimit: 0,
+        errorMessage: 'Invalid gapAccountLimit'
+      },
+      {
+        description: 'Valid paths but non BIP-44 ones',
+        usedPaths: ["47'/1'/0'/0/0"],
+        errorMessage: 'Invalid purpose'
+      },
+      {
+        description: 'Calls the function with invalid usedPaths type',
+        usedPaths: "44'/1'/0'/0/0",
+        errorMessage: 'Invalid usedPaths'
+      },
+      {
+        description: 'Calls the function with undefined usedPaths',
+        usedPaths: undefined,
+        errorMessage: 'Invalid usedPaths'
+      },
+      {
+        description: 'Invalid gapAccountLimit - default is 1',
+        usedPaths: ["44'/1'/1'/1/0"],
+        errorMessage:
+          'Unreachable derivation path. Increase the gap account limit.'
+      },
+      {
+        description: 'Good order but invalid gapLimit',
+        usedPaths: ["44'/1'/0'/1/0", "44'/1'/0'/1/21"],
+        errorMessage: 'Unreachable derivation path. Increase the gap limit.'
+      },
+      {
+        description: 'Good order but both invalid gapLimit and gapAccountLimit',
+        usedPaths: ["44'/1'/0'/1/0", "44'/1'/1'/1/21"],
+        errorMessage: 'Unreachable derivation path. Increase the gap limit.'
+      }
+    ],
+    valid: [
+      { description: 'Emtpy set', usedPaths: [], usedParsedPaths: [] },
+      {
+        description: 'isChange differs',
+        usedPaths: ["44'/1'/0'/0/8", "44'/1'/0'/1/8"],
+        usedParsedPaths: [
+          parseDerivationPath("44'/1'/0'/0/8"),
+          parseDerivationPath("44'/1'/0'/1/8")
+        ]
+      },
+      {
+        description: 'One element',
+        usedPaths: ["44'/1'/0'/1/8"],
+        usedParsedPaths: [parseDerivationPath("44'/1'/0'/1/8")]
+      },
+      {
+        description: 'Different formatting options',
+        usedPaths: ["m/44h/1H/0'/0/8", "44h/1'/0H/1/8"],
+        usedParsedPaths: [
+          parseDerivationPath("44'/1'/0'/0/8"),
+          parseDerivationPath("44'/1'/0'/1/8")
+        ]
+      },
+      {
+        description:
+          'Deduplication works even with different formatting options',
+        usedPaths: [
+          "44'/1'/0'/0/8",
+          "44'/1'/0'/0/8",
+          "44'/1'/0'/0/8",
+          "44'/1'/0'/0/8",
+          //change formatting options:
+          "44'/1'/0'/1/8",
+          "44h/1'/0H/1/8",
+          "m/44H/1'/0'/1/8",
+          "M/44H/1'/0'/1/8"
+        ],
+        usedParsedPaths: [
+          parseDerivationPath("44'/1'/0'/0/8"),
+          parseDerivationPath("44'/1'/0'/1/8")
+        ]
+      },
+      {
+        description: 'Mixing network types',
+        usedPaths: [
+          "44'/1'/0'/1/18",
+          "44'/1'/0'/0/8",
+          "44'/1'/0'/1/9",
+          "44'/0'/0'/0/8",
+          "44'/0'/0'/1/18"
+        ],
+        usedParsedPaths: [
+          parseDerivationPath("44'/0'/0'/0/8"),
+          parseDerivationPath("44'/0'/0'/1/18"),
+          parseDerivationPath("44'/1'/0'/0/8"),
+          parseDerivationPath("44'/1'/0'/1/9"),
+          parseDerivationPath("44'/1'/0'/1/18")
+        ]
+      },
+      {
+        description: 'Mixing network types and purposes',
+        usedPaths: [
+          "49'/1'/0'/1/18",
+          "49'/1'/0'/0/8",
+          "49'/1'/0'/1/9",
+          "49'/0'/0'/0/8",
+          "49'/0'/0'/1/18",
+          //
+          "84'/1'/0'/1/18",
+          "84'/1'/0'/0/8",
+          "84'/1'/0'/1/9",
+          "84'/0'/0'/0/8",
+          "84'/0'/0'/1/18",
+          //
+          "44'/1'/0'/1/18",
+          "44'/1'/0'/0/8",
+          "44'/1'/0'/1/9",
+          "44'/0'/0'/0/8",
+          "44'/0'/0'/1/18"
+        ],
+        usedParsedPaths: [
+          parseDerivationPath("44'/0'/0'/0/8"),
+          parseDerivationPath("44'/0'/0'/1/18"),
+          parseDerivationPath("49'/0'/0'/0/8"),
+          parseDerivationPath("49'/0'/0'/1/18"),
+          parseDerivationPath("84'/0'/0'/0/8"),
+          parseDerivationPath("84'/0'/0'/1/18"),
+          parseDerivationPath("44'/1'/0'/0/8"),
+          parseDerivationPath("44'/1'/0'/1/9"),
+          parseDerivationPath("44'/1'/0'/1/18"),
+          parseDerivationPath("49'/1'/0'/0/8"),
+          parseDerivationPath("49'/1'/0'/1/9"),
+          parseDerivationPath("49'/1'/0'/1/18"),
+          parseDerivationPath("84'/1'/0'/0/8"),
+          parseDerivationPath("84'/1'/0'/1/9"),
+          parseDerivationPath("84'/1'/0'/1/18")
+        ]
+      },
+      {
+        description: 'Mixing network types, accounts and purposes',
+        gapAccountLimit: 11, //16-5
+        usedPaths: [
+          "49'/1'/5'/1/18",
+          "49'/1'/5'/0/8",
+          "49'/1'/5'/1/9",
+          "49'/0'/5'/0/8",
+          "49'/0'/5'/1/18",
+          //
+          "84'/1'/5'/1/18",
+          "84'/1'/5'/0/8",
+          "84'/1'/5'/1/9",
+          "84'/0'/5'/0/8",
+          "84'/0'/5'/1/18",
+          //
+          "44'/1'/5'/1/18",
+          "44'/1'/5'/0/8",
+          "44'/1'/5'/1/9",
+          "44'/0'/5'/0/8",
+          "44'/0'/5'/1/18",
+          //
+          //
+          "49'/1'/0'/1/18",
+          "49'/1'/0'/0/8",
+          "49'/1'/0'/1/9",
+          "49'/0'/0'/0/8",
+          "49'/0'/0'/1/18",
+          //
+          "84'/1'/0'/1/18",
+          "84'/1'/0'/0/8",
+          "84'/1'/0'/1/9",
+          "84'/0'/0'/0/8",
+          "84'/0'/0'/1/18",
+          //
+          "44'/1'/0'/1/18",
+          "44'/1'/0'/0/8",
+          "44'/1'/0'/1/9",
+          "44'/0'/0'/0/8",
+          "44'/0'/0'/1/18",
+          //
+          //
+          "49'/1'/16'/1/18",
+          "49'/1'/16'/0/8",
+          "49'/1'/16'/1/9",
+          "49'/0'/16'/0/8",
+          "49'/0'/16'/1/18",
+          //
+          "84'/1'/16'/1/18",
+          "84'/1'/16'/0/8",
+          "84'/1'/16'/1/9",
+          "84'/0'/16'/0/8",
+          "84'/0'/16'/1/18",
+          //
+          "44'/1'/16'/1/18",
+          "44'/1'/16'/0/8",
+          "44'/1'/16'/1/9",
+          "44'/0'/16'/0/8",
+          "44'/0'/16'/1/18"
+        ],
+        usedParsedPaths: [
+          parseDerivationPath("44'/0'/0'/0/8"),
+          parseDerivationPath("44'/0'/0'/1/18"),
+          parseDerivationPath("44'/0'/5'/0/8"),
+          parseDerivationPath("44'/0'/5'/1/18"),
+          parseDerivationPath("44'/0'/16'/0/8"),
+          parseDerivationPath("44'/0'/16'/1/18"),
+          parseDerivationPath("49'/0'/0'/0/8"),
+          parseDerivationPath("49'/0'/0'/1/18"),
+          parseDerivationPath("49'/0'/5'/0/8"),
+          parseDerivationPath("49'/0'/5'/1/18"),
+          parseDerivationPath("49'/0'/16'/0/8"),
+          parseDerivationPath("49'/0'/16'/1/18"),
+          parseDerivationPath("84'/0'/0'/0/8"),
+          parseDerivationPath("84'/0'/0'/1/18"),
+          parseDerivationPath("84'/0'/5'/0/8"),
+          parseDerivationPath("84'/0'/5'/1/18"),
+          parseDerivationPath("84'/0'/16'/0/8"),
+          parseDerivationPath("84'/0'/16'/1/18"),
+          parseDerivationPath("44'/1'/0'/0/8"),
+          parseDerivationPath("44'/1'/0'/1/9"),
+          parseDerivationPath("44'/1'/0'/1/18"),
+          parseDerivationPath("44'/1'/5'/0/8"),
+          parseDerivationPath("44'/1'/5'/1/9"),
+          parseDerivationPath("44'/1'/5'/1/18"),
+          parseDerivationPath("44'/1'/16'/0/8"),
+          parseDerivationPath("44'/1'/16'/1/9"),
+          parseDerivationPath("44'/1'/16'/1/18"),
+          parseDerivationPath("49'/1'/0'/0/8"),
+          parseDerivationPath("49'/1'/0'/1/9"),
+          parseDerivationPath("49'/1'/0'/1/18"),
+          parseDerivationPath("49'/1'/5'/0/8"),
+          parseDerivationPath("49'/1'/5'/1/9"),
+          parseDerivationPath("49'/1'/5'/1/18"),
+          parseDerivationPath("49'/1'/16'/0/8"),
+          parseDerivationPath("49'/1'/16'/1/9"),
+          parseDerivationPath("49'/1'/16'/1/18"),
+          parseDerivationPath("84'/1'/0'/0/8"),
+          parseDerivationPath("84'/1'/0'/1/9"),
+          parseDerivationPath("84'/1'/0'/1/18"),
+          parseDerivationPath("84'/1'/5'/0/8"),
+          parseDerivationPath("84'/1'/5'/1/9"),
+          parseDerivationPath("84'/1'/5'/1/18"),
+          parseDerivationPath("84'/1'/16'/0/8"),
+          parseDerivationPath("84'/1'/16'/1/9"),
+          parseDerivationPath("84'/1'/16'/1/18")
+        ]
+      }
+    ]
+  },
+  getNextDerivationPath: {
+    invalid: [
+      {
+        description: 'Bad formatted entry - number of elements',
+        isChange: false,
+        usedPaths: ["44'/0'/1'/0"],
+        skip: SKIP,
+        prereservedPaths: [],
+        errorMessage: 'Invalid number of elements'
+      },
+      {
+        description: 'Invalid maxGap',
+        isChange: false,
+        usedPaths: ["44'/0'/0'/0/20"],
+        skip: SKIP,
+        prereservedPaths: [],
+        errorMessage: 'Unreachable derivation path. Increase the gap limit.'
+      },
+      {
+        description: 'Tries to skip too many addresses',
+        isChange: false,
+        usedPaths: ["84'/0'/0'/0/19"],
+        skip: 20,
+        prereservedPaths: [],
+        errorMessage: 'Invalid skip'
+      },
+      {
+        description: 'Unreachable account number',
+        isChange: false,
+        usedPaths: ["84'/0'/1'/0/19"],
+        skip: SKIP,
+        prereservedPaths: [],
+        errorMessage:
+          'Unreachable derivation path. Increase the gap account limit.'
+      },
+      {
+        description: 'Skip cannot be equal to gapLimit',
+        isChange: false,
+        usedPaths: [],
+        skip: 10,
+        gapLimit: 10,
+        prereservedPaths: [],
+        errorMessage: 'Invalid skip'
+      },
+      {
+        description: 'Skip cannot be larger than gapLimit',
+        isChange: false,
+        usedPaths: [],
+        skip: 11,
+        gapLimit: 10,
+        prereservedPaths: [],
+        errorMessage: 'Invalid skip'
+      },
+      {
+        description: 'Invalid usedPaths',
+        isChange: false,
+        usedPaths: 'string',
+        skip: SKIP,
+        prereservedPaths: [],
+        errorMessage: 'Invalid usedPaths'
+      },
+      {
+        description: 'Invalid usedPaths',
+        isChange: false,
+        usedPaths: [],
+        skip: SKIP,
+        prereservedPaths: 'string',
+        errorMessage: 'Invalid prereservedPaths'
+      },
+      {
+        description: 'Unreachable gap account',
+        isChange: false,
+        usedPaths: ["44'/0h/1H/0/0"],
+        skip: SKIP,
+        prereservedPaths: [],
+        errorMessage:
+          'Unreachable derivation path. Increase the gap account limit.'
+      },
+      {
+        description: 'Unreachable gap account even if usedPaths only on change',
+        isChange: false,
+        usedPaths: ["44'/0h/1H/1/0"],
+        skip: SKIP,
+        prereservedPaths: [],
+        errorMessage:
+          'Unreachable derivation path. Increase the gap account limit.'
+      },
+      {
+        description: 'Wrong network on usedPaths',
+        isChange: false,
+        usedPaths: ["44'/1'/1'/1/0"],
+        skip: SKIP,
+        gapAccountLimit: 2,
+        prereservedPaths: [],
+        errorMessage: 'The coin type does not math this network'
+      }
+    ],
+    valid: [
+      {
+        description: 'Emtpy set, skip 0',
+        isChange: false,
+        usedPaths: [],
+        prereservedPaths: [],
+        distantReceivingPath: "84'/0'/0'/0/0"
+      },
+      {
+        description: 'Emtpy set, skip 19',
+        isChange: false,
+        usedPaths: [],
+        skip: 19,
+        prereservedPaths: [],
+        distantReceivingPath: "84'/0'/0'/0/19"
+      },
+      {
+        description: 'isChange addresses is ignored',
+        isChange: false,
+        usedPaths: ["84'/0'/0'/1/19"],
+        skip: 19,
+        prereservedPaths: [],
+        distantReceivingPath: "84'/0'/0'/0/19"
+      },
+      {
+        description: 'Correctly jumps max gap',
+        isChange: false,
+        usedPaths: ["84'/0'/0'/0/19"],
+        skip: 19,
+        prereservedPaths: [],
+        distantReceivingPath: "84'/0'/0'/0/39"
+      },
+      {
+        description: 'Default jump size is correct',
+        isChange: false,
+        usedPaths: ["84'/0'/0'/0/19"],
+        skip: SKIP,
+        prereservedPaths: [],
+        distantReceivingPath: `84'/0'/0'/0/${19 + SKIP + 1}`
+      },
+      {
+        description:
+          'Skip is over the default gapLimit by passing it as an argument',
+        isChange: false,
+        usedPaths: ["84'/0'/0'/0/19"],
+        skip: 20,
+        prereservedPaths: [],
+        gapLimit: 21,
+        distantReceivingPath: "84'/0'/0'/0/40",
+        errorMessage: 'Invalid skip'
+      },
+      {
+        description:
+          'prereservedPaths does not affect if not in the default account',
+        isChange: false,
+        usedPaths: ["84'/0'/0'/0/19"],
+        skip: SKIP,
+        prereservedPaths: ["84'/0'/1'/0/29"],
+        distantReceivingPath: `84'/0'/0'/0/${19 + SKIP + 1}`
+      },
+      {
+        description: "There's a prereservedPath after 10",
+        isChange: false,
+        usedPaths: ["84'/0'/0'/0/19"],
+        skip: SKIP,
+        prereservedPaths: ["84'/0'/0'/0/29"],
+        distantReceivingPath: `84'/0'/0'/0/${19 + SKIP + 1}`
+      },
+      {
+        description: "There's a prereservedPath after in our skip target",
+        isChange: false,
+        usedPaths: ["84'/0'/0'/0/19"],
+        skip: SKIP,
+        prereservedPaths: [`84'/0'/0'/0/${19 + SKIP + 1}`],
+        distantReceivingPath: `84'/0'/0'/0/${19 + SKIP + 2}`
+      },
+      {
+        description:
+          "There's a prereservedPath after in our skip target which is the last one so we must reuse",
+        isChange: false,
+        usedPaths: ["84'/0'/0'/0/19"],
+        skip: 19,
+        prereservedPaths: [`84'/0'/0'/0/${19 + 19 + 1}`],
+        distantReceivingPath: `84'/0'/0'/0/${19 + 19 + 1}`
+      },
+      {
+        description: 'It gets the defaultAccount',
+        isChange: false,
+        usedPaths: ["49'/0'/0'/0/19", "84'/0'/0'/0/19", "44'/0'/0'/0/19"],
+        skip: SKIP,
+        prereservedPaths: [],
+        distantReceivingPath: `84'/0'/0'/0/${19 + SKIP + 1}`
+      },
+      {
+        description:
+          'It gets the defaultAccount not native seg letting one account to be skipped',
+        isChange: false,
+        usedPaths: ["49'/0'/1'/0/19", "44'/0'/0'/0/19"],
+        skip: SKIP,
+        gapAccountLimit: 2,
+        prereservedPaths: [],
+        distantReceivingPath: `49'/0'/1'/0/${19 + SKIP + 1}`
+      },
+      {
+        description: 'Skip 0 and prereservedPath',
+        isChange: false,
+        usedPaths: ["84'/0'/0'/0/0"],
+        prereservedPaths: [`84'/0'/0'/0/1`],
+        distantReceivingPath: `84'/0'/0'/0/2`
+      },
+      {
+        description: 'Skip 0 and not prereservedPath',
+        isChange: false,
+        usedPaths: ["84'/0'/0'/0/1"],
+        prereservedPaths: [],
+        distantReceivingPath: `84'/0'/0'/0/2`
+      },
+      {
+        description: 'Must reuse last prereservedPath',
+        isChange: false,
+        usedPaths: [],
+        skip: 15,
+        gapLimit: 20,
+        prereservedPaths: [
+          `84'/0'/0'/0/${15}`,
+          `84'/0'/0'/0/${15 + 1}`,
+          `84'/0'/0'/0/${15 + 2}`,
+          `84'/0'/0'/0/${15 + 3}`,
+          `84'/0'/0'/0/${15 + 4}`
+        ],
+        distantReceivingPath: `84'/0'/0'/0/${15 + 4}`
+      },
+      {
+        description: 'Must reuse last prereservedPath - reverse order',
+        isChange: false,
+        usedPaths: [],
+        skip: 15,
+        gapLimit: 20,
+        prereservedPaths: [
+          `84'/0'/0'/0/${15 + 4}`,
+          `84'/0'/0'/0/${15 + 3}`,
+          `84'/0'/0'/0/${15 + 2}`,
+          `84'/0'/0'/0/${15 + 1}`,
+          `84'/0'/0'/0/${15}`
+        ],
+        distantReceivingPath: `84'/0'/0'/0/${15 + 4}`
+      },
+      {
+        description: 'Leave rooom for last prereservedPath',
+        isChange: false,
+        usedPaths: [],
+        skip: 15,
+        gapLimit: 20,
+        prereservedPaths: [
+          `84'/0'/0'/0/${15}`,
+          `84'/0'/0'/0/${15 + 1}`,
+          `84'/0'/0'/0/${15 + 2}`,
+          `84'/0'/0'/0/${15 + 3}`
+        ],
+        distantReceivingPath: `84'/0'/0'/0/${15 + 4}`
+      },
+      {
+        description: 'Leave rooom for last prereservedPath - reverse order',
+        isChange: false,
+        usedPaths: [],
+        skip: 15,
+        gapLimit: 20,
+        prereservedPaths: [
+          `84'/0'/0'/0/${15 + 3}`,
+          `84'/0'/0'/0/${15 + 2}`,
+          `84'/0'/0'/0/${15 + 1}`,
+          `84'/0'/0'/0/${15}`
+        ],
+        distantReceivingPath: `84'/0'/0'/0/${15 + 4}`
+      },
+      {
+        description:
+          'Leave rooom for last prereservedPath - but another account used',
+        isChange: false,
+        usedPaths: [`84'/0'/4'/0/${19}`],
+        gapAccountLimit: 5,
+        skip: 15,
+        gapLimit: 20,
+        prereservedPaths: [
+          `84'/0'/0'/0/${15}`,
+          `84'/0'/0'/0/${15 + 1}`,
+          `84'/0'/0'/0/${15 + 2}`,
+          `84'/0'/0'/0/${15 + 3}`
+        ],
+        distantReceivingPath: `84'/0'/4'/0/${34 + 1}`
+      },
+      {
+        description: 'Change address determines default account',
+        isChange: false,
+        usedPaths: [`84'/0'/4'/1/${19}`, `44'/0'/0'/0/${19}`],
+        gapAccountLimit: 5,
+        skip: 15,
+        gapLimit: 20,
+        prereservedPaths: [],
+        distantReceivingPath: `84'/0'/4'/0/${15}`
+      },
+      {
+        description: 'Wrong network on prereservedPaths is possible',
+        isChange: false,
+        usedPaths: ["44'/0'/1'/1/0"],
+        gapAccountLimit: 2,
+        prereservedPaths: ["44'/1'/1'/1/0"],
+        distantReceivingPath: `44'/0'/1'/0/0`
+      },
+      {
+        description: 'Isolated integration test that was giving bad paths',
+        isChange: false,
+        usedPaths: [
+          "44'/1'/0'/0/0",
+          "44'/1'/0'/0/3",
+          "49'/1'/0'/1/1",
+          "84'/1'/0'/0/5",
+          "84'/1'/1'/0/8"
+        ],
+        skip: 15,
+        gapLimit: 20,
+        network: networks.regtest,
+        prereservedPaths: ["84'/1'/1'/0/25", "84'/1'/1'/0/24"],
+        distantReceivingPath: "84'/1'/1'/0/26"
+      },
+      {
+        description: 'It works with decreasing order',
+        isChange: false,
+        usedPaths: ["84'/1'/0'/0/5", "84'/1'/1'/0/8"],
+        skip: 15,
+        gapLimit: 20,
+        network: networks.regtest,
+        prereservedPaths: ["84'/1'/1'/0/25", "84'/1'/1'/0/24"],
+        distantReceivingPath: "84'/1'/1'/0/26"
       }
     ]
   }

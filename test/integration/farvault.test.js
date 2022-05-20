@@ -1,5 +1,3 @@
-/** @module test/integration/farvault.test */
-
 //Take inspitation from this: https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/test/integration/csv.spec.ts
 //
 //Create a bip32 wallet
@@ -37,9 +35,9 @@ import {
   getDerivationPathAddress,
   fetchDerivationPaths,
   fetchUTXOs,
-  getNextReceivingDerivationPath,
-  getNextChangeDerivationPath
+  getNextDerivationPath
 } from '../../src/wallet';
+import { SKIP } from '../../src/walletConstants';
 import { esploraFetchAddress, esploraFetchUTXOs } from '../../src/dataFetchers';
 import { coinselect } from '../../src/coinselect';
 
@@ -107,7 +105,8 @@ describe('FarVault full pipe', () => {
           const safeHDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
             mnemonic: generateMnemonic(256)
           });
-          const safePath = getNextReceivingDerivationPath({
+          const safePath = getNextDerivationPath({
+            isChange: false,
             usedPaths: [],
             network
           });
@@ -126,7 +125,8 @@ describe('FarVault full pipe', () => {
           const rushedHDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
             mnemonic: generateMnemonic(256)
           });
-          const rushedPath = getNextReceivingDerivationPath({
+          const rushedPath = getNextDerivationPath({
+            isChange: false,
             usedPaths: [],
             network
           });
@@ -139,7 +139,8 @@ describe('FarVault full pipe', () => {
           const maturedHDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
             mnemonic: generateMnemonic(256)
           });
-          const maturedPath = getNextReceivingDerivationPath({
+          const maturedPath = getNextDerivationPath({
+            isChange: false,
             usedPaths: [],
             network
           });
@@ -152,7 +153,8 @@ describe('FarVault full pipe', () => {
           //Get the list of paths that may receive funds from the setup file
           //Try not to re-use addresses that may be used as destinataries of
           //other vaults.
-          const reservedPaths = Object.values(readSetup().vaults).map(
+          const setup = readSetup() || { vaults: {} };
+          const prereservedPaths = Object.values(setup.vaults).map(
             vault => vault.hotPath
           );
           //TODO
@@ -165,17 +167,44 @@ describe('FarVault full pipe', () => {
           //TODO
           //TODO
           //TODO
-          //See if it is safe to ignore some of these reservedPaths
+          //See if it is safe to ignore some of these prereservedPaths
           //read pointer
-          console.log({ reservedPaths });
 
           //Create the hot address that is P2WPKH that will take funds when
           //the uer wants again to have access to them:
-          const hotPath = getNextReceivingDerivationPath({
-            usedPaths: usedPaths.concat(reservedPaths),
+          //const hotPath = getNextDerivationPath({
+          //  isChange: false,
+          //  usedPaths: usedPaths.concat(prereservedPaths),
+          //  network
+          //});
+          const hotPath = getNextDerivationPath({
+            usedPaths,
+            prereservedPaths,
+            isChange: false,
+            skip: SKIP,
             network
           });
-          //Mark it as used:
+          console.log({ usedPaths, prereservedPaths, distantPath: hotPath });
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
+          //NOOOOO Mark it as used. We can get out of the gapLimit
           usedPaths.push(hotPath);
           fundedPaths.push(hotPath);
           const hotPublicKey = await hotHDInterface.getPublicKey(
@@ -204,11 +233,31 @@ describe('FarVault full pipe', () => {
               }
             ],
             changeAddress: async () => {
-              const path = getNextChangeDerivationPath({
+              const path = getNextDerivationPath({
+                isChange: true,
                 usedPaths,
                 network
               });
-              //Mark it as used:
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
+              //NOOOOO Mark it as used. We can get out of the gapLimit
               usedPaths.push(path);
               fundedPaths.push(path);
               return await getDerivationPathAddress({
@@ -283,17 +332,13 @@ describe('FarVault full pipe', () => {
             path: hotPath,
             network
           });
-          const setup = {
-            vaults: {
-              [guardTxid]: {
-                hotPath,
-                hotAddress,
-                coldAddress,
-                guardTx,
-                guardTxid,
-                recoverTxs: {}
-              }
-            }
+          setup.vaults[guardTxid] = {
+            hotPath,
+            hotAddress,
+            coldAddress,
+            guardTx,
+            guardTxid,
+            recoverTxs: {}
           };
           for (const recoverTx of recoverTxs) {
             const unlockTxs = await createMultiFeeTransactions({

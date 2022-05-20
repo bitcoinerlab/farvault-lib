@@ -1,3 +1,5 @@
+/** @module test */
+
 import { getExtPubAddress } from '../src/wallet';
 import { initHDInterface, SOFT_HD_INTERFACE } from '../src/HDInterface';
 import { getNetworkCoinType, serializeDerivationPath } from '../src/bip32';
@@ -6,6 +8,10 @@ import { RegtestUtils } from 'regtest-client';
 import { spawn, spawnSync } from 'child_process';
 import { kill } from 'process';
 const regtestUtils = new RegtestUtils(bJs);
+
+export const BITCOIND_CATCH_UP_TIME = 2000;
+export const REGTEST_SERVER_CATCH_UP_TIME = 1000;
+
 /**
  * Creates an HD wallet and funds it using mined coins from a regtest-server faucet.
  * It then mines 6 blocks to confirm payments.
@@ -18,8 +24,6 @@ const regtestUtils = new RegtestUtils(bJs);
  * @param {boolean} addressesDescriptors[].isChange - whether this address is a change address or not.
  * @param {number} addressesDescriptors[].value - number of sats that this address will receive.
  */
-export const BITCOIND_CATCH_UP_TIME = 2000;
-export const REGTEST_SERVER_CATCH_UP_TIME = 1000;
 export async function createMockWallet(
   mnemonic,
   addressesDescriptors,

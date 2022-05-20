@@ -2,11 +2,18 @@ import { fixtures } from './fixtures/wallet';
 import { initHDInterface, SOFT_HD_INTERFACE } from '../src/HDInterface';
 import {
   getDerivationPathAddress,
-  getNextExplicitDerivationPath,
-  getDefaultAccount,
-  getNextReceivingDerivationPath
+  getNextDerivationPath,
+  exportedForTesting
 } from '../src/wallet';
-import { LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT } from '../src/walletConstants';
+import {
+  LEGACY,
+  NESTED_SEGWIT,
+  NATIVE_SEGWIT,
+  GAP_LIMIT,
+  GAP_ACCOUNT_LIMIT,
+  SKIP
+} from '../src/walletConstants';
+import { serializeDerivationPath } from '../src/bip32';
 import { networks } from 'bitcoinjs-lib';
 
 describe('wallet', () => {
@@ -36,18 +43,18 @@ describe('wallet', () => {
     isChange,
     accountNumber,
     purpose,
-    nextDerivationPath,
+    lastDerivationPath,
     network,
     mnemonic,
     gapAccountLimit
   } of fixtures.affinedAddressesDescriptors.valid) {
-    test(`getNextExplicitDerivationPath works - test ${i}`, () => {
+    test(`getLastDerivationPath works - test ${i}`, () => {
       const usedPaths = [];
       for (const addressDescriptor of addressesDescriptors) {
         usedPaths.push(addressDescriptor.path);
       }
-      expect(nextDerivationPath).toEqual(
-        getNextExplicitDerivationPath({
+      expect(lastDerivationPath).toEqual(
+        exportedForTesting.getLastDerivationPath({
           usedPaths,
           isChange,
           network,
@@ -65,19 +72,18 @@ describe('wallet', () => {
     isChange,
     accountNumber,
     purpose,
-    nextDerivationPath,
     network,
     mnemonic,
     gapAccountLimit,
     errorMessage
   } of fixtures.affinedAddressesDescriptors.invalid) {
-    test(`getNextExplicitDerivationPath fails - test ${i}`, () => {
+    test(`getLastDerivationPath fails - test ${i}`, () => {
       const usedPaths = [];
       for (const addressDescriptor of addressesDescriptors) {
         usedPaths.push(addressDescriptor.path);
       }
       expect(() =>
-        getNextExplicitDerivationPath({
+        exportedForTesting.getLastDerivationPath({
           usedPaths,
           isChange,
           network,
@@ -99,14 +105,14 @@ describe('wallet', () => {
       for (const addressDescriptor of addressesDescriptors) {
         usedPaths.push(addressDescriptor.path);
       }
-      expect(getDefaultAccount({ usedPaths, gapAccountLimit })).toEqual(
-        defaultAccount
-      );
+      expect(
+        exportedForTesting.getDefaultAccount({ usedPaths, gapAccountLimit })
+      ).toEqual(defaultAccount);
     }
   });
-  test('getNextReceivingDerivationPath works', () => {
+  test('Get next receiving derivation path works', () => {
     expect(
-      getNextExplicitDerivationPath({
+      getNextDerivationPath({
         usedPaths: [],
         purpose: NATIVE_SEGWIT,
         accountNumber: 0,
@@ -116,10 +122,72 @@ describe('wallet', () => {
     ).toEqual("84'/1'/0'/0/0");
 
     expect(
-      getNextReceivingDerivationPath({
+      getNextDerivationPath({
+        isChange: false,
         usedPaths: [],
         network: networks.regtest
       })
     ).toEqual("84'/1'/0'/0/0");
   });
+});
+describe('normalizeDerivationPaths', () => {
+  for (const valid of fixtures.normalizeDerivationPaths.valid) {
+    test(`normalizeDerivationPaths ${valid.description}`, () => {
+      expect(
+        exportedForTesting
+          .normalizeDerivationPaths({
+            gapAccountLimit:
+              typeof valid.gapAccountLimit !== 'undefined'
+                ? valid.gapAccountLimit
+                : GAP_ACCOUNT_LIMIT,
+            gapLimit:
+              typeof valid.gapLimit !== 'undefined'
+                ? valid.gapLimit
+                : GAP_LIMIT,
+            usedPaths: valid.usedPaths
+          })
+          .map(p => serializeDerivationPath(p))
+      ).toEqual(valid.usedParsedPaths.map(p => serializeDerivationPath(p)));
+    });
+  }
+  for (const invalid of fixtures.normalizeDerivationPaths.invalid) {
+    test(`Invalid normalizeDerivationPaths ${invalid.description}`, () => {
+      expect(() =>
+        exportedForTesting.normalizeDerivationPaths({
+          gapAccountLimit:
+            typeof invalid.gapAccountLimit !== 'undefined'
+              ? invalid.gapAccountLimit
+              : GAP_ACCOUNT_LIMIT,
+          gapLimit:
+            typeof invalid.gapLimit !== 'undefined'
+              ? invalid.gapLimit
+              : GAP_LIMIT,
+          usedPaths: invalid.usedPaths
+        })
+      ).toThrow(
+        typeof invalid.errorMessage !== 'undefined'
+          ? invalid.errorMessage
+          : 'errorMessage not set'
+      );
+    });
+  }
+});
+
+describe('getNextDerivationPath', () => {
+  for (const valid of fixtures.getNextDerivationPath.valid) {
+    test(`getNextDerivationPath isChange:false ${valid.description}`, () => {
+      expect(getNextDerivationPath({ ...valid })).toEqual(
+        valid.distantReceivingPath
+      );
+    });
+  }
+  for (const invalid of fixtures.getNextDerivationPath.invalid) {
+    test(`getNextDerivationPath isChange:false ${invalid.description}`, () => {
+      expect(() => getNextDerivationPath({ ...invalid })).toThrow(
+        typeof invalid.errorMessage !== 'undefined'
+          ? invalid.errorMessage
+          : 'errorMessage not set'
+      );
+    });
+  }
 });

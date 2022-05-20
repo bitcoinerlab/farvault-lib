@@ -75,8 +75,9 @@ export const EXTENDEDPUBTYPES = {
   }
 };
 
-export const GAP_LIMIT = 20;
 export const GAP_ACCOUNT_LIMIT = 1;
+export const GAP_LIMIT = 20;
+export const SKIP = 15;//How many addresses skip from latest used path
 
 export const BLOCKSTREAM_EXPLORER_BASEURL = 'https://blockstream.info';
 export const ESPLORA_BASEURL = 'http://127.0.0.1:3002';
