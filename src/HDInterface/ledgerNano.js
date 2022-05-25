@@ -1,3 +1,5 @@
+/** @module HDInterface/ledgerNano */
+
 //FIXME: Usar createPaymentTransactionNew en lugar de signP2SHTransaction y
 //extraer las signatures de las tx generadas.
 //Ver si sirve para P2SH. Creo que sí! Creo que incluso quizá valga para taproot
@@ -8,10 +10,16 @@
 
 import LedgerTransport from '@ledgerhq/hw-transport-webusb';
 import LedgerAppBtc from '@ledgerhq/hw-app-btc';
-import { crypto, networks } from 'bitcoinjs-lib';
 import { NATIVE_SEGWIT, NESTED_SEGWIT, LEGACY } from '../walletConstants';
 
-import { Transaction, payments, script, address } from 'bitcoinjs-lib';
+import {
+  crypto,
+  Transaction,
+  payments,
+  script,
+  address,
+  networks
+} from 'bitcoinjs-lib';
 
 import ECPairFactory from 'ecpair';
 let fromPublicKey;
@@ -116,15 +124,74 @@ async function getPublicKey(ledgerAppBtc, path, network = networks.bitcoin) {
   return deriveExtPub({ extPub, index, isChange, network });
 }
 
-/*
- * https://github.com/bitcoinjs/bitcoinjs-lib/issues/1517#issuecomment-1064914601
+/** Tries to obtain the lockTime from an utxo
  *
- * redeemScript is conditions that lock the script
- * Use a utxo.path for P2PKH, P2SH-P2WPKH, P2WPKH.
- * utxo.witnessScript for P2WSH. utxo.redeemScript for P2SH.
- * Pass sequence un a utxo if you want to sing an unlocking tx for a timelock
+ * If the utxo has a witnessScript or redeemScript, then it parses the script
+ * and checks if this is a script we know how to spend (a relativeTimeLockScript)
+ *
+ * If this is a script that we know how to spend then it returns the appropriate
+ * sequence.
+ *
+ * Otherwise it returns `undefined`.
+ *
+ * @param {object} ledgerAppBtc A [`'@ledgerhq/hw-app-btc'`](https://github.com/LedgerHQ/ledgerjs/tree/master/packages/hw-app-btc#btc) object
+ * @param {object} utxo An utxo like this: `{path, witnessScript}`
+ * @returns {number} A bip68 encoded sequence or `undefined`
+ *
  */
-export async function createSigners(ledgerAppBtc, { psbt, utxos, network }) {
+async function getUtxoSequence(ledgerAppBtc, utxo) {
+  let sequence;
+  let script;
+  if (typeof utxo.witnessScript === 'string') {
+    script = utxo.witnessScript;
+  }
+  if (typeof utxo.redeemScript === 'string') {
+    if (typeof utxo.witnessScript == 'string') {
+      throw new Error(
+        'Cannot have redeemScript and witnessScript at the same time'
+      );
+    }
+    script = utxo.redeemScript;
+  }
+  const parsedScript = parseRelativeTimeLockScript(Buffer.from(script, 'hex'));
+  if (parsedScript !== false) {
+    const pubkey = await getPublicKey(ledgerAppBtc, utxo.path);
+    const { maturedPublicKey, rushedPublicKey, bip68LockTime } = parsedScript;
+    if (Buffer.compare(pubkey, maturedPublicKey) === 0) {
+      sequence = bip68LockTime;
+    }
+  }
+  return sequence;
+}
+
+/**
+ * Pass all the utxos that will be signed. The psbt may have more utxos.
+ * Also pass the psbt (still not finalized and unlocking scripts may have
+ * not been set yet. Just the basic psbt that can be signed.
+ *
+ * Read some discussion about the motivation behind this function [here](https://github.com/bitcoinjs/bitcoinjs-lib/issues/1517#issuecomment-1064914601).
+ *
+ * Utxos must include:
+ * * utxo.witnessScript for P2WSH.
+ * * utxo.redeemScript for P2SH.
+ *
+ * The sequence is obtained from the locking script in witnessScript and redeemScript
+ * by parsing the script and comparing it with the known scripts that this
+ * wallet software can spend.
+ *
+ * @param {object} ledgerAppBtc A [`'@ledgerhq/hw-app-btc'`](https://github.com/LedgerHQ/ledgerjs/tree/master/packages/hw-app-btc#btc) object
+ * @param {objects} parameters
+ * @param {object} parameters.psbt [bitcoinjs-lib Psbt object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/psbt.js)
+ * @param {string} parameters.utxos[].path Derivation path. F.ex.: `44'/1'/1'/0/0`.
+ * @param {string} parameters.utxos[].tx The transaction serialized in hex.
+ * @param {number} parameters.utxos[].n The vout index of the tx above.
+ * @param {string} [parameters.utxos[].witnessScript] The witnessScript serialized in hex in case the utxo can be redeemed with an unlocking script.
+ * @param {object} [parameters.network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ */
+export async function createSigners(
+  ledgerAppBtc,
+  { psbt, utxos, network = networks.bitcoin }
+) {
   const tx = psbt.__CACHE.__TX; //It's a private param. May change in future.
 
   //See if any of the inputs is segwit. If an input is segwit then the tx
@@ -149,7 +216,10 @@ export async function createSigners(ledgerAppBtc, { psbt, utxos, network }) {
       !utxo.redeemScript &&
       parseDerivationPath(utxo.path).purpose;
 
+    const sequence = await getUtxoSequence(ledgerAppBtc, utxo);
+
     let redeemScript;
+
     /*if (purpose === NESTED_SEGWIT) {
       const pubkey = await getPublicKey(ledgerAppBtc, utxo.path);
       redeemScript = payments.p2sh({
@@ -161,10 +231,12 @@ export async function createSigners(ledgerAppBtc, { psbt, utxos, network }) {
       redeemScript = undefined;
       segwitInputTypes.push(true);
     }*/
+
     if (purpose === NESTED_SEGWIT || purpose === NATIVE_SEGWIT) {
       const pubkey = await getPublicKey(ledgerAppBtc, utxo.path);
       //The redeemScript for NESTED_SEGWIT and NATIVE_SEGWIT must be p2pkh
-      //I don't konw why. It's hacky. Who knows what Ledger soft does
+      //I don't konw why. It's hacky. Who knows why Ledger soft works this way.
+      //Intuitively it should work as in the commented block above.
       redeemScript = payments.p2pkh({ pubkey, network }).output.toString('hex');
       segwitInputTypes.push(true);
     } else if (purpose === LEGACY) {
@@ -190,7 +262,7 @@ export async function createSigners(ledgerAppBtc, { psbt, utxos, network }) {
       ),
       utxo.n,
       ...(redeemScript ? [redeemScript] : []),
-      ...(utxo.sequence ? [utxo.sequence] : [])
+      ...(sequence ? [sequence] : [])
     ]);
   }
   const ledgerDerivationPaths = utxos.map(utxo => utxo.path);

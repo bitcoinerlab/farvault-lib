@@ -23,6 +23,10 @@ export async function getExtPub(
   if (!Number.isInteger(accountNumber) || accountNumber < 0)
     throw new Error('Invalid accountNumber');
 
+  //Study possible problems memoizing this function since it returns a Promise
+  console.log('CACHE! recreating this fromSeed everytime is stupid and slow');
+  //Study possible problems memoizing this function since it returns a Promise
+  //
   const root = await fromSeed(seed, network);
   const extPub = setExtPubPrefix({
     extPub: root
@@ -42,7 +46,14 @@ export async function getExtPub(
   return extPub;
 }
 
-export async function createSigners(seed, { psbt, utxos, network }) {
+export async function createSigners(
+  seed,
+  { psbt, utxos, network = networks.bitcoin }
+) {
+  //Study possible problems memoizing this function since it returns a Promise
+  console.log('CACHE! recreating this fromSeed everytime is stupid and slow');
+  //Study possible problems memoizing this function since it returns a Promise
+  //
   const root = await fromSeed(seed, network);
   return utxos.map(utxo => $hash => {
     const signature = root.derivePath(utxo.path).sign($hash);

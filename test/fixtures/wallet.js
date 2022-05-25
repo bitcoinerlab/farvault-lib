@@ -3,7 +3,7 @@ import {
   NATIVE_SEGWIT,
   NESTED_SEGWIT,
   GAP_LIMIT,
-  SKIP
+  VAULT_SKIP
 } from '../../src/walletConstants';
 import { networks } from 'bitcoinjs-lib';
 import { parseDerivationPath } from '../../src/bip32';
@@ -749,7 +749,7 @@ export const fixtures = {
         description: 'Bad formatted entry - number of elements',
         isChange: false,
         usedPaths: ["44'/0'/1'/0"],
-        skip: SKIP,
+        skip: VAULT_SKIP,
         prereservedPaths: [],
         errorMessage: 'Invalid number of elements'
       },
@@ -757,7 +757,7 @@ export const fixtures = {
         description: 'Invalid maxGap',
         isChange: false,
         usedPaths: ["44'/0'/0'/0/20"],
-        skip: SKIP,
+        skip: VAULT_SKIP,
         prereservedPaths: [],
         errorMessage: 'Unreachable derivation path. Increase the gap limit.'
       },
@@ -773,7 +773,7 @@ export const fixtures = {
         description: 'Unreachable account number',
         isChange: false,
         usedPaths: ["84'/0'/1'/0/19"],
-        skip: SKIP,
+        skip: VAULT_SKIP,
         prereservedPaths: [],
         errorMessage:
           'Unreachable derivation path. Increase the gap account limit.'
@@ -800,7 +800,7 @@ export const fixtures = {
         description: 'Invalid usedPaths',
         isChange: false,
         usedPaths: 'string',
-        skip: SKIP,
+        skip: VAULT_SKIP,
         prereservedPaths: [],
         errorMessage: 'Invalid usedPaths'
       },
@@ -808,7 +808,7 @@ export const fixtures = {
         description: 'Invalid usedPaths',
         isChange: false,
         usedPaths: [],
-        skip: SKIP,
+        skip: VAULT_SKIP,
         prereservedPaths: 'string',
         errorMessage: 'Invalid prereservedPaths'
       },
@@ -816,7 +816,7 @@ export const fixtures = {
         description: 'Unreachable gap account',
         isChange: false,
         usedPaths: ["44'/0h/1H/0/0"],
-        skip: SKIP,
+        skip: VAULT_SKIP,
         prereservedPaths: [],
         errorMessage:
           'Unreachable derivation path. Increase the gap account limit.'
@@ -825,7 +825,7 @@ export const fixtures = {
         description: 'Unreachable gap account even if usedPaths only on change',
         isChange: false,
         usedPaths: ["44'/0h/1H/1/0"],
-        skip: SKIP,
+        skip: VAULT_SKIP,
         prereservedPaths: [],
         errorMessage:
           'Unreachable derivation path. Increase the gap account limit.'
@@ -834,7 +834,7 @@ export const fixtures = {
         description: 'Wrong network on usedPaths',
         isChange: false,
         usedPaths: ["44'/1'/1'/1/0"],
-        skip: SKIP,
+        skip: VAULT_SKIP,
         gapAccountLimit: 2,
         prereservedPaths: [],
         errorMessage: 'The coin type does not math this network'
@@ -876,9 +876,9 @@ export const fixtures = {
         description: 'Default jump size is correct',
         isChange: false,
         usedPaths: ["84'/0'/0'/0/19"],
-        skip: SKIP,
+        skip: VAULT_SKIP,
         prereservedPaths: [],
-        distantReceivingPath: `84'/0'/0'/0/${19 + SKIP + 1}`
+        distantReceivingPath: `84'/0'/0'/0/${19 + VAULT_SKIP + 1}`
       },
       {
         description:
@@ -896,25 +896,25 @@ export const fixtures = {
           'prereservedPaths does not affect if not in the default account',
         isChange: false,
         usedPaths: ["84'/0'/0'/0/19"],
-        skip: SKIP,
+        skip: VAULT_SKIP,
         prereservedPaths: ["84'/0'/1'/0/29"],
-        distantReceivingPath: `84'/0'/0'/0/${19 + SKIP + 1}`
+        distantReceivingPath: `84'/0'/0'/0/${19 + VAULT_SKIP + 1}`
       },
       {
         description: "There's a prereservedPath after 10",
         isChange: false,
         usedPaths: ["84'/0'/0'/0/19"],
-        skip: SKIP,
+        skip: VAULT_SKIP,
         prereservedPaths: ["84'/0'/0'/0/29"],
-        distantReceivingPath: `84'/0'/0'/0/${19 + SKIP + 1}`
+        distantReceivingPath: `84'/0'/0'/0/${19 + VAULT_SKIP + 1}`
       },
       {
         description: "There's a prereservedPath after in our skip target",
         isChange: false,
         usedPaths: ["84'/0'/0'/0/19"],
-        skip: SKIP,
-        prereservedPaths: [`84'/0'/0'/0/${19 + SKIP + 1}`],
-        distantReceivingPath: `84'/0'/0'/0/${19 + SKIP + 2}`
+        skip: VAULT_SKIP,
+        prereservedPaths: [`84'/0'/0'/0/${19 + VAULT_SKIP + 1}`],
+        distantReceivingPath: `84'/0'/0'/0/${19 + VAULT_SKIP + 2}`
       },
       {
         description:
@@ -929,19 +929,19 @@ export const fixtures = {
         description: 'It gets the defaultAccount',
         isChange: false,
         usedPaths: ["49'/0'/0'/0/19", "84'/0'/0'/0/19", "44'/0'/0'/0/19"],
-        skip: SKIP,
+        skip: VAULT_SKIP,
         prereservedPaths: [],
-        distantReceivingPath: `84'/0'/0'/0/${19 + SKIP + 1}`
+        distantReceivingPath: `84'/0'/0'/0/${19 + VAULT_SKIP + 1}`
       },
       {
         description:
           'It gets the defaultAccount not native seg letting one account to be skipped',
         isChange: false,
         usedPaths: ["49'/0'/1'/0/19", "44'/0'/0'/0/19"],
-        skip: SKIP,
+        skip: VAULT_SKIP,
         gapAccountLimit: 2,
         prereservedPaths: [],
-        distantReceivingPath: `49'/0'/1'/0/${19 + SKIP + 1}`
+        distantReceivingPath: `49'/0'/1'/0/${19 + VAULT_SKIP + 1}`
       },
       {
         description: 'Skip 0 and prereservedPath',
@@ -1074,6 +1074,88 @@ export const fixtures = {
         network: networks.regtest,
         prereservedPaths: ["84'/1'/1'/0/25", "84'/1'/1'/0/24"],
         distantReceivingPath: "84'/1'/1'/0/26"
+      },
+      {
+        description: 'Duplicated paths and all prereserved to the end',
+        usedPaths: [
+          "44'/1'/0'/0/0",
+          "44'/1'/0'/0/3",
+          "49'/1'/0'/1/1",
+          "84'/1'/0'/0/5",
+          "84'/1'/1'/0/8"
+        ],
+        network: networks.regtest,
+        skip: VAULT_SKIP, //15
+        isChange: false,
+        prereservedPaths: [
+          "84'/1'/1'/0/25",
+          "84'/1'/1'/0/24",
+          "84'/1'/1'/0/26",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/28",
+          "84'/1'/1'/0/28",
+          "84'/1'/1'/0/28",
+          "84'/1'/1'/0/28",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/9",
+          "84'/1'/1'/0/10",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27"
+        ],
+        distantReceivingPath: "84'/1'/1'/0/28"
+      },
+      {
+        description:
+          'Duplicated paths and all prereserved to the end and one additional prereserved out of the gap limit',
+        usedPaths: [
+          "44'/1'/0'/0/0",
+          "44'/1'/0'/0/3",
+          "49'/1'/0'/1/1",
+          "84'/1'/0'/0/5",
+          "84'/1'/1'/0/8"
+        ],
+        network: networks.regtest,
+        skip: VAULT_SKIP, //15
+        isChange: false,
+        prereservedPaths: [
+          "84'/1'/1'/0/25",
+          "84'/1'/1'/0/24",
+          "84'/1'/1'/0/26",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/28",
+          "84'/1'/1'/0/28",
+          "84'/1'/1'/0/28",
+          "84'/1'/1'/0/28",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/9",
+          "84'/1'/1'/0/10",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/27",
+          "84'/1'/1'/0/29"
+        ],
+        distantReceivingPath: "84'/1'/1'/0/28"
       }
     ]
   }

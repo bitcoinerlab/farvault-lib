@@ -39,9 +39,11 @@ async function esploraFetchText(...args) {
  * from an esplora service to get whether the address ever received some coins
  * and the current amount of sats that it holds (if any).
  *
+ * @async
  * @param {string} address A Bitcoin address
  * @param {string} baseUrl The Base URL of the Esplora server. Defaults to
  * [http://127.0.0.1:3002](http://127.0.0.1:3002)
+ * @returns {Promise<object>} return
  * @returns {boolean} return.used Whether that address ever received sats.
  * @returns {number} return.balance Number of sats currently controlled by that address.
  */
@@ -62,13 +64,14 @@ export async function esploraFetchAddress(address, baseUrl = ESPLORA_BASEURL) {
  * ['/address/:address/utxo'](https://github.com/Blockstream/esplora/blob/master/API.md#get-addressaddressutxo)
  * and then loops over those utxos.
  *
+ * @async
  * @param {string} address A Bitcoin address
  * @param {string} baseUrl The Base URL of the Esplora server. Defaults to
  * [http://127.0.0.1:3002](http://127.0.0.1:3002)
- * @returns {Array} An array of utxos objects like this: `[{ tx, vout },...]`,
+ * @returns {Promise<Array>} An array of utxos objects like this: `[{ tx, vout },...]`,
  * where `tx` is a string in hex format and `vout` is an integer >= 0.
  */
-export async function esploraFetchUTXOs(address, baseUrl = ESPLORA_BASEURL) {
+export async function esploraFetchUtxos(address, baseUrl = ESPLORA_BASEURL) {
   const utxos = [];
   const fetchedUtxos = await esploraFetchJson(
     `${baseUrl}/address/${address}/utxo`
@@ -91,9 +94,10 @@ export async function esploraFetchUTXOs(address, baseUrl = ESPLORA_BASEURL) {
  * and the value is the estimated feerate (in sat/vB).
  *
  * The available confirmation targets are `1-25, 144, 504` and `1008` blocks.
+ * @async
  * @param {string} baseUrl The Base URL of the Esplora server. Defaults to
  * [http://127.0.0.1:3002](http://127.0.0.1:3002)
- * @returns {Object} An object where the key is the confirmation target (in number of blocks).
+ * @returns {Promise<Object>} An object where the key is the confirmation target (in number of blocks).
  * For example:
  * ```
  * { "1": 87.882, "2": 87.882, "3": 87.882, "4": 87.882, "5": 81.129, "6": 68.285, ..., "144": 1.027, "504": 1.027, "1008": 1.027 }
@@ -114,8 +118,8 @@ function blockstreamBaseURL(network = networks.bitcoin) {
 /**
  * Calls {@link module:dataFetchers.esploraFetchAddress esploraFetchAddress} particularized for blockstream's esplora
  * service.
- * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
- * Only works for bitcoin and testnet. Default is bitcoin.
+ * @param {object} [network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * Only works for bitcoin and testnet.
  * @param {string} address A Bitcoin address
  * @returns {boolean} return.used Whether that address ever received sats.
  * @returns {number} return.balance Number of sats currently controlled by that
@@ -125,22 +129,22 @@ export function blockstreamFetchAddress(address, network = networks.bitcoin) {
   return esploraFetchAddress(address, blockstreamBaseURL(network));
 }
 /**
- * Calls {@link module:dataFetchers.esploraFetchUTXOs esploraFetchUTXOs} particularized for blockstream's esplora
+ * Calls {@link module:dataFetchers.esploraFetchUtxos esploraFetchUtxos} particularized for blockstream's esplora
  * service.
- * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
- * Only works for bitcoin and testnet. Default is bitcoin.
+ * @param {object} [network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * Only works for bitcoin and testnet.
  * @param {string} address A Bitcoin address
  * @returns {Array} An array of utxos objects like this: `[{ tx, vout },...]`,
  * where `tx` is a string in hex format and `vout` is an integer >= 0.
  */
-export function blockstreamFetchUTXOs(address, network = networks.bitcoin) {
-  return esploraFetchUTXOs(address, blockstreamBaseURL(network));
+export function blockstreamFetchUtxos(address, network = networks.bitcoin) {
+  return esploraFetchUtxos(address, blockstreamBaseURL(network));
 }
 /**
  * Calls {@link module:dataFetchers.esploraFetchFeeEstimates esploraFetchFeeEstimates} particularized for blockstream's
  * esplora service.
- * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
- * Only works for bitcoin and testnet. Default is bitcoin.
+ * @param {object} [network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * Only works for bitcoin and testnet.
  * @returns {Object} An object where the key is the confirmation target
  * (in number of blocks).
  */

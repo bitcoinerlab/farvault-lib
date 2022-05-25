@@ -32,7 +32,7 @@ export const fixtures = {
     purpose: NATIVE_SEGWIT,
     accountNumber: 1
   },
-  mockWallet: [
+  testWallet: [
     {
       extPub: {
         purpose: LEGACY,

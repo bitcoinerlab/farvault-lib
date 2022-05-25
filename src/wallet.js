@@ -21,26 +21,26 @@ import {
   VPUB,
   GAP_LIMIT,
   GAP_ACCOUNT_LIMIT,
-  SKIP,
   LEGACY,
   NESTED_SEGWIT,
   NATIVE_SEGWIT
 } from './walletConstants';
 
-import { blockstreamFetchAddress, blockstreamFetchUTXOs } from './dataFetchers';
+import { blockstreamFetchAddress, blockstreamFetchUtxos } from './dataFetchers';
 import { checkPurpose, checkNetwork, checkExtPub } from './check';
 
 /**
  * Given an extended pub key it returns the `address` that
  * corresponds to a derivation `path`.
  *
+ * @async
  * @param {object} params
- * @param {module:HDInterface.extPubGetter} params.extPubGetter An **async** function that resolves the extended pub key.
+ * @param {module:HDInterface.getExtPub} params.extPubGetter An **async** function that resolves the extended pub key.
  * @param {string} params.path F.ex.: "84’/0’/0’/0/0", "m/44'/1'/10'/0/0",
  * "m/49h/1h/8h/1/1"...
  * @param {object} [params.network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
  *
- * @returns {string} A Bitcoin address
+ * @returns {Promise<string>} A Bitcoin address
  */
 export async function getDerivationPathAddress({
   extPubGetter,
@@ -63,7 +63,7 @@ export async function getDerivationPathAddress({
  *
  * @returns {string} A Bitcoin address
  */
-export function getExtPubAddress({
+function getExtPubAddress({
   extPub,
   isChange = false,
   index = 0,
@@ -140,12 +140,13 @@ function getNativeSegwitAddress({
  * might be the case that `used === true` and
  * `fundedPaths.length === 0`.
  *
+ * @async
  * @param {object} params
  * @param {string} params.extPub An extended pub key.
  * @param {function} [params.addressFetcher=blockstreamFetchAddress] One function that conforms to the values returned by {@link module:dataFetchers.esploraFetchAddress esploraFetchAddress}.
  * @param {number} [params.gapLimit=GAP_LIMIT] The gap limit. See [BIP44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki#Address_gap_limit).
  * @param {object} [params.network=networks.bitcoin] A [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
- * @returns {object} return
+ * @returns {Promise<object>} return
  *
  * @returns {boolean} return.used Whether that extended pub ever received sats (event if it's current balance is now 0)
  * @returns {number} return.balance Number of sats controlled by this extended pub key
@@ -236,14 +237,15 @@ async function fetchExtPubDerivationPaths({
  * It finally returns both the used and funded derivation paths of all accounts
  * and purposes.
  *
+ * @async
  * @param {object} params
- * @param {module:HDInterface.extPubGetter} params.extPubGetter An **async** function that resolves the extended pub key.
+ * @param {module:HDInterface.getExtPub} params.extPubGetter An **async** function that resolves the extended pub key.
  * @param {function} [params.addressFetcher=blockstreamFetchAddress] One function that conforms to the values returned by {@link module:dataFetchers.esploraFetchAddress esploraFetchAddress}.
  * @param {number} [params.gapLimit=GAP_LIMIT] The gap limit. See [BIP44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki#Address_gap_limit).
  * @param {number} [params.gapAccountLimit=GAP_ACCOUNT_LIMIT] The gap account limit: Number of consecutive unused accounts that can be hit. If the software hits `gapAccountLimit` unused accounts in a row, it expects there are no used accounts beyond this point.
  * @param {object} [params.network=networks.bitcoin] A [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
  *
- * @returns {object} return
+ * @returns {Promise<object>} return
  * @returns {string[]} return.usedPaths An array of derivation paths corresponding to addresses that have had funds at some point in the past.
  * @returns {string[]} return.fundedPaths An array of derivation paths corresponding to addresses with funds (>0 sats).
  */
@@ -287,22 +289,23 @@ export async function fetchDerivationPaths({
 }
 
 /**
- * Queries an online API to get all the UTXOS from a list of
+ * Queries an online API to get all the utxos from a list of
  * derivation paths.
  *
+ * @async
  * @param {object} params
- * @param {module:HDInterface.extPubGetter} params.extPubGetter An **async** function that resolves the extended pub key.
+ * @param {module:HDInterface.getExtPub} params.extPubGetter An **async** function that resolves the extended pub key.
  * @param {string[]} params.paths An array of derivation paths.
- * @param {function} [params.utxoFetcher=blockstreamFetchUTXOs] One function that conforms to the values returned by {@link module:dataFetchers.esploraFetchUTXOs esploraFetchUTXOs}.
+ * @param {function} [params.utxoFetcher=blockstreamFetchUtxos] One function that conforms to the values returned by {@link module:dataFetchers.esploraFetchUtxos esploraFetchUtxos}.
  * @param {object} [params.network=networks.bitcoin] A [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
- * @returns {object[]} An array of utxos: `[{tx, n, path}]`, where
+ * @returns {Promise<object[]>} An array of utxos: `[{tx, n, path}]`, where
  * `tx` is a hex encoded string of the transaction, `n` is the vout (an integer)
  * and `path` is a string. F.ex.: "84’/0’/0’/0/0" .
  */
-export async function fetchUTXOs({
+export async function fetchDerivationPathsUtxos({
   extPubGetter,
   paths,
-  utxoFetcher = blockstreamFetchUTXOs,
+  utxoFetcher = blockstreamFetchUtxos,
   network = networks.bitcoin
 }) {
   const utxos = [];
@@ -312,8 +315,8 @@ export async function fetchUTXOs({
       path,
       network
     });
-    const addressUTXOs = await utxoFetcher(address);
-    addressUTXOs.map(utxo => utxos.push({ tx: utxo.tx, n: utxo.vout, path }));
+    const addressUtxos = await utxoFetcher(address);
+    addressUtxos.map(utxo => utxos.push({ tx: utxo.tx, n: utxo.vout, path }));
   }
   return utxos;
 }
@@ -666,10 +669,10 @@ function getLastDerivationPath({
 }
 
 /**
- * It returns the next available receiving derivation path. If
- * `isChange === false` it returns the next available path that can receive
+ * It returns the next receiving derivation path available. If
+ * `isChange === false` it returns the next path available to receive
  * funds from external addresses. If `isChange === false` it returns the next
- * available path that can receive change.
+ * path available for change.
  *
  * Optionally, it omits at least `skip` addresses to leave the next available
  * derivation paths for other uses. The function verifies that `skip` is less
@@ -682,9 +685,9 @@ function getLastDerivationPath({
  * of whether it's in the list of `prereservedPaths` or not. And so
  * `prereservedPaths` is a list of nice-to-omit paths (but not required).
  *
- * Motivation:
+ * Motivation for the `prereservedPaths` and `skip` parameters:
  *
- * Use this function to get the derivation path that
+ * You can use this function to get the derivation path that
  * will receive the protected funds in a vault after unlocking them.
  *
  * The final address that receives the funds after unlock belongs to the
@@ -702,9 +705,10 @@ function getLastDerivationPath({
  * the receiving address of a vault.
  *
  * The best we can do for selecting the vault's receiving addresses is to choose
- * a derivation path that is very far down the sequence of derivation paths but
- * within the `gapLimit` to ensure that any wallet implementation can still find
- * it. Address overlapping can still occur, but this reduces the chances if this
+ * a derivation path that is very far down the sequence of derivation paths
+ * (omitting `skip` addresses). But we ensure that it will be within the
+ * `gapLimit` to ensure that any wallet implementation can still find it.
+ * Address overlapping can still occur, but this reduces the chances if this
  * account is rarely used after funds are locked.
  *
  * Another thing to keep in mind is that an account can have multiple vaults
@@ -809,7 +813,7 @@ export function getNextDerivationPath({
       ...lastParsedPath,
       index: lastParsedPath.index + skip + 1
     };
-    maxIndexWithinGap = lastParsedPath.index + gapLimit - 1;
+    maxIndexWithinGap = lastParsedPath.index + gapLimit;
   }
 
   prereservedPaths

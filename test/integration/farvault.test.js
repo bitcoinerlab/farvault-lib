@@ -1,8 +1,8 @@
 //Take inspitation from this: https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/test/integration/csv.spec.ts
 //
 //Create a bip32 wallet
-//Fund the wallet with a faucet including p2pkh, p2sh-p2wpkh, p2wpkh UTXOs
-//Coinselect up to X Bitcoin from all the UTXOs and send to @safe
+//Fund the wallet with a faucet including p2pkh, p2sh-p2wpkh, p2wpkh utxos
+//Coinselect up to X Bitcoin from all the utxos and send to @safe
 //Send to @timeLocked
 
 //Scenario 1: try to send to @hot before the time permits so: fails
@@ -16,7 +16,7 @@ const MULTIFEE_SAMPLES = 10;
 import { payments } from 'bitcoinjs-lib';
 import { generateMnemonic } from 'bip39';
 import {
-  createMockWallet,
+  createTestWallet,
   startTestingEnvironment,
   stopTestingEnvironment,
   BITCOIND_CATCH_UP_TIME,
@@ -25,20 +25,20 @@ import {
 import { blockstreamFetchFeeEstimates } from '../../src/dataFetchers';
 import {
   createTransaction,
-  createRelativeTimeLockScript,
   createMultiFeeTransactions
 } from '../../src/transactions';
+import { createRelativeTimeLockScript } from '../../src/scripts';
 import { decodeTx } from '../../src/decodeTx';
 
 import { initHDInterface, SOFT_HD_INTERFACE } from '../../src/HDInterface';
 import {
   getDerivationPathAddress,
   fetchDerivationPaths,
-  fetchUTXOs,
+  fetchDerivationPathsUtxos,
   getNextDerivationPath
 } from '../../src/wallet';
-import { SKIP } from '../../src/walletConstants';
-import { esploraFetchAddress, esploraFetchUTXOs } from '../../src/dataFetchers';
+import { VAULT_SKIP } from '../../src/walletConstants';
+import { esploraFetchAddress, esploraFetchUtxos } from '../../src/dataFetchers';
 import { coinselect } from '../../src/coinselect';
 
 import { fixtures } from '../fixtures/farvault';
@@ -61,7 +61,7 @@ describe('FarVault full pipe', () => {
     lockTime,
     lockNBlocks,
     safeValue,
-    mockWallet,
+    testWallet,
     coldAddress
   } = fixtures;
   describe('Create a wallet', () => {
@@ -79,26 +79,31 @@ describe('FarVault full pipe', () => {
           //This is my hot wallet.
           const {
             HDInterface: hotHDInterface,
-            mockWalletPaths,
-            UTXOs,
+            paths: walletPaths,
+            utxos: walletUtxos,
             regtestUtils
-          } = await createMockWallet(mnemonic, mockWallet, network);
+          } = await createTestWallet(mnemonic, testWallet, network);
 
           //Give esplora some time to catch up
           await new Promise(r => setTimeout(r, ESPLORA_CATCH_UP_TIME));
 
-          //Get the derivation paths and UTXOs of the wallet
+          //Get the derivation paths and utxos of the wallet
           const { fundedPaths, usedPaths } = await fetchDerivationPaths({
             extPubGetter: hotHDInterface.getExtPub,
             addressFetcher: address => esploraFetchAddress(address),
             network
           });
-          const walletUTXOs = await fetchUTXOs({
+          const utxos = await fetchDerivationPathsUtxos({
             extPubGetter: hotHDInterface.getExtPub,
             paths: fundedPaths,
-            utxoFetcher: address => esploraFetchUTXOs(address),
+            utxoFetcher: address => esploraFetchUtxos(address),
             network
           });
+
+          expect(utxos).toEqual(expect.arrayContaining(walletUtxos));
+          expect(walletUtxos.length - utxos.length >= 0).toEqual(true);
+          expect(fundedPaths).toEqual(expect.arrayContaining(walletPaths));
+          expect(fundedPaths.length).toEqual(walletPaths.length);
 
           //Create the safeAddress that will keep the funds safe.
           //We must not save this mnemonic below.
@@ -116,11 +121,6 @@ describe('FarVault full pipe', () => {
             path: safePath,
             network
           });
-
-          expect(walletUTXOs).toEqual(expect.arrayContaining(UTXOs));
-          expect(UTXOs.length - walletUTXOs.length >= 0).toEqual(true);
-          expect(fundedPaths).toEqual(expect.arrayContaining(mockWalletPaths));
-          expect(fundedPaths.length).toEqual(mockWalletPaths.length);
 
           const rushedHDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
             mnemonic: generateMnemonic(256)
@@ -157,56 +157,15 @@ describe('FarVault full pipe', () => {
           const prereservedPaths = Object.values(setup.vaults).map(
             vault => vault.hotPath
           );
-          //TODO
-          //TODO
-          //TODO
-          //TODO
-          //TODO
-          //TODO
-          //TODO
-          //TODO
-          //TODO
-          //TODO
-          //See if it is safe to ignore some of these prereservedPaths
-          //read pointer
-
-          //Create the hot address that is P2WPKH that will take funds when
-          //the uer wants again to have access to them:
-          //const hotPath = getNextDerivationPath({
-          //  isChange: false,
-          //  usedPaths: usedPaths.concat(prereservedPaths),
-          //  network
-          //});
           const hotPath = getNextDerivationPath({
             usedPaths,
             prereservedPaths,
             isChange: false,
-            skip: SKIP,
+            skip: VAULT_SKIP,
             network
           });
-          console.log({ usedPaths, prereservedPaths, distantPath: hotPath });
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          //NOOOOO Mark it as used. We can get out of the gapLimit
-          usedPaths.push(hotPath);
-          fundedPaths.push(hotPath);
+          prereservedPaths.push(hotPath);
+          console.log({ usedPaths, prereservedPaths, nextPath: hotPath });
           const hotPublicKey = await hotHDInterface.getPublicKey(
             hotPath,
             network
@@ -218,14 +177,14 @@ describe('FarVault full pipe', () => {
             guardTxTargetTime
           );
 
-          //Get which UTXOs will be protected. UTXOs are selected based on
+          //Get which utxos will be protected. utxos are selected based on
           //the number of sats (safeValue) that the user selected
           const {
-            utxos: fundsUTXOs,
+            utxos: fundsUtxos,
             fee: safeFee,
             targets: guardTargets
           } = await coinselect({
-            utxos: walletUTXOs,
+            utxos,
             targets: [
               {
                 address: safeAddress,
@@ -236,30 +195,10 @@ describe('FarVault full pipe', () => {
               const path = getNextDerivationPath({
                 isChange: true,
                 usedPaths,
+                prereservedPaths,
                 network
               });
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              //NOOOOO Mark it as used. We can get out of the gapLimit
-              usedPaths.push(path);
-              fundedPaths.push(path);
+              prereservedPaths.push(path);
               return await getDerivationPathAddress({
                 extPubGetter: hotHDInterface.getExtPub,
                 path,
@@ -269,7 +208,7 @@ describe('FarVault full pipe', () => {
             feeRate: guardTxFeeRate,
             network
           });
-          expect(fundsUTXOs).not.toBeUndefined();
+          expect(fundsUtxos).not.toBeUndefined();
           expect(guardTargets).not.toBeUndefined();
 
           console.log(
@@ -280,7 +219,7 @@ describe('FarVault full pipe', () => {
           //We won't keep the keys of this safeAddress. We will save
           //pre-computed txs that can unlock them based on a contract.
           const guardTx = await createTransaction({
-            utxos: fundsUTXOs,
+            utxos: fundsUtxos,
             targets: guardTargets,
             getPublicKey: hotHDInterface.getPublicKey,
             createSigners: hotHDInterface.createSigners,
@@ -289,7 +228,7 @@ describe('FarVault full pipe', () => {
           const guardTxid = decodeTx(guardTx).txid;
           console.log('WARNING! Should check the fees here somehow');
 
-          const encodedLockTime = bip68.encode({
+          const bip68LockTime = bip68.encode({
             //seconds must be a multiple of 512
             //seconds: Math.round(lockTime / 512) * 512
             blocks: lockNBlocks
@@ -297,7 +236,7 @@ describe('FarVault full pipe', () => {
           const relativeTimeLockScript = createRelativeTimeLockScript({
             maturedPublicKey,
             rushedPublicKey,
-            encodedLockTime
+            bip68LockTime
           });
           console.log({ relativeTimeLockScript });
 

@@ -8,13 +8,13 @@ import { networks } from 'bitcoinjs-lib';
 import { fetchDerivationPaths, getDerivationPathAddress } from '../src/wallet';
 import {
   blockstreamFetchAddress,
-  blockstreamFetchUTXOs
+  blockstreamFetchUtxos
 } from '../src/dataFetchers';
 
 async function ledgerBalance({
   network = networks.bitcoin,
   addressFetcher = blockstreamFetchAddress,
-  utxoFetcher = blockstreamFetchUTXOs
+  utxoFetcher = blockstreamFetchUtxos
 }) {
   const addresses = [];
   const utxos = [];
@@ -41,7 +41,7 @@ async function ledgerBalance({
 async function softwareBalance({
   network = networks.bitcoin,
   addressFetcher = blockstreamFetchAddress,
-  utxoFetcher = blockstreamFetchUTXOs
+  utxoFetcher = blockstreamFetchUtxos
 }) {
   const addresses = [];
   const utxos = [];

@@ -24,7 +24,7 @@ fetch.dontMock();
 
 import {
   blockstreamFetchAddress,
-  blockstreamFetchUTXOs,
+  blockstreamFetchUtxos,
   blockstreamFetchFeeEstimates
 } from '../src/dataFetchers';
 

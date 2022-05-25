@@ -1,4 +1,7 @@
-/** @module bip32 */
+/**
+ * This module assumes BIP44, BIP49 and BIP84 account-structures in all the methods.
+ * @module bip32
+ */
 
 import { checkPurpose, checkNetwork, checkExtPub } from './check';
 import b58 from 'bs58check';
@@ -114,6 +117,8 @@ export function deriveExtPub({
 /**
  * Takes an extended pub key and extracts its account number
  *
+ * It assumes BIP44, BIP49 and BIP84 account-structures.
+ *
  * See BIP44 to understand how to extract it: {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki}.
  * @param {object} params
  * @param {string} params.extPub An extended pub key.
@@ -138,6 +143,8 @@ export function getExtPubAccountNumber({ extPub, network = networks.bitcoin }) {
 /**
  * Gives back the account number used in a network.
  *
+ * It assumes BIP44, BIP49 and BIP84 account-structures.
+ *
  * It returns 0 for the Bitcoin mainnet and 1 for regtest and testnet networks.
  * @param {object} [network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
  * @returns {number} 0 for the Bitcoin mainnet and 1 for regtest and testnet
@@ -158,6 +165,8 @@ export function getNetworkCoinType(network = networks.bitcoin) {
 /**
  * Takes a string representation of a derivation path and returns the elements
  * that form it.
+ *
+ * It assumes BIP44, BIP49 and BIP84 account-structures.
  *
  * @param {string} path F.ex.: "84’/0’/0’/0/0" or "m/44'/1H/1h/0/0").
  * Note that "m/" is optional and h, H or ' can be used indistinctably.
@@ -223,6 +232,8 @@ export function parseDerivationPath(path) {
 
 /**
  * Serializes a derivation path.
+ *
+ * It assumes BIP44, BIP49 and BIP84 account-structures.
  *
  * @param {object} params
  * @param {number} params.purpose LEGACY, NESTED_SEGWIT, or NATIVE_SEGWIT.

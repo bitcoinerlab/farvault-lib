@@ -31,6 +31,7 @@ import { checkAddress } from './check';
  * * [https://github.com/BlueWallet/BlueWallet/issues/4352#issuecomment-1102307443](https://github.com/BlueWallet/BlueWallet/issues/4352#issuecomment-1102307443)
  * * [https://github.com/bitcoinjs/coinselect/issues/69](https://github.com/bitcoinjs/coinselect/issues/69)
  * * [https://github.com/BlueWallet/BlueWallet/pull/3810](https://github.com/BlueWallet/BlueWallet/pull/3810)
+ * @async
  * @param {Object} parameters
  * @param {Object[]} parameters.utxos List of spendable utxos.
  * @param {string} parameters.utxos[].path Derivation path. F.ex.: `44'/1'/1'/0/0`.
@@ -45,6 +46,7 @@ import { checkAddress } from './check';
  * @param {number} parameters.feeRate satoshis per vbyte. Must be `>= 1`. It will be rounded up. It is better to pay an extra 0.x satoshi/byte than be under-measuring and miss some cut off for some miner.
  * @param {function} parameters.changeAddress Async callback function that returns a string with a change address where change will go. Might not be called.
  * @param {Object} parameters.network A [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js). Default is testnet.
+ * @returns {Promise<Object>} return
  * @returns {Object[]} return.utxos The subset of input utxos selected. Undefined if no solution is found.
  * @returns {Object[]} return.targets The input targets plus (if necessary) a new target for the change address. Undefined if no solution is found.
  * @returns {number} return.fee The accumulated fee in vbytes. This is always returned even if no solution was found.

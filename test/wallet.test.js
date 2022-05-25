@@ -11,7 +11,7 @@ import {
   NATIVE_SEGWIT,
   GAP_LIMIT,
   GAP_ACCOUNT_LIMIT,
-  SKIP
+  VAULT_SKIP
 } from '../src/walletConstants';
 import { serializeDerivationPath } from '../src/bip32';
 import { networks } from 'bitcoinjs-lib';
@@ -175,14 +175,14 @@ describe('normalizeDerivationPaths', () => {
 
 describe('getNextDerivationPath', () => {
   for (const valid of fixtures.getNextDerivationPath.valid) {
-    test(`getNextDerivationPath isChange:false ${valid.description}`, () => {
+    test(`getNextDerivationPath ${valid.description}`, () => {
       expect(getNextDerivationPath({ ...valid })).toEqual(
         valid.distantReceivingPath
       );
     });
   }
   for (const invalid of fixtures.getNextDerivationPath.invalid) {
-    test(`getNextDerivationPath isChange:false ${invalid.description}`, () => {
+    test(`getNextDerivationPath ${invalid.description}`, () => {
       expect(() => getNextDerivationPath({ ...invalid })).toThrow(
         typeof invalid.errorMessage !== 'undefined'
           ? invalid.errorMessage

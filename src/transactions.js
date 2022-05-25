@@ -16,7 +16,6 @@ import {
 } from 'bitcoinjs-lib';
 import { decodeTx } from './decodeTx';
 import { parseDerivationPath } from './bip32';
-import bip68 from 'bip68';
 import varuint from 'varuint-bitcoin';
 
 import ECPairFactory from 'ecpair';
@@ -27,15 +26,22 @@ import('tiny-secp256k1').then(ecc => {
 
 import { feeRateSampling } from './fees';
 
+import { parseRelativeTimeLockScript } from './scripts';
+
 const validator = (pubkey, msghash, signature) =>
   fromPublicKey(pubkey).verify(msghash, signature);
 
 /**
- * Same utility function used in bitcoinjs-lib for finalizing inputs.
+ * Same utility function, line-by-line, as the one used in bitcoinjs-lib for
+ * finalizing inputs.
+ *
  * We must use it to finalize custom FarVault timeLockTransactions.
  *
  * Refer to {@link https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/psbt.js#L1187 bitcoinjs-lib's implementation}
  * for the details.
+ *
+ * bitcoinjs-lib has it own excellent suite of tests and so it's already been
+ * thoroughly tested.
  */
 function witnessStackToScriptWitness(witness) {
   let buffer = Buffer.allocUnsafe(0);
@@ -60,189 +66,19 @@ function witnessStackToScriptWitness(witness) {
   return buffer;
 }
 
-//
 /**
- * Take an integer and encode it so that bitcoinjs-lib fromASM can compile it.
- * It will produce a Buffer for integers !== 0 and OP_0 for number = 0.
+ * Builds a PSBT object ready to be signed.
+ * It assumes that all the utxos can be spent using this wallet.
+ * It sends funds to targets, where targets are [{ address, value (in sats) }]
  *
- * Read more about it {@link https://github.com/bitcoinjs/bitcoinjs-lib/issues/1799#issuecomment-1121656429 here}.
+ * This is an internal function that separates concerns with
+ * {@link module:transactions.createTransaction createTransaction}. Using PSBTs may end up being useful
+ * when multi-sig is implemented in the future.
  *
- * Use it like this:
- *
- * ```javascript
- * //To produce "0 1 OP_ADD":
- * fromASM(
- * `${numberEncodeAsm(0)} ${numberEncodeAsm(1)} OP_ADD`
- *   .trim().replace(/\s+/g, ' ')
- * )
- * ```
- *
- * @param {number} number An integer.
- * @returns {string|Buffer} Returns `"OP_0"` for `number === 0` and a `Buffer` for other numbers.
+ * It's only called by createTransaction and tested using createTransaction unit
+ * tests.
+ * @async
  */
-function numberEncodeAsm(number) {
-  if (Number.isSafeInteger(number) === false) {
-    throw new Error('Invalid number');
-  }
-  if (number === 0) {
-    return 'OP_0';
-  } else return script.number.encode(number).toString('hex');
-}
-//https://github.com/bitcoinjs/bitcoinjs-lib/issues/1799#issuecomment-1121656429
-function scriptNumberDecode(decompiled) {
-  if (
-    (typeof decompiled === 'number' && decompiled === 0) ||
-    (Buffer.isBuffer(decompiled) &&
-      Buffer.compare(decompiled, Buffer.from('00', 'hex')) === 0)
-  ) {
-    return 0;
-  } else {
-    if (
-      typeof decompiled === 'number' &&
-      decompiled >= 0x51 && // OP_1 (or OP_TRUE)
-      decompiled <= 0x60 // OP_16
-    ) {
-      return script.number.decode(Buffer.from([decompiled - 0x50]));
-    } else {
-      if (!Buffer.isBuffer(decompiled))
-        throw new Error('Invalid decompiled number');
-      // this is a Buffer
-      return script.number.decode(decompiled);
-    }
-  }
-}
-
-//I only did some basic tests. The test suite for this must be better!
-export function createRelativeTimeLockScript({
-  maturedPublicKey,
-  rushedPublicKey,
-  encodedLockTime
-}) {
-  if (encodedLockTime === 0) {
-    throw new Error('FarVault does not allow sequence to be 0.');
-    /*
-     * If encodedLockTime is 0 while unlocking a matured pubkey, then
-     * the UNLOCKING + LOCKING script is evaluated
-     * resulting into a zero (where 0 === OP_FALSE) on the top of the stack.
-     *
-     * Note that OP_CHECKSEQUENCEVERIFY behaves as a NOP if the check is ok and
-     * it does not consume encodedLockTime value.
-     *
-     * This is fine when encodedLockTime != 0 but if encodedLockTime is zero then
-     * it produces the following error when the miner evaluates the script:
-     *
-     * non-mandatory-script-verify-flag (Script evaluated without error but finished with a false/empty top stack element
-     *
-     * This is how the ulocking is evaluated when unlocking with a matured key.
-     * Note how a zero would be left at the top if ENCODED_LOCKTIME = 0 ->
-     *
-     * <MATURED_SIGNATURE> <- This is the unlocking script.
-     * <MATURED_PUB> <- Here and below corresponds to the locking script.
-     * OP_CHECKSIG
-     * OP_NOTIF
-     * <RUSHED_PUB>
-     * OP_CHECKSIG
-     * OP_ELSE
-     * <ENCODED_LOCKTIME>
-     * OP_CHECKSEQUENCEVERIFY
-     * OP_ENDIF
-     *
-     * -> If we're in the matured branch:
-     *
-     * TRUE
-     * OP_NOTIF
-     * <RUSHED_PUB>
-     * OP_CHECKSIG
-     * OP_ELSE
-     * <ENCODED_LOCKTIME>
-     * OP_CHECKSEQUENCEVERIFY
-     * OP_ENDIF
-     *
-     * ->
-     *
-     * TRUE
-     * OP_ELSE
-     * <ENCODED_LOCKTIME>
-     * OP_CHECKSEQUENCEVERIFY
-     * OP_ENDIF
-     *
-     * ->
-     *
-     * <ENCODED_LOCKTIME>
-     * OP_CHECKSEQUENCEVERIFY
-     *
-     * -> OP_CHECKSEQUENCEVERIFY behaves as a NOP if the sequence is ok:
-     *
-     * <ENCODED_LOCKTIME>
-     *
-     * -> If ENCODED_LOCKTIME = 0:
-     *
-     * FALSE
-     */
-  }
-
-  //Do some more validation before producing the lockins script:
-  if (
-    !Buffer.isBuffer(maturedPublicKey) ||
-    Buffer.byteLength(maturedPublicKey) !== 33
-  ) {
-    throw new Error('Invalid maturedPublicKey');
-  }
-  if (
-    !Buffer.isBuffer(rushedPublicKey) ||
-    Buffer.byteLength(rushedPublicKey) !== 33
-  ) {
-    throw new Error('Invalid rushedPublicKey');
-  }
-  if (
-    typeof encodedLockTime !== 'number' ||
-    bip68.encode(bip68.decode(encodedLockTime)) !== encodedLockTime
-  ) {
-    throw new Error('Invalid encodedLockTime');
-  }
-  return script.fromASM(
-    `
-      ${maturedPublicKey.toString('hex')}
-      OP_CHECKSIG
-      OP_NOTIF
-          ${rushedPublicKey.toString('hex')}
-          OP_CHECKSIG 
-      OP_ELSE
-          ${numberEncodeAsm(encodedLockTime)}
-          OP_CHECKSEQUENCEVERIFY
-      OP_ENDIF
-    `
-      .trim()
-      .replace(/\s+/g, ' ')
-  );
-}
-
-function parseRelativeTimeLockScript(relativeTimeLockScript) {
-  const decompiled = script.decompile(relativeTimeLockScript);
-  if (
-    decompiled.length === 9 &&
-    Buffer.isBuffer(decompiled[0]) &&
-    Buffer.byteLength(decompiled[0]) === 33 &&
-    decompiled[1] === opcodes.OP_CHECKSIG &&
-    decompiled[2] === opcodes.OP_NOTIF &&
-    Buffer.isBuffer(decompiled[3]) &&
-    Buffer.byteLength(decompiled[3]) === 33 &&
-    decompiled[4] === opcodes.OP_CHECKSIG &&
-    decompiled[5] === opcodes.OP_ELSE &&
-    bip68.encode(bip68.decode(scriptNumberDecode(decompiled[6]))) ===
-      scriptNumberDecode(decompiled[6]) &&
-    decompiled[7] === opcodes.OP_CHECKSEQUENCEVERIFY &&
-    decompiled[8] === opcodes.OP_ENDIF
-  ) {
-    return {
-      maturedPublicKey: decompiled[0],
-      rushedPublicKey: decompiled[3],
-      encodedLockTime: scriptNumberDecode(decompiled[6])
-    };
-  }
-  return false;
-}
-
 async function createPSBT({
   utxos,
   targets,
@@ -268,14 +104,14 @@ async function createPSBT({
         const {
           maturedPublicKey,
           rushedPublicKey,
-          encodedLockTime
+          bip68LockTime
         } = parsedScript;
         const pubkey = await getPublicKey(utxo.path, network);
         if (Buffer.compare(pubkey, maturedPublicKey) === 0) {
           witnessScript = Buffer.from(utxo.witnessScript);
-          sequence = encodedLockTime;
+          sequence = bip68LockTime;
           //console.log('WARNING: Test this', { sequence });
-          //sequence = encodedLockTime;
+          //sequence = bip68LockTime;
         } else if (Buffer.compare(pubkey, rushedPublicKey) === 0) {
           witnessScript = Buffer.from(utxo.witnessScript);
         } else {
@@ -327,6 +163,48 @@ async function createPSBT({
   psbt.setVersion(PSBT_VERSION);
   return psbt;
 }
+
+/**
+ * Builds a transaction ready to be broadcasted.
+ *
+ * It assumes that all the utxos of the transaction can be spent using the same
+ * wallet controlled by this software.
+
+ * Targets are expressed as: `[{ address, value }]`, with value in satoshis.
+ *
+ * Utxos can be standard: P2PKH, P2WPKH, P2WH-P2WPKH. And they can also be
+ * P2WSH for FarVault's timelocked utxos.
+ *
+ * For regular P2PKH, P2WPKH, P2WH-P2WPKH utxos, an utxo must be like this:
+ * `{tx, n, path}`, where
+ * * `tx` is a string containing the complete previous transaction in hex
+ * * `n` is the index of the output
+ * * `path` is the BIP-44/49/84 serialized derivation path string that can spend this utxo. F.ex.: `44'/1'/1'/0/0`.
+ *
+ * For relativeTimeLockScript utxos, the utxo must be:
+ *`{tx, n, path, witnessScript}`, where
+ * * `tx` is a string containing the complete previous transaction in hex
+ * * `n` is the index of the output
+ * * `path` is a BIP84 serialized derivation path that can spend this utxo. F.ex.: `84'/1'/1'/0/0`. Note that this path may correspond to the rushedPublicKey or the maturedPublicKey. This is checked internally comparing the pubkey of `utxo.path` with the `rushedPublicKey` and `maturedPublicKey` pubkeys from `witnessScript` 
+ * * `witnessScript` is the relative timeLock script. The script is internally decompiled to obtain the rushedPublicKey, maturedPublicKey and also the bip68LockTime. Then, it is possible to deduce if this `path` belongs to the rushedPublicKey or the maturedPublicKey. With that information, the appropriate unlocking script is chosen and added into the transaction.
+ *
+ * You must provide the (async) function that gives back the public key of a
+ * derivationPath.
+ *
+ * @async
+ * @param {Object} parameters
+ * @param {Object[]} parameters.utxos List of spendable utxos.
+ * @param {string} parameters.utxos[].path Derivation path. F.ex.: `44'/1'/1'/0/0`.
+ * @param {string} parameters.utxos[].tx The transaction serialized in hex.
+ * @param {string} [parameters.utxos[].witnessScript] The witnessScript serialized in hex in case the utxo can be redeemed with an unlocking script.
+ * @param {number} parameters.utxos[].n The vout index of the tx above.
+ * @param {Object[]} parameters.targets List of addresses to send funds.
+ * @param {string} parameters.targets[].address The address to send funds.
+ * @param {number} parameters.targets[].value Number of satoshis to send the address above.
+ * @param {module:HDInterface.createSigners} parameters.createSigners An **async** function that returns an array of signer functions. One for each utxo. Signer functions sign the hash of the transaction.
+ * @param {module:HDInterface.getPublicKey} parameters.getPublicKey An **async** function that resolves the public key from a derivation path and the network.
+ * @param {object} [parameters.network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ */
 
 export async function createTransaction({
   utxos,
