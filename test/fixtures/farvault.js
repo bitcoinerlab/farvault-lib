@@ -34,7 +34,7 @@ export const fixtures = {
   },
   testWallet: [
     {
-      extPub: {
+      account: {
         purpose: LEGACY,
         accountNumber: 0
       },
@@ -44,7 +44,7 @@ export const fixtures = {
       value: 200000000
     },
     {
-      extPub: {
+      account: {
         purpose: LEGACY,
         accountNumber: 0
       },
@@ -54,7 +54,7 @@ export const fixtures = {
       value: 100000000
     },
     {
-      extPub: {
+      account: {
         purpose: NATIVE_SEGWIT,
         accountNumber: 0
       },
@@ -64,7 +64,7 @@ export const fixtures = {
       value: 20000000
     },
     {
-      extPub: {
+      account: {
         purpose: NATIVE_SEGWIT,
         accountNumber: 1
       },
@@ -74,7 +74,7 @@ export const fixtures = {
       value: 90000000
     },
     {
-      extPub: {
+      account: {
         purpose: NESTED_SEGWIT,
         accountNumber: 0
       },

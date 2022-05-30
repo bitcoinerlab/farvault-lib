@@ -5,6 +5,11 @@ export const SOFT_HD_INTERFACE = 'SOFT_HD_INTERFACE';
 import * as ledgerNano from './ledgerNano';
 import * as soft from './soft';
 
+export const WEB_TRANSPORT = ledgerNano.WEB_TRANSPORT;
+export const NODEJS_TRANSPORT = ledgerNano.NODEJS_TRANSPORT;
+
+import memoize from 'lodash.memoize';
+
 import {
   deriveExtPub,
   parseDerivationPath,
@@ -29,10 +34,6 @@ async function getPublicKey(HDInterface, path, network = networks.bitcoin) {
     index,
     isChange
   } = parseDerivationPath(path);
-  //Study possible problems memoizing this function since it returns a Promise
-  console.log('CACHE THIS!');
-  //Study possible problems memoizing this function since it returns a Promise
-  //
   if (getNetworkCoinType(network) !== coinType) {
     throw new Error('Network mismatch');
   }
@@ -100,12 +101,11 @@ async function getPublicKey(HDInterface, path, network = networks.bitcoin) {
  * * `getPublicKey` (as defined in {@link module:HDInterface.getPublicKey})
  * * `createSigners` (as defined in {@link module:HDInterface.createSigners})
  */
-export async function initHDInterface(type, { mnemonic } = {}) {
+export async function initHDInterface(type, { transport, mnemonic } = {}) {
   let HDInterface = null;
   if (type === LEDGER_NANO_INTERFACE) {
-    const ledgerAppBtc = await ledgerNano.init();
+    const ledgerAppBtc = await ledgerNano.init(transport);
     HDInterface = {
-      type,
       getExtPub: (...args) => ledgerNano.getExtPub(ledgerAppBtc, ...args),
       createSigners: (...args) =>
         ledgerNano.createSigners(ledgerAppBtc, ...args)
@@ -116,7 +116,6 @@ export async function initHDInterface(type, { mnemonic } = {}) {
     }
     const seed = await soft.init(mnemonic);
     HDInterface = {
-      type,
       getExtPub: (...args) => soft.getExtPub(seed, ...args),
       createSigners: (...args) => soft.createSigners(seed, ...args)
     };
@@ -124,6 +123,15 @@ export async function initHDInterface(type, { mnemonic } = {}) {
 
   return {
     ...HDInterface,
-    getPublicKey: (...args) => getPublicKey(HDInterface, ...args)
+    //getPublicKey: (...args) => getPublicKey(HDInterface, ...args)
+    //Extremelly important to memoize,
+    //specially for large number of multi-fee transactions
+    getPublicKey: memoize(
+      (path, network = networks.bitcoin) =>
+        getPublicKey(HDInterface, path, network),
+      (path, network = networks.bitcoin) => {
+        return path + network.bip32.public.toString();
+      }
+    )
   };
 }

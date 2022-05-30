@@ -22,8 +22,9 @@ import BIP32Factory from 'bip32';
 let bjsBip32;
 import('tiny-secp256k1').then(ecc => (bjsBip32 = BIP32Factory(ecc)));
 
-export async function fromSeed(seed) {
-  return await bjsBip32.fromSeed(seed);
+export async function fromSeed(seed, network = networks.bitcoin) {
+  //No need to memoize it
+  return await bjsBip32.fromSeed(seed, network);
 }
 
 /**
@@ -174,6 +175,7 @@ export function getNetworkCoinType(network = networks.bitcoin) {
  * See {@link module:bip32.serializeDerivationPath serializeDerivationPath} for further description of the types of the returned object elements.
  */
 export function parseDerivationPath(path) {
+  //No need to memoize it
   let purpose;
   let coinType;
   let index;
@@ -207,7 +209,6 @@ export function parseDerivationPath(path) {
     pathComponents[1] !== `${getNetworkCoinType(networks.regtest)}'`
   ) {
     throw new Error('Invalid coin type');
-
   } else {
     coinType = parseInt(pathComponents[1]);
   }
@@ -282,8 +283,8 @@ export function serializeDerivationPath({
     }/${index}`;
     //Further verification:
     const parsedDerivationPath = parseDerivationPath(path);
-    Object.keys(parseDerivationPath).map(key => {
-      if (parseDerivationPath[key] !== arguments[0][key]) {
+    Object.keys(parsedDerivationPath).map(key => {
+      if (parsedDerivationPath[key] !== arguments[0][key]) {
         throw new Error('Error serializing a derivation path');
       }
     });

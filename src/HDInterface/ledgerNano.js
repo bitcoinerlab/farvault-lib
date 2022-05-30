@@ -9,11 +9,15 @@
 //https://github.com/LedgerHQ/ledgerjs/blob/master/packages/hw-app-btc/src/signP2SHTransaction.ts
 
 import LedgerTransport from '@ledgerhq/hw-transport-webusb';
+import LedgerTransportNodejs from '@ledgerhq/hw-transport-node-hid-singleton';
 import LedgerAppBtc from '@ledgerhq/hw-app-btc';
 import { NATIVE_SEGWIT, NESTED_SEGWIT, LEGACY } from '../walletConstants';
+import memoize from 'lodash.memoize';
+export const WEB_TRANSPORT = 'WEB_TRANSPORT';
+export const NODEJS_TRANSPORT = 'NODEJS_TRANSPORT';
 
 import {
-  crypto,
+  //  crypto,
   Transaction,
   payments,
   script,
@@ -36,14 +40,17 @@ import {
   serializeDerivationPath
 } from '../bip32';
 
-export async function init() {
-  const ledgerTransport = await LedgerTransport.create();
+export async function init(transport = WEB_TRANSPORT) {
+  if (transport !== WEB_TRANSPORT && transport !== NODEJS_TRANSPORT)
+    throw new Error('Invalid transport');
+  const ledgerTransport =
+    transport === WEB_TRANSPORT
+      ? await LedgerTransport.create()
+      : await LedgerTransportNodejs.create();
   const ledgerAppBtc = new LedgerAppBtc(ledgerTransport);
   ledgerAppBtc.instanceId = Date.now();
   return ledgerAppBtc;
 }
-
-import { classifyScript } from '../classifyScript';
 
 //Ledger nano uses uncompressed pub keys but bitcoinjs and FarVault use
 //compressed pub keys
@@ -51,59 +58,104 @@ function compressPublicKey(pk) {
   const { publicKey } = fromPublicKey(pk);
   return publicKey;
 }
+// previous implementation before memoize. Remove this after new version
+// has been tested
+//
+//      //memoizes getExtPub_internal
+//      export const getExtPub = (function () {
+//        const extPubs = [];
+//        return async function (ledgerAppBtc, args) {
+//          const paramsHash = crypto
+//            .sha256(
+//              ledgerAppBtc.instanceId.toString() +
+//                args.purpose +
+//                args.accountNumber.toString() +
+//                args.network.bip32.public
+//            )
+//            .toString('hex');
+//          if (extPubs[paramsHash]) {
+//            return extPubs[paramsHash];
+//          } else {
+//            extPubs[paramsHash] = getExtPub_internal(ledgerAppBtc, args);
+//            return extPubs[paramsHash];
+//          }
+//        };
+//      })();
+//
+//      async function getExtPub_internal(
+//        ledgerAppBtc,
+//        { purpose, accountNumber, network = networks.bitcoin }
+//      ) {
+//        checkPurpose(purpose);
+//        checkNetwork(network);
+//        if (!Number.isInteger(accountNumber) || accountNumber < 0)
+//          throw new Error('Invalid accountNumber');
+//
+//        const extPub = setExtPubPrefix({
+//          extPub: await ledgerAppBtc.getWalletXpub({
+//            path: serializeDerivationPath({
+//              purpose,
+//              coinType: getNetworkCoinType(network),
+//              accountNumber
+//            }),
+//            //Ledger only accepts xpub or tpub byte version for xpubVersion as in
+//            //the original BIP32 implementation
+//            //bitcoinjs-lib (network.bip32.public) also only references xpub or tpub
+//            //for network = bitcoin, and network = testnet, respectively
+//            //Read setExtPubPrefix documentation to understand why this is here.
+//            //Note that network.bip32.public will be === walletConstants.XPUBVERSION
+//            //for mainnet and === walletConstants.TPUBVERSION for testnet and regtest
+//            xpubVersion: network.bip32.public
+//          }),
+//          purpose,
+//          network
+//        });
+//        checkExtPub({ extPub, accountNumber, network });
+//        return extPub;
+//      }
 
-//memoizes getExtPub_internal
-export const getExtPub = (function () {
-  const extPubs = [];
-  return async function (ledgerAppBtc, args) {
-    const paramsHash = crypto
-      .sha256(
-        ledgerAppBtc.instanceId.toString() +
-          args.purpose +
-          args.accountNumber.toString() +
-          args.network.bip32.public
-      )
-      .toString('hex');
-    if (extPubs[paramsHash]) {
-      return extPubs[paramsHash];
-    } else {
-      extPubs[paramsHash] = getExtPub_internal(ledgerAppBtc, args);
-      return extPubs[paramsHash];
-    }
-  };
-})();
+export const getExtPub = memoize(
+  async function (
+    ledgerAppBtc,
+    { purpose, accountNumber, network = networks.bitcoin }
+  ) {
+    checkPurpose(purpose);
+    checkNetwork(network);
+    if (!Number.isInteger(accountNumber) || accountNumber < 0)
+      throw new Error('Invalid accountNumber');
 
-async function getExtPub_internal(
-  ledgerAppBtc,
-  { purpose, accountNumber, network = networks.bitcoin }
-) {
-  checkPurpose(purpose);
-  checkNetwork(network);
-  if (!Number.isInteger(accountNumber) || accountNumber < 0)
-    throw new Error('Invalid accountNumber');
-
-  const extPub = setExtPubPrefix({
-    extPub: await ledgerAppBtc.getWalletXpub({
-      path: serializeDerivationPath({
-        purpose,
-        coinType: getNetworkCoinType(network),
-        accountNumber
+    const extPub = setExtPubPrefix({
+      extPub: await ledgerAppBtc.getWalletXpub({
+        path: serializeDerivationPath({
+          purpose,
+          coinType: getNetworkCoinType(network),
+          accountNumber
+        }),
+        //Ledger only accepts xpub or tpub byte version for xpubVersion as in
+        //the original BIP32 implementation
+        //bitcoinjs-lib (network.bip32.public) also only references xpub or tpub
+        //for network = bitcoin, and network = testnet, respectively
+        //Read setExtPubPrefix documentation to understand why this is here.
+        //Note that network.bip32.public will be === walletConstants.XPUBVERSION
+        //for mainnet and === walletConstants.TPUBVERSION for testnet and regtest
+        xpubVersion: network.bip32.public
       }),
-      //Ledger only accepts xpub or tpub byte version for xpubVersion as in
-      //the original BIP32 implementation
-      //bitcoinjs-lib (network.bip32.public) also only references xpub or tpub
-      //for network = bitcoin, and network = testnet, respectively
-      //Read setExtPubPrefix documentation to understand why this is here.
-      //Note that network.bip32.public will be === walletConstants.XPUBVERSION
-      //for mainnet and === walletConstants.TPUBVERSION for testnet and regtest
-      xpubVersion: network.bip32.public
-    }),
-    purpose,
-    network
-  });
-  checkExtPub({ extPub, accountNumber, network });
-  return extPub;
-}
+      purpose,
+      network
+    });
+    checkExtPub({ extPub, accountNumber, network });
+    return extPub;
+  },
+  //The memoize resolver: how to get a key from the params ->
+  (ledgerAppBtc, { purpose, accountNumber, network = networks.bitcoin }) =>
+    ledgerAppBtc.instanceId.toString() +
+    '_' +
+    purpose.toString() +
+    '_' +
+    accountNumber.toString() +
+    '_' +
+    network.bip32.public.toString()
+);
 
 async function getPublicKey(ledgerAppBtc, path, network = networks.bitcoin) {
   const {
@@ -127,7 +179,8 @@ async function getPublicKey(ledgerAppBtc, path, network = networks.bitcoin) {
 /** Tries to obtain the lockTime from an utxo
  *
  * If the utxo has a witnessScript or redeemScript, then it parses the script
- * and checks if this is a script we know how to spend (a relativeTimeLockScript)
+ * and checks if this is a script we know how to spend (a relativeTimeLockScript
+ * for now)
  *
  * If this is a script that we know how to spend then it returns the appropriate
  * sequence.
@@ -139,26 +192,28 @@ async function getPublicKey(ledgerAppBtc, path, network = networks.bitcoin) {
  * @returns {number} A bip68 encoded sequence or `undefined`
  *
  */
-async function getUtxoSequence(ledgerAppBtc, utxo) {
-  let sequence;
-  let script;
+async function getUtxoSequence(ledgerAppBtc, utxo, network) {
+  let sequence = undefined;
+  let script = undefined;
   if (typeof utxo.witnessScript === 'string') {
     script = utxo.witnessScript;
   }
   if (typeof utxo.redeemScript === 'string') {
-    if (typeof utxo.witnessScript == 'string') {
+    if (typeof utxo.witnessScript === 'string') {
       throw new Error(
         'Cannot have redeemScript and witnessScript at the same time'
       );
     }
     script = utxo.redeemScript;
   }
-  const parsedScript = parseRelativeTimeLockScript(Buffer.from(script, 'hex'));
-  if (parsedScript !== false) {
-    const pubkey = await getPublicKey(ledgerAppBtc, utxo.path);
-    const { maturedPublicKey, rushedPublicKey, bip68LockTime } = parsedScript;
-    if (Buffer.compare(pubkey, maturedPublicKey) === 0) {
-      sequence = bip68LockTime;
+  if (typeof script !== 'undefined') {
+    const parsedScript = parseRelativeTimeLockScript(script);
+    if (parsedScript !== false) {
+      const pubkey = await getPublicKey(ledgerAppBtc, utxo.path, network);
+      const { maturedPublicKey, rushedPublicKey, bip68LockTime } = parsedScript;
+      if (Buffer.compare(pubkey, maturedPublicKey) === 0) {
+        sequence = bip68LockTime;
+      }
     }
   }
   return sequence;
@@ -216,27 +271,16 @@ export async function createSigners(
       !utxo.redeemScript &&
       parseDerivationPath(utxo.path).purpose;
 
-    const sequence = await getUtxoSequence(ledgerAppBtc, utxo);
+    const sequence = await getUtxoSequence(ledgerAppBtc, utxo, network);
 
     let redeemScript;
 
-    /*if (purpose === NESTED_SEGWIT) {
-      const pubkey = await getPublicKey(ledgerAppBtc, utxo.path);
-      redeemScript = payments.p2sh({
-        redeem: payments.p2wpkh({ pubkey, network }),
-        network
-      }).redeem.output;
-      segwitInputTypes.push(true);
-    } else if (purpose === NATIVE_SEGWIT) {
+    if (purpose === NATIVE_SEGWIT) {
       redeemScript = undefined;
       segwitInputTypes.push(true);
-    }*/
-
-    if (purpose === NESTED_SEGWIT || purpose === NATIVE_SEGWIT) {
-      const pubkey = await getPublicKey(ledgerAppBtc, utxo.path);
-      //The redeemScript for NESTED_SEGWIT and NATIVE_SEGWIT must be p2pkh
-      //I don't konw why. It's hacky. Who knows why Ledger soft works this way.
-      //Intuitively it should work as in the commented block above.
+    } else if (purpose === NESTED_SEGWIT) {
+      //The redeemScript for NESTED_SEGWIT must be p2pkh
+      const pubkey = await getPublicKey(ledgerAppBtc, utxo.path, network);
       redeemScript = payments.p2pkh({ pubkey, network }).output.toString('hex');
       segwitInputTypes.push(true);
     } else if (purpose === LEGACY) {

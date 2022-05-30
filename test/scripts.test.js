@@ -15,7 +15,9 @@ describe('createRelativeTimeLockScript', () => {
   for (const { description, script, ...params } of fixtures
     .createRelativeTimeLockScript.valid) {
     test(description, () => {
-      expect(createRelativeTimeLockScript(params)).toEqual(script);
+      expect(createRelativeTimeLockScript(params)).toEqual(
+        Buffer.from(script, 'hex')
+      );
     });
   }
 

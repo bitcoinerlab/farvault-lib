@@ -30,6 +30,25 @@ If you want to install bitcoind, then read instructions how to compile: https://
 
 For example, for macOS, follow these instructions: https://github.com/bitcoin/bitcoin/blob/master/doc/build-osx.md
 
+
+
+```
+#Make sure your system has zmq support (it will be needed by regtest_server):
+brew install zeromq
+
+mkdir ~/bitcoin
+cd bitcoin
+
+git clone https://github.com/bitcoin/bitcoin.git
+
+cd bitcoin
+./autogen.sh
+#./configure --without-bdb --with-sqlite
+./configure --enable-hardening --with-gui=no --without-bdb
+#Assuming your computer has 8 cores (and not letting make start more than one job if the load average is above 6.5)
+make -j 8 -l 6.5
+```
+
 ## Run bitcoind
 
 Prepare directories and run bitcoind:
@@ -55,13 +74,13 @@ You will also need to install `bitcoin-cli` (to send commands to your Bitcoin no
 
 If you installed bitcoind above then you can skip this step.
 
-If you are using Bitcoin-QT, then you must download the sources and compile bitcoin-cli (but you can skip compiling bitcoind):
+If you did not compile bitcoind and are using Bitcoin-QT, then you still must download the sources and compile bitcoin-cli:
 ```
 mkdir ~/bitcoin
 cd bitcoin
 git clone https://github.com/bitcoin/bitcoin.git
 cd bitcoin
-./autgen.sh
+./autogen.sh
 ./configure --enable-hardening --disable-wallet --disable-upnp-default --without-miniupnpc
 make ./src/bitcoin-cli
 ```

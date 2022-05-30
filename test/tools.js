@@ -1,7 +1,11 @@
 /** @module test */
 
 import { getDerivationPathAddress } from '../src/wallet';
-import { initHDInterface, SOFT_HD_INTERFACE } from '../src/HDInterface';
+import {
+  initHDInterface,
+  SOFT_HD_INTERFACE,
+  NODEJS_TRANSPORT
+} from '../src/HDInterface';
 import { getNetworkCoinType, serializeDerivationPath } from '../src/bip32';
 import bJs from 'bitcoinjs-lib';
 import { RegtestUtils } from 'regtest-client';
@@ -33,17 +37,21 @@ export const REGTEST_SERVER_CATCH_UP_TIME = 1000;
     regtestUtils
   }`
  */
-export async function createTestWallet(
+export async function createTestWallet({
+  type = SOFT_HD_INTERFACE,
   mnemonic,
   addressesDescriptors,
   network
-) {
-  const HDInterface = await initHDInterface(SOFT_HD_INTERFACE, { mnemonic });
+}) {
+  const HDInterface = await initHDInterface(type, {
+    mnemonic,
+    transport: NODEJS_TRANSPORT
+  });
   const extPubs = [];
   const paths = [];
   const utxos = [];
   for (const descriptor of addressesDescriptors) {
-    const { purpose, accountNumber } = descriptor.extPub;
+    const { purpose, accountNumber } = descriptor.account;
     const { index, isChange } = descriptor;
     const extPub = await HDInterface.getExtPub({
       purpose,
@@ -87,16 +95,18 @@ export async function createTestWallet(
   };
 }
 
-export async function startTestingEnvironment() {
+export async function startTestingEnvironment({ startElectrs = true } = {}) {
   const bitcoind = spawn('./testing_environment/bitcoind.sh', {
     detached: true,
     stdio: 'ignore'
   });
   await new Promise(r => setTimeout(r, BITCOIND_CATCH_UP_TIME));
-  const electrs = spawn('./testing_environment/electrs.sh', {
-    detached: true,
-    stdio: 'ignore'
-  });
+  const electrs = startElectrs
+    ? spawn('./testing_environment/electrs.sh', {
+        detached: true,
+        stdio: 'ignore'
+      })
+    : undefined;
   const regtest_server = spawn('./testing_environment/regtest_server.sh', {
     detached: true,
     stdio: 'ignore'
@@ -112,6 +122,6 @@ export async function stopTestingEnvironment({
   regtest_server
 }) {
   kill(-bitcoind.pid, 'SIGKILL');
-  kill(-electrs.pid, 'SIGKILL');
+  if (electrs) kill(-electrs.pid, 'SIGKILL');
   kill(-regtest_server.pid, 'SIGKILL');
 }

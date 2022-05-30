@@ -1,20 +1,26 @@
+/*
+ * So far, this module is unused and untested.
+ * Keep it in case it is useful in the future.
+ *
+ * It was taken from here:
+ *
+ * https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/psbt.js
+ *
+ * But it may have some problems. Read this:
+ * https://github.com/bitcoinjs/bitcoinjs-lib/issues/1768
+ * and this:
+ * https://github.com/bitcoinjs/bitcoinjs-lib/pull/1377
+ **/
+
 import {
   Transaction,
   Psbt,
-  crypto,
   payments,
   networks,
   address,
   script
 } from 'bitcoinjs-lib';
-/*taken from here
- *
- * https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/psbt.js
- * But read this:
- * https://github.com/bitcoinjs/bitcoinjs-lib/issues/1768
- * and this:
- * https://github.com/bitcoinjs/bitcoinjs-lib/pull/1377
- * */
+
 function isPaymentFactory(payment) {
   return script => {
     try {

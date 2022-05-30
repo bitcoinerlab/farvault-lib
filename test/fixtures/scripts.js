@@ -66,10 +66,8 @@ Get this:
  21027c3591221e28939e45f8ea297d62c3640ebb09d7058b01d09c963d984a40ad49ac642102b3e3e297165289611a2387e8089fcaf099926e4d31fdddb50c0ae0dfa36c97e6ac6700b268
 */
 
-const script = Buffer.from(
-  '21027c3591221e28939e45f8ea297d62c3640ebb09d7058b01d09c963d984a40ad49ac642102b3e3e297165289611a2387e8089fcaf099926e4d31fdddb50c0ae0dfa36c97e6ac6703040040b268',
-  'hex'
-);
+const script =
+  '21027c3591221e28939e45f8ea297d62c3640ebb09d7058b01d09c963d984a40ad49ac642102b3e3e297165289611a2387e8089fcaf099926e4d31fdddb50c0ae0dfa36c97e6ac6703040040b268';
 //https://learnmeabitcoin.com/technical/varint
 //https://developer.bitcoin.org/reference/transactions.html#compactsize-unsigned-integers
 const bip68LockTime = 0x00400004; // = bip68.encode({ seconds: 2048 })
@@ -95,10 +93,8 @@ export const fixtures = {
         maturedPublicKey,
         rushedPublicKey,
         bip68LockTime: 1,
-        script: Buffer.from(
-          '21027c3591221e28939e45f8ea297d62c3640ebb09d7058b01d09c963d984a40ad49ac642102b3e3e297165289611a2387e8089fcaf099926e4d31fdddb50c0ae0dfa36c97e6ac6751b268',
-          'hex'
-        )
+        script:
+          '21027c3591221e28939e45f8ea297d62c3640ebb09d7058b01d09c963d984a40ad49ac642102b3e3e297165289611a2387e8089fcaf099926e4d31fdddb50c0ae0dfa36c97e6ac6751b268'
       }
     ],
     invalid: [
@@ -142,40 +138,34 @@ export const fixtures = {
         description:
           'parseRelativeTimeLockScript works with bip68LockTime 1, which is converted to OP_1',
         returns: { maturedPublicKey, rushedPublicKey, bip68LockTime: 1 },
-        script: Buffer.from(
-          '21027c3591221e28939e45f8ea297d62c3640ebb09d7058b01d09c963d984a40ad49ac642102b3e3e297165289611a2387e8089fcaf099926e4d31fdddb50c0ae0dfa36c97e6ac6751b268',
-          'hex'
-        )
+        script:
+          '21027c3591221e28939e45f8ea297d62c3640ebb09d7058b01d09c963d984a40ad49ac642102b3e3e297165289611a2387e8089fcaf099926e4d31fdddb50c0ae0dfa36c97e6ac6751b268'
       },
       {
         description:
           'parseRelativeTimeLockScript returns false with bip68LockTime 0',
         returns: false,
-        script: Buffer.from(
-          '21027c3591221e28939e45f8ea297d62c3640ebb09d7058b01d09c963d984a40ad49ac642102b3e3e297165289611a2387e8089fcaf099926e4d31fdddb50c0ae0dfa36c97e6ac6700b268',
-          'hex'
-        )
+        script:
+          '21027c3591221e28939e45f8ea297d62c3640ebb09d7058b01d09c963d984a40ad49ac642102b3e3e297165289611a2387e8089fcaf099926e4d31fdddb50c0ae0dfa36c97e6ac6700b268'
       },
       {
         description: 'Remove one nibble (4 bits) from a public key',
-        script: Buffer.from(
+        script:
           '210273591221e28939e45f8ea297d62c3640ebb09d7058b01d09c963d984a40ad49ac642102b3e3e297165289611a2387e8089fcaf099926e4d31fdddb50c0ae0dfa36c97e6ac6751b268',
-          'hex'
-        ),
         returns: false
       },
       {
         //Use one of the invalid scripts from bitcoinjs-lig tests:
         //https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/test/fixtures/script.json
         description: 'Invalid script - Not enough data: OP_PUSHDATA2 0xffff',
-        script: Buffer.from('4dffff01', 'hex'),
+        script: '4dffff01',
         returns: false
       }
     ],
     invalid: [
       {
         description: 'Wrong script type',
-        errorMessage: 'Expected Buffer, got Number 2',
+        errorMessage: 'The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received type number (21)',
         script: 21
       }
     ]

@@ -6,6 +6,7 @@ export async function init(
   return await mnemonicToSeed(mnemonic);
 }
 import { checkNetwork, checkPurpose, checkExtPub } from '../check';
+import memoize from 'lodash.memoize';
 
 import {
   setExtPubPrefix,
@@ -18,15 +19,12 @@ export async function getExtPub(
   seed,
   { purpose, accountNumber, network = networks.bitcoin }
 ) {
+  //No need to memoize
   checkPurpose(purpose);
   checkNetwork(network);
   if (!Number.isInteger(accountNumber) || accountNumber < 0)
     throw new Error('Invalid accountNumber');
 
-  //Study possible problems memoizing this function since it returns a Promise
-  console.log('CACHE! recreating this fromSeed everytime is stupid and slow');
-  //Study possible problems memoizing this function since it returns a Promise
-  //
   const root = await fromSeed(seed, network);
   const extPub = setExtPubPrefix({
     extPub: root
@@ -46,17 +44,33 @@ export async function getExtPub(
   return extPub;
 }
 
+//Create the key with the seed but derive with the root:
+const rootDerivePath = memoize(
+  (seed, root, path, network) => root.derivePath(path),
+  (seed, root, path, network) =>
+    seed.toString() + '_' + path + '_' + network.bip32.public.toString()
+);
+
 export async function createSigners(
   seed,
   { psbt, utxos, network = networks.bitcoin }
 ) {
-  //Study possible problems memoizing this function since it returns a Promise
-  console.log('CACHE! recreating this fromSeed everytime is stupid and slow');
-  //Study possible problems memoizing this function since it returns a Promise
-  //
   const root = await fromSeed(seed, network);
   return utxos.map(utxo => $hash => {
-    const signature = root.derivePath(utxo.path).sign($hash);
+    const signature = rootDerivePath(seed, root, utxo.path, network).sign(
+      $hash
+    );
     return signature;
   });
 }
+
+//export async function createSigners(
+//  seed,
+//  { psbt, utxos, network = networks.bitcoin }
+//) {
+//  const root = await fromSeed(seed, network);
+//  return utxos.map(utxo => $hash => {
+//    const signature = root.derivePath(utxo.path).sign($hash);
+//    return signature;
+//  });
+//}

@@ -11,7 +11,7 @@
 //
 //Things to check: fees
 
-const MULTIFEE_SAMPLES = 10;
+const MULTIFEE_SAMPLES = 100;
 
 import { payments } from 'bitcoinjs-lib';
 import { generateMnemonic } from 'bip39';
@@ -82,7 +82,11 @@ describe('FarVault full pipe', () => {
             paths: walletPaths,
             utxos: walletUtxos,
             regtestUtils
-          } = await createTestWallet(mnemonic, testWallet, network);
+          } = await createTestWallet({
+            mnemonic,
+            addressesDescriptors: testWallet,
+            network
+          });
 
           //Give esplora some time to catch up
           await new Promise(r => setTimeout(r, ESPLORA_CATCH_UP_TIME));
@@ -215,6 +219,8 @@ describe('FarVault full pipe', () => {
             'WARNING! Test it also with send all so that targets.length === 1'
           );
 
+          const timer = Date.now();
+
           //Create the transaction that will send the funds to safeAddress.
           //We won't keep the keys of this safeAddress. We will save
           //pre-computed txs that can unlock them based on a contract.
@@ -320,6 +326,10 @@ describe('FarVault full pipe', () => {
               cancelTxs
             };
           }
+
+          console.log(
+            'Vault creation time: ' + Math.round((Date.now() - timer) / 1000)
+          );
           writeSetup(setup);
 
           //CREATE A FUNCTION IN FEES FOR THIS BLOCK

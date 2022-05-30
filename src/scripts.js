@@ -124,6 +124,7 @@ export function createRelativeTimeLockScript({
   rushedPublicKey,
   bip68LockTime
 }) {
+  //No need to memoize it
   if (typeof bip68LockTime === 'number' && bip68LockTime === 0) {
     throw new Error('FarVault does not allow sequence to be 0.');
     /*
@@ -236,11 +237,14 @@ export function createRelativeTimeLockScript({
  * if `script` was a FarVault relativeTimeLockScript or `false` if it is a
  * different script.
  *
- * @param {Buffer} relativeTimeLockScript The locking script
+ * @param {string} relativeTimeLockScript The locking script in hex
  * @returns {bool|object} Returns `false` if `relativeTimeLockScript` is not a FarVault locking script or `{maturedPublicKey, rushedPublicKey, bip68LockTime}` otherwise, where `maturedPublicKey` and `rushedPath` are public keys (type: `Buffer`) and `bip68LockTime` is a BIP68 encoded time (type: `number`).
  */
 export function parseRelativeTimeLockScript(relativeTimeLockScript) {
-  const decompiled = script.decompile(relativeTimeLockScript);
+  //No need to memoize
+  const decompiled = script.decompile(
+    Buffer.from(relativeTimeLockScript, 'hex')
+  );
   if (
     decompiled !== null && //decompile returns null on faulty script
     decompiled.length === 9 &&
@@ -266,7 +270,6 @@ export function parseRelativeTimeLockScript(relativeTimeLockScript) {
   }
   return false;
 }
-
 export const exportedForTesting = {
   numberEncodeAsm,
   scriptNumberDecode

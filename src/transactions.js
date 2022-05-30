@@ -95,9 +95,7 @@ async function createPSBT({
     if (typeof utxo.witnessScript !== 'undefined') {
       //This is a P2WSH utxo.
       //This wallet only knows how to spend relativeTimeLockScript's
-      const parsedScript = parseRelativeTimeLockScript(
-        Buffer.from(utxo.witnessScript, 'hex')
-      );
+      const parsedScript = parseRelativeTimeLockScript(utxo.witnessScript);
       if (parsedScript === false) {
         throw new Error('This wallet cannot spend this input witnessScript.');
       } else {
@@ -158,7 +156,10 @@ async function createPSBT({
     });
   }
   for (const target of targets) {
-    psbt.addOutput(target);
+    //Here we pass a clone because of a bitcoinjs-lib bug where addInput mutates
+    //the target (it adds an script property):
+    //https://github.com/bitcoinjs/bitcoinjs-lib/issues/1805
+    psbt.addOutput({ ...target });
   }
   psbt.setVersion(PSBT_VERSION);
   return psbt;
@@ -203,7 +204,9 @@ async function createPSBT({
  * @param {number} parameters.targets[].value Number of satoshis to send the address above.
  * @param {module:HDInterface.createSigners} parameters.createSigners An **async** function that returns an array of signer functions. One for each utxo. Signer functions sign the hash of the transaction.
  * @param {module:HDInterface.getPublicKey} parameters.getPublicKey An **async** function that resolves the public key from a derivation path and the network.
+ * @param {boolean} [validateSignatures=true] Whether you want to validate signatures. This should always be true to detect errors. However, when createMultiFeeTransactions it is ok to only validate one of the txs (for one of the fees). Signature validation is slow and this helps improving speed when creating a large number of transactions.
  * @param {object} [parameters.network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * @returns {Promise<string>} The transaction in hex
  */
 
 export async function createTransaction({
@@ -211,6 +214,7 @@ export async function createTransaction({
   targets,
   createSigners,
   getPublicKey,
+  validateSignatures = true,
   network = networks.bitcoin
 }) {
   const psbt = await createPSBT({
@@ -228,7 +232,11 @@ export async function createTransaction({
       sign: signers[index]
     });
   }
-  psbt.validateSignaturesOfAllInputs(validator);
+
+  if (validateSignatures) {
+    //This is very slow...
+    psbt.validateSignaturesOfAllInputs(validator);
+  }
 
   //Instead of a psbt.finalizeAllInputs(); we go one by one
   //There are the 2 special cases where we are redeeming the relativeTimeLockScript
@@ -239,9 +247,7 @@ export async function createTransaction({
       psbt.finalizeInput(i);
     } else {
       //This wallet only knows how to spend relativeTimeLockScript's
-      const parsedScript = parseRelativeTimeLockScript(
-        Buffer.from(utxo.witnessScript, 'hex')
-      );
+      const parsedScript = parseRelativeTimeLockScript(utxo.witnessScript);
       if (parsedScript === false) {
         throw new Error('This wallet cannot spend this input witnessScript.');
       } else {
@@ -320,6 +326,10 @@ export async function createMultiFeeTransactions({
         targets: [{ address, value: value - fee }],
         getPublicKey,
         createSigners,
+        //Signature validation is very expensive. Only validate signatures in
+        //the case of minSatsPerByte. If this works, then the rest will also
+        //have valid signatures.
+        validateSignatures: feeRate === feeRates[0],
         network
       });
       if (vsize === 0) {
