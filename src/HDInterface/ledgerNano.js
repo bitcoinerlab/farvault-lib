@@ -9,7 +9,7 @@
 //https://github.com/LedgerHQ/ledgerjs/blob/master/packages/hw-app-btc/src/signP2SHTransaction.ts
 
 import LedgerTransport from '@ledgerhq/hw-transport-webusb';
-import LedgerTransportNodejs from '@ledgerhq/hw-transport-node-hid-singleton';
+import LedgerTransportNodejs from '@ledgerhq/hw-transport-node-hid-noevents';
 import LedgerAppBtc from '@ledgerhq/hw-app-btc';
 import { NATIVE_SEGWIT, NESTED_SEGWIT, LEGACY } from '../walletConstants';
 import memoize from 'lodash.memoize';
@@ -40,15 +40,55 @@ import {
   serializeDerivationPath
 } from '../bip32';
 
+//https://github.com/LedgerHQ/ledgerjs/issues/122#issuecomment-568265915
+async function getApp(transport) {
+  var r = await transport.send(0xb0, 0x01, 0x00, 0x00);
+  var i = 0;
+  var format = r[i++];
+  var nameLength = r[i++];
+  var name = r.slice(i, (i += nameLength)).toString('ascii');
+  var versionLength = r[i++];
+  var version = r.slice(i, (i += versionLength)).toString('ascii');
+  var flagLength = r[i++];
+  var flags = r.slice(i, (i += flagLength));
+  return { name, version, flags };
+}
+
 export async function init(transport = WEB_TRANSPORT) {
-  if (transport !== WEB_TRANSPORT && transport !== NODEJS_TRANSPORT)
+  if (transport !== WEB_TRANSPORT && transport !== NODEJS_TRANSPORT) {
     throw new Error('Invalid transport');
-  const ledgerTransport =
-    transport === WEB_TRANSPORT
-      ? await LedgerTransport.create()
-      : await LedgerTransportNodejs.create();
+  }
+  let ledgerTransport;
+  try {
+    ledgerTransport =
+      transport === WEB_TRANSPORT
+        ? await LedgerTransport.create()
+        : await LedgerTransportNodejs.create();
+  } catch (error) {
+    if (error.id === 'NoDeviceFound') {
+      throw new Error(
+        'You must be plug in the LedgerNano Device into an USB port and enter the PIN code.'
+      );
+    } else {
+      throw new Error(error);
+    }
+  }
+  const { name, version, flags } = await getApp(ledgerTransport);
+  if (name !== 'Bitcoin' && name !== 'Bitcoin Test') {
+    throw new Error(
+      name === 'BOLOS'
+        ? 'You have correclty plugged in the Ledger Nano device but you must open the Bitcoin App. Please open it and try again.'
+        : 'You have correclty plugged in the Ledger Nano device but you must open the Bitcoin App. Please, close the ' +
+          name +
+          ' App, open Bitcoin and try again.'
+    );
+  }
   const ledgerAppBtc = new LedgerAppBtc(ledgerTransport);
-  ledgerAppBtc.instanceId = Date.now();
+  ledgerAppBtc.farvaultInternalInformation = {
+    instanceId: Date.now(),
+    name,
+    version
+  };
   return ledgerAppBtc;
 }
 
@@ -58,61 +98,6 @@ function compressPublicKey(pk) {
   const { publicKey } = fromPublicKey(pk);
   return publicKey;
 }
-// previous implementation before memoize. Remove this after new version
-// has been tested
-//
-//      //memoizes getExtPub_internal
-//      export const getExtPub = (function () {
-//        const extPubs = [];
-//        return async function (ledgerAppBtc, args) {
-//          const paramsHash = crypto
-//            .sha256(
-//              ledgerAppBtc.instanceId.toString() +
-//                args.purpose +
-//                args.accountNumber.toString() +
-//                args.network.bip32.public
-//            )
-//            .toString('hex');
-//          if (extPubs[paramsHash]) {
-//            return extPubs[paramsHash];
-//          } else {
-//            extPubs[paramsHash] = getExtPub_internal(ledgerAppBtc, args);
-//            return extPubs[paramsHash];
-//          }
-//        };
-//      })();
-//
-//      async function getExtPub_internal(
-//        ledgerAppBtc,
-//        { purpose, accountNumber, network = networks.bitcoin }
-//      ) {
-//        checkPurpose(purpose);
-//        checkNetwork(network);
-//        if (!Number.isInteger(accountNumber) || accountNumber < 0)
-//          throw new Error('Invalid accountNumber');
-//
-//        const extPub = setExtPubPrefix({
-//          extPub: await ledgerAppBtc.getWalletXpub({
-//            path: serializeDerivationPath({
-//              purpose,
-//              coinType: getNetworkCoinType(network),
-//              accountNumber
-//            }),
-//            //Ledger only accepts xpub or tpub byte version for xpubVersion as in
-//            //the original BIP32 implementation
-//            //bitcoinjs-lib (network.bip32.public) also only references xpub or tpub
-//            //for network = bitcoin, and network = testnet, respectively
-//            //Read setExtPubPrefix documentation to understand why this is here.
-//            //Note that network.bip32.public will be === walletConstants.XPUBVERSION
-//            //for mainnet and === walletConstants.TPUBVERSION for testnet and regtest
-//            xpubVersion: network.bip32.public
-//          }),
-//          purpose,
-//          network
-//        });
-//        checkExtPub({ extPub, accountNumber, network });
-//        return extPub;
-//      }
 
 export const getExtPub = memoize(
   async function (
@@ -123,6 +108,16 @@ export const getExtPub = memoize(
     checkNetwork(network);
     if (!Number.isInteger(accountNumber) || accountNumber < 0)
       throw new Error('Invalid accountNumber');
+    if (
+      (network === networks.bitcoin &&
+        ledgerAppBtc.farvaultInternalInformation.name !== 'Bitcoin') ||
+      ((network === networks.regtest || network === networks.testnet) &&
+        ledgerAppBtc.farvaultInternalInformation.name !== 'Bitcoin Test')
+    ) {
+      throw new Error(
+        "There is a mismatch between Ledger's Nano App and the network requested."
+      );
+    }
 
     const extPub = setExtPubPrefix({
       extPub: await ledgerAppBtc.getWalletXpub({
@@ -148,7 +143,7 @@ export const getExtPub = memoize(
   },
   //The memoize resolver: how to get a key from the params ->
   (ledgerAppBtc, { purpose, accountNumber, network = networks.bitcoin }) =>
-    ledgerAppBtc.instanceId.toString() +
+    ledgerAppBtc.farvaultInternalInformation.instanceId.toString() +
     '_' +
     purpose.toString() +
     '_' +
@@ -247,6 +242,17 @@ export async function createSigners(
   ledgerAppBtc,
   { psbt, utxos, network = networks.bitcoin }
 ) {
+  checkNetwork(network);
+  if (
+    (network === networks.bitcoin &&
+      ledgerAppBtc.farvaultInternalInformation.name !== 'Bitcoin') ||
+    ((network === networks.regtest || network === networks.testnet) &&
+      ledgerAppBtc.farvaultInternalInformation.name !== 'Bitcoin Test')
+  ) {
+    throw new Error(
+      "There is a mismatch between Ledger's Nano App and the network requested."
+    );
+  }
   const tx = psbt.__CACHE.__TX; //It's a private param. May change in future.
 
   //See if any of the inputs is segwit. If an input is segwit then the tx

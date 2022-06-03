@@ -160,12 +160,57 @@ export const fixtures = {
         description: 'Invalid script - Not enough data: OP_PUSHDATA2 0xffff',
         script: '4dffff01',
         returns: false
+      },
+      {
+        description:
+          'parseRelativeTimeLockScript returns false when using 0a instead of OP_10 for the bip68LockTime in the script',
+        returns: false,
+        //Created here: https://siminchen.github.io/bitcoinIDE/build/editor.html
+        //Note the 0a (10) instead of OP_10
+        //0228c94c739ce6972db99d47a2ac231656be8d33e3bae3f87b172419cf86bb8296
+        //OP_CHECKSIG
+        //OP_NOTIF
+        //024aa3a34ee33754ffd2ef75ad9fa31afceefebb0c71ca4169ef1056aebcecbca1
+        //OP_CHECKSIG
+        //OP_ELSE
+        //0a
+        //OP_NOP3
+        //OP_ENDIF
+        script:
+          '210228c94c739ce6972db99d47a2ac231656be8d33e3bae3f87b172419cf86bb8296ac6421024aa3a34ee33754ffd2ef75ad9fa31afceefebb0c71ca4169ef1056aebcecbca1ac67010ab268'
+      },
+      {
+        description: 'parseRelativeTimeLockScript for bip68LockTime > 16',
+        returns: false,
+        //Created here: https://siminchen.github.io/bitcoinIDE/build/editor.html
+        //0228c94c739ce6972db99d47a2ac231656be8d33e3bae3f87b172419cf86bb8296
+        //OP_CHECKSIG
+        //OP_NOTIF
+        //024aa3a34ee33754ffd2ef75ad9fa31afceefebb0c71ca4169ef1056aebcecbca1
+        //OP_CHECKSIG
+        //OP_ELSE
+        //11
+        //OP_NOP3
+        //OP_ENDIF
+        script:
+          '210228c94c739ce6972db99d47a2ac231656be8d33e3bae3f87b172419cf86bb8296ac6421024aa3a34ee33754ffd2ef75ad9fa31afceefebb0c71ca4169ef1056aebcecbca1ac670111b268',
+        returns: {
+          maturedPublicKey: Buffer.from(
+            '0228c94c739ce6972db99d47a2ac231656be8d33e3bae3f87b172419cf86bb8296',
+            'hex'
+          ),
+          rushedPublicKey: Buffer.from(
+            '024aa3a34ee33754ffd2ef75ad9fa31afceefebb0c71ca4169ef1056aebcecbca1',
+            'hex'
+          ),
+          bip68LockTime: 17
+        }
       }
     ],
     invalid: [
       {
         description: 'Wrong script type',
-        errorMessage: 'The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received type number (21)',
+        errorMessage: 'Invalid type for relativeTimeLockScript: number',
         script: 21
       }
     ]
@@ -215,7 +260,7 @@ export const fixtures = {
         errorMessage: '0 to 16 should have been compiled using op codes'
       },
       {
-        description: 'Number 16 should be encoded as OP_0',
+        description: 'Number 16 should be encoded as OP_16',
         decompiled: Buffer.from('a', 'hex'),
         errorMessage: '0 to 16 should have been compiled using op codes'
       },

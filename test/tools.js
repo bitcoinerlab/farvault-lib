@@ -1,5 +1,7 @@
 /** @module test */
 
+import fs from 'fs';
+const TESTING_SERVERS_COOKIE = '/tmp/farvault_testing_environment_started';
 import { getDerivationPathAddress } from '../src/wallet';
 import {
   initHDInterface,
@@ -7,7 +9,7 @@ import {
   NODEJS_TRANSPORT
 } from '../src/HDInterface';
 import { getNetworkCoinType, serializeDerivationPath } from '../src/bip32';
-import bJs from 'bitcoinjs-lib';
+import bJs, { networks } from 'bitcoinjs-lib';
 import { RegtestUtils } from 'regtest-client';
 import { spawn, spawnSync } from 'child_process';
 import { kill } from 'process';
@@ -16,18 +18,21 @@ const regtestUtils = new RegtestUtils(bJs);
 export const BITCOIND_CATCH_UP_TIME = 2000;
 export const REGTEST_SERVER_CATCH_UP_TIME = 1000;
 
+import { REGTEST_COINTYPE } from '../src/walletConstants';
+
 /**
  * Creates an HD wallet and funds it using mined coins from a regtest-server faucet.
  * It then mines 6 blocks to confirm payments.
  * @async
  * @param {string} mnemonic - space separated list of BIP39 words used as mnemonic.
- * @param {Object[]} addressesDescriptors - list of address descriptors that will get funds from the faucet.
- * @param {Object} addressesDescriptors[].extPub - object containing the purpose and accountNumber of the descriptor.
- * @param {string} addressesDescriptors[].extPub[].purpose - LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT.
- * @param {number} addressesDescriptors[].extPub[].accountNumber - account number.
- * @param {number} addressesDescriptors[].index - address number within the accountNumber.
- * @param {boolean} addressesDescriptors[].isChange - whether this address is a change address or not.
- * @param {number} addressesDescriptors[].value - number of sats that this address will receive.
+ * @param {Object[]} fundingDescriptors - list of address descriptors that will get funds from the faucet.
+ * @param {string} fundingDescriptors[].purpose - LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT.
+ * @param {number} fundingDescriptors[].accountNumber - account number.
+ * @param {number} fundingDescriptors[].index - address number within the accountNumber.
+ * @param {boolean} fundingDescriptors[].isChange - whether this address is a change address or not.
+ * @param {number} fundingDescriptors[].value - number of sats that this address will receive.
+ * @param {number} [fundingDescriptors[].coinType=REGTEST_COINTYPE] - Should always be REGTEST_COINTYPE
+ * @param {object} [parameters.network=networks.regtest] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
  * @return {Promise<object>} `{
     HDInterface,
     extPubs,
@@ -37,12 +42,15 @@ export const REGTEST_SERVER_CATCH_UP_TIME = 1000;
     regtestUtils
   }`
  */
-export async function createTestWallet({
+export async function fundRegtest({
   type = SOFT_HD_INTERFACE,
   mnemonic,
-  addressesDescriptors,
-  network
+  fundingDescriptors,
+  network = networks.regtest
 }) {
+  if (network !== networks.regtest) {
+    throw new Error('Tests are only run on a regtest chain');
+  }
   const HDInterface = await initHDInterface(type, {
     mnemonic,
     transport: NODEJS_TRANSPORT
@@ -50,9 +58,16 @@ export async function createTestWallet({
   const extPubs = [];
   const paths = [];
   const utxos = [];
-  for (const descriptor of addressesDescriptors) {
-    const { purpose, accountNumber } = descriptor.account;
-    const { index, isChange } = descriptor;
+  for (const descriptor of fundingDescriptors) {
+    if (
+      typeof descriptor.coinType !== 'undefined' &&
+      descriptor.coinType !== REGTEST_COINTYPE
+    ) {
+      throw new Error(
+        'Tests are only run on a regtest chain. All address descriptors should belong to regtest.'
+      );
+    }
+    const { index, isChange, purpose, accountNumber } = descriptor;
     const extPub = await HDInterface.getExtPub({
       purpose,
       accountNumber,
@@ -96,6 +111,21 @@ export async function createTestWallet({
 }
 
 export async function startTestingEnvironment({ startElectrs = true } = {}) {
+  if (fs.existsSync(TESTING_SERVERS_COOKIE)) {
+    throw new Error(`
+
+Cannot start the testing environment since it was not cleanly closed on previous run.
+Try to manually stop the servers. Probably something like this will do the trick:
+
+killall -9 Bitcoin-Qt electrs node bitcoind
+#Note this will kill all the processes with those names so make it sure it does not break anything in your environment.
+
+After killing the processes, you must manually remove the locking file:
+rm ${TESTING_SERVERS_COOKIE}
+
+    `);
+  }
+  fs.writeFileSync(TESTING_SERVERS_COOKIE, 'started');
   const bitcoind = spawn('./testing_environment/bitcoind.sh', {
     detached: true,
     stdio: 'ignore'
@@ -121,7 +151,8 @@ export async function stopTestingEnvironment({
   electrs,
   regtest_server
 }) {
-  kill(-bitcoind.pid, 'SIGKILL');
+  if (bitcoind) kill(-bitcoind.pid, 'SIGKILL');
   if (electrs) kill(-electrs.pid, 'SIGKILL');
-  kill(-regtest_server.pid, 'SIGKILL');
+  if (regtest_server) kill(-regtest_server.pid, 'SIGKILL');
+  fs.unlinkSync(TESTING_SERVERS_COOKIE);
 }

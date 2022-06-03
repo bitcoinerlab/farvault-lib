@@ -31,7 +31,7 @@
   },
   "dependencies": {
     "@ledgerhq/hw-app-btc": "^6.24.1",
-    "@ledgerhq/hw-transport-node-hid-singleton": "^6.27.1",
+    "@ledgerhq/hw-transport-node-hid-noevents": "^6.27.1",
     "@ledgerhq/hw-transport-webusb": "^6.24.1",
     "auth-header": "^1.0.0",
     "bip32": "^3.0.1",

@@ -118,6 +118,7 @@ function scriptNumberDecode(decompiled) {
  * @param {Buffer} maturedPublicKey The public key that can unlock funds after timelock.
  * @param {Buffer} rushedBranch The public key that can unlock the funds anytime.
  * @param {number} bip68LockTime A BIP68 encoded timelock time.
+ * @returns {Buffer} The script
  */
 export function createRelativeTimeLockScript({
   maturedPublicKey,
@@ -241,12 +242,27 @@ export function createRelativeTimeLockScript({
  * @returns {bool|object} Returns `false` if `relativeTimeLockScript` is not a FarVault locking script or `{maturedPublicKey, rushedPublicKey, bip68LockTime}` otherwise, where `maturedPublicKey` and `rushedPath` are public keys (type: `Buffer`) and `bip68LockTime` is a BIP68 encoded time (type: `number`).
  */
 export function parseRelativeTimeLockScript(relativeTimeLockScript) {
+  if (typeof relativeTimeLockScript !== 'string') {
+    throw new Error(
+      'Invalid type for relativeTimeLockScript: ' +
+        typeof relativeTimeLockScript
+    );
+  }
   //No need to memoize
   const decompiled = script.decompile(
     Buffer.from(relativeTimeLockScript, 'hex')
   );
   if (
-    decompiled !== null && //decompile returns null on faulty script
+    //decompile returns null on faulty script:
+    decompiled !== null &&
+    //Make sure the relativeTimeLockScript was encoded using minimal ops.
+    //For example it is an error to use 0a instead of OP_10 for representing
+    //numbers
+    //However script.decompile will take a 0a and decompile it. Even worse it will
+    //will convert it to OP_10! But this is wrong!
+    //See test with description for an invalid script that this will catch:
+    //'parseRelativeTimeLockScript returns false when using 0a instead of OP_10 for the bip68LockTime in the script'
+    script.compile(decompiled).toString('hex') === relativeTimeLockScript &&
     decompiled.length === 9 &&
     Buffer.isBuffer(decompiled[0]) &&
     Buffer.byteLength(decompiled[0]) === 33 &&

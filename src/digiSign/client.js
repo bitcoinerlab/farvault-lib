@@ -11,7 +11,7 @@ import { parse as authParse } from 'auth-header';
 
 import REALM from './realm';
 const MNEMONIC =
-  'nhale praise target steak garlic cricket paper better evil almost sadness crawl city banner amused fringe fox insect roast aunt prefer hollow basic ladder';
+  'inhale praise target steak garlic cricket paper better evil almost sadness crawl city banner amused fringe fox insect roast aunt prefer hollow basic ladder';
 
 //import { deriveAddressAndSign } from './softHDWallet';
 import { deriveAddressAndSign } from './ledgerNanoHDWallet';

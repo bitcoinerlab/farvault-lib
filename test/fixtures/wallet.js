@@ -7,7 +7,7 @@ import {
 } from '../../src/walletConstants';
 import { networks } from 'bitcoinjs-lib';
 import { parseDerivationPath } from '../../src/bip32';
-const addressesDescriptors = [
+const addressDescriptors = [
   {
     //0
     //https://iancoleman.io/bip39/
@@ -101,18 +101,18 @@ const addressesDescriptors = [
 ];
 
 export const fixtures = {
-  addressesDescriptors,
+  addressDescriptors,
   //An affine set of addresses are those that share network and mnemonic.
   //purpose and accountNumber may be different.
   //Technically a HD wallet initialized with a mnemonic could sign a tx for a
   //speciffic blockchain that mixes different purposes and accountNumbers
-  affinedAddressesDescriptors: {
+  affineAddressesDescriptors: {
     valid: [
       //test 0
       {
-        mnemonic: addressesDescriptors[0].mnemonic,
-        network: addressesDescriptors[0].network,
-        addressesDescriptors: [],
+        mnemonic: addressDescriptors[0].mnemonic,
+        network: addressDescriptors[0].network,
+        addressDescriptors: [],
         isChange: false,
         purpose: LEGACY,
         accountNumber: 10,
@@ -122,9 +122,9 @@ export const fixtures = {
       },
       //test 1
       {
-        mnemonic: addressesDescriptors[0].mnemonic,
-        network: addressesDescriptors[0].network,
-        addressesDescriptors: [addressesDescriptors[4]],
+        mnemonic: addressDescriptors[0].mnemonic,
+        network: addressDescriptors[0].network,
+        addressDescriptors: [addressDescriptors[4]],
         gapAccountLimit: 4,
         isChange: true,
         purpose: NESTED_SEGWIT,
@@ -134,24 +134,21 @@ export const fixtures = {
         defaultAccount: { accountNumber: 3, purpose: NESTED_SEGWIT }
       },
       {
-        mnemonic: addressesDescriptors[0].mnemonic,
-        network: addressesDescriptors[0].network,
-        addressesDescriptors: [
-          addressesDescriptors[0],
-          addressesDescriptors[1]
-        ],
+        mnemonic: addressDescriptors[0].mnemonic,
+        network: addressDescriptors[0].network,
+        addressDescriptors: [addressDescriptors[0], addressDescriptors[1]],
         isChange: false,
         nextDerivationPath: "44'/1'/0'/0/4",
         lastDerivationPath: "44'/1'/0'/0/3",
         defaultAccount: { accountNumber: 0, purpose: LEGACY }
       },
       {
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [
-          addressesDescriptors[2],
-          addressesDescriptors[3],
-          addressesDescriptors[4]
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [
+          addressDescriptors[2],
+          addressDescriptors[3],
+          addressDescriptors[4]
         ],
         gapAccountLimit: 3,
         isChange: false,
@@ -161,12 +158,12 @@ export const fixtures = {
         defaultAccount: { accountNumber: 3, purpose: NESTED_SEGWIT }
       },
       {
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [
-          addressesDescriptors[2],
-          addressesDescriptors[3],
-          addressesDescriptors[4]
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [
+          addressDescriptors[2],
+          addressDescriptors[3],
+          addressDescriptors[4]
         ],
         gapAccountLimit: 3,
         isChange: false,
@@ -176,12 +173,12 @@ export const fixtures = {
         defaultAccount: { accountNumber: 3, purpose: NESTED_SEGWIT }
       },
       {
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [
-          addressesDescriptors[2],
-          addressesDescriptors[3],
-          addressesDescriptors[4]
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [
+          addressDescriptors[2],
+          addressDescriptors[3],
+          addressDescriptors[4]
         ],
         gapAccountLimit: 3,
         isChange: true,
@@ -191,9 +188,9 @@ export const fixtures = {
         defaultAccount: { accountNumber: 3, purpose: NESTED_SEGWIT }
       },
       {
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [],
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [],
         isChange: false,
         accountNumber: 15,
         purpose: LEGACY,
@@ -202,24 +199,24 @@ export const fixtures = {
         defaultAccount: { accountNumber: 0, purpose: NATIVE_SEGWIT }
       },
       {
-        mnemonic: addressesDescriptors[1].mnemonic,
-        network: addressesDescriptors[1].network,
-        addressesDescriptors: [addressesDescriptors[1]],
+        mnemonic: addressDescriptors[1].mnemonic,
+        network: addressDescriptors[1].network,
+        addressDescriptors: [addressDescriptors[1]],
         isChange: false,
         nextDerivationPath: "44'/1'/0'/0/4",
         lastDerivationPath: "44'/1'/0'/0/3",
         defaultAccount: { accountNumber: 0, purpose: LEGACY }
       },
       {
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [
-          addressesDescriptors[2],
-          addressesDescriptors[3],
-          addressesDescriptors[4],
-          addressesDescriptors[5],
-          addressesDescriptors[6],
-          addressesDescriptors[7]
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [
+          addressDescriptors[2],
+          addressDescriptors[3],
+          addressDescriptors[4],
+          addressDescriptors[5],
+          addressDescriptors[6],
+          addressDescriptors[7]
         ],
         gapAccountLimit: 3,
         isChange: false,
@@ -230,15 +227,15 @@ export const fixtures = {
         defaultAccount: { accountNumber: 3, purpose: NATIVE_SEGWIT }
       },
       {
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [
-          addressesDescriptors[2],
-          addressesDescriptors[3],
-          addressesDescriptors[4],
-          addressesDescriptors[5],
-          addressesDescriptors[6],
-          addressesDescriptors[7]
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [
+          addressDescriptors[2],
+          addressDescriptors[3],
+          addressDescriptors[4],
+          addressDescriptors[5],
+          addressDescriptors[6],
+          addressDescriptors[7]
         ],
         gapAccountLimit: 3,
         isChange: false,
@@ -249,15 +246,15 @@ export const fixtures = {
         defaultAccount: { accountNumber: 3, purpose: NATIVE_SEGWIT }
       },
       {
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [
-          addressesDescriptors[2],
-          addressesDescriptors[3],
-          addressesDescriptors[4],
-          addressesDescriptors[5],
-          addressesDescriptors[6],
-          addressesDescriptors[7]
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [
+          addressDescriptors[2],
+          addressDescriptors[3],
+          addressDescriptors[4],
+          addressDescriptors[5],
+          addressDescriptors[6],
+          addressDescriptors[7]
         ],
         gapAccountLimit: 3,
         isChange: true,
@@ -273,12 +270,12 @@ export const fixtures = {
       {
         //This should throw because they correspond to different purposes
         //and account numbers and we did not specify any
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [
-          addressesDescriptors[2],
-          addressesDescriptors[3],
-          addressesDescriptors[4]
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [
+          addressDescriptors[2],
+          addressDescriptors[3],
+          addressDescriptors[4]
         ],
         gapAccountLimit: 3,
         isChange: false,
@@ -289,12 +286,12 @@ export const fixtures = {
       {
         //This should throw because they correspond to different purposes
         //and account numbers and we did not specify any
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [
-          addressesDescriptors[2],
-          addressesDescriptors[3],
-          addressesDescriptors[4]
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [
+          addressDescriptors[2],
+          addressDescriptors[3],
+          addressDescriptors[4]
         ],
         gapAccountLimit: 3,
         purpose: NATIVE_SEGWIT,
@@ -304,12 +301,12 @@ export const fixtures = {
       },
       //test 2
       {
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [
-          addressesDescriptors[2],
-          addressesDescriptors[3],
-          addressesDescriptors[4]
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [
+          addressDescriptors[2],
+          addressDescriptors[3],
+          addressDescriptors[4]
         ],
         gapAccountLimit: 3,
         purpose: NATIVE_SEGWIT,
@@ -320,12 +317,12 @@ export const fixtures = {
       },
       //test 3
       {
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [
-          addressesDescriptors[2],
-          addressesDescriptors[3],
-          addressesDescriptors[4]
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [
+          addressDescriptors[2],
+          addressDescriptors[3],
+          addressDescriptors[4]
         ],
         gapAccountLimit: 3,
         purpose: NATIVE_SEGWIT,
@@ -336,9 +333,9 @@ export const fixtures = {
       },
       //test 4
       {
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [],
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [],
         //isChange: false,
         accountNumber: 15,
         purpose: LEGACY,
@@ -346,9 +343,9 @@ export const fixtures = {
       },
       //test 5
       {
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [],
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [],
         isChange: false,
         //accountNumber: 15,
         purpose: LEGACY,
@@ -357,9 +354,9 @@ export const fixtures = {
       },
       //test 6
       {
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [],
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [],
         isChange: false,
         accountNumber: 15,
         //purpose: LEGACY,
@@ -368,9 +365,9 @@ export const fixtures = {
       },
       //test 7
       {
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [],
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [],
         isChange: false,
         //accountNumber: 15
         //purpose: LEGACY
@@ -379,15 +376,15 @@ export const fixtures = {
       },
       //test 8
       {
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [
-          addressesDescriptors[2],
-          addressesDescriptors[3],
-          addressesDescriptors[4],
-          addressesDescriptors[5],
-          addressesDescriptors[6],
-          addressesDescriptors[7]
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [
+          addressDescriptors[2],
+          addressDescriptors[3],
+          addressDescriptors[4],
+          addressDescriptors[5],
+          addressDescriptors[6],
+          addressDescriptors[7]
         ],
         gapAccountLimit: 3,
         isChange: false,
@@ -397,15 +394,15 @@ export const fixtures = {
       },
       //test 9
       {
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [
-          addressesDescriptors[2],
-          addressesDescriptors[3],
-          addressesDescriptors[4],
-          addressesDescriptors[5],
-          addressesDescriptors[6],
-          addressesDescriptors[7]
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [
+          addressDescriptors[2],
+          addressDescriptors[3],
+          addressDescriptors[4],
+          addressDescriptors[5],
+          addressDescriptors[6],
+          addressDescriptors[7]
         ],
         gapAccountLimit: 3,
         isChange: false,
@@ -416,15 +413,15 @@ export const fixtures = {
       },
       //test 10
       {
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [
-          addressesDescriptors[2],
-          addressesDescriptors[3],
-          addressesDescriptors[4],
-          addressesDescriptors[5],
-          addressesDescriptors[6],
-          addressesDescriptors[7]
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [
+          addressDescriptors[2],
+          addressDescriptors[3],
+          addressDescriptors[4],
+          addressDescriptors[5],
+          addressDescriptors[6],
+          addressDescriptors[7]
         ],
         gapAccountLimit: 3,
         isChange: false,
@@ -436,12 +433,9 @@ export const fixtures = {
       //test 11
       {
         //Different account number and same purpose
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [
-          addressesDescriptors[5],
-          addressesDescriptors[6]
-        ],
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [addressDescriptors[5], addressDescriptors[6]],
         gapAccountLimit: 3,
         isChange: false,
         errorMessage:
@@ -450,12 +444,9 @@ export const fixtures = {
       //test 12
       {
         //Different account number and different purpose
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [
-          addressesDescriptors[4],
-          addressesDescriptors[6]
-        ],
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [addressDescriptors[4], addressDescriptors[6]],
         isChange: false,
         errorMessage:
           'Must specify an account number since derivation paths have a mix of account numbers!'
@@ -463,12 +454,9 @@ export const fixtures = {
       //test 13
       {
         //different purpose, same account number
-        mnemonic: addressesDescriptors[2].mnemonic,
-        network: addressesDescriptors[2].network,
-        addressesDescriptors: [
-          addressesDescriptors[4],
-          addressesDescriptors[5]
-        ],
+        mnemonic: addressDescriptors[2].mnemonic,
+        network: addressDescriptors[2].network,
+        addressDescriptors: [addressDescriptors[4], addressDescriptors[5]],
         gapAccountLimit: 4,
         isChange: false,
         errorMessage:

@@ -39,7 +39,7 @@ export async function fromSeed(seed, network = networks.bitcoin) {
  * In other words, use this tool to convert extended pubs that start with "xpub"
  * or "tpub" prefixes to the correct: "ypub", "zpub", or "upub" and "vpub".
  *
- * Rationale: initially, BIP32 assumed that an extended pub would always start
+ * Motivation: initially, BIP32 assumed that an extended pub would always start
  * with an "xpub" or "tpub" prefix for mainnet and test networks respectively.
  * This is achieved by serializing some hardcoded `XPUBVERSION` and
  * `TPUBVERSION` bytes that were choosen so that the serialization would produce
@@ -139,6 +139,24 @@ export function getExtPubAccountNumber({ extPub, network = networks.bitcoin }) {
   }
   const accountNumber = decoded.index & 0x7fffffff; //unharden
   return accountNumber;
+}
+
+/** Extracts the purpose from an extended pub.
+ * It assumes that the extended pub will have xpub, ypub, zpub, tpub, upub vpub
+ * prefixes as defined in BIP44, BIP49 and BIP84.
+ *
+ * Note that the network is not needed to extract the purpose. It's optional.
+ * Pass it if you want to make an additional check and make sure that the prefix
+ * matches with the network
+ * @param {object} params
+ * @param {string} params.extPub An extended pub key string
+ * @param {object} params.network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js). This is an optional parameter. Use it only to make an additional check and make sure that the extPub format matches this `network`
+ * @returns {string} The purpose. Can be LEGACY, NESTED_SEGWIT or NATIVE_SEGWIT
+ */
+export function getExtPubPurpose({ extPub, network }) {
+  checkExtPub({ extPub, network });
+  const extPubType = extPub.slice(0, 4);
+  return PURPOSES[extPubType];
 }
 
 /**
@@ -291,22 +309,4 @@ export function serializeDerivationPath({
   }
 
   return path;
-}
-
-/** Extracts the purpose from an extended pub.
- * It assumes that the extended pub will have xpub, ypub, zpub, tpub, upub vpub
- * prefixes as defined in BIP44, BIP49 and BIP84.
- *
- * Note that the network is not needed to extract the purpose. It's optional.
- * Pass it if you want to make an additional check and make sure that the prefix
- * matches with the network
- * @param {object} params
- * @param {string} params.extPub An extended pub key string
- * @param {object} params.network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js). This is an optional parameter. Use it only to make an additional check and make sure that the extPub format matches this `network`
- * @returns {string} The purpose. Can be LEGACY, NESTED_SEGWIT or NATIVE_SEGWIT
- */
-export function getExtPubPurpose({ extPub, network }) {
-  checkExtPub({ extPub, network });
-  const extPubType = extPub.slice(0, 4);
-  return PURPOSES[extPubType];
 }

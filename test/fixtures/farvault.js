@@ -32,52 +32,42 @@ export const fixtures = {
     purpose: NATIVE_SEGWIT,
     accountNumber: 1
   },
-  testWallet: [
+  fundingDescriptors: [
     {
-      account: {
-        purpose: LEGACY,
-        accountNumber: 0
-      },
+      purpose: LEGACY,
+      accountNumber: 0,
       index: 0,
       isChange: false,
       //2 BTC
       value: 200000000
     },
     {
-      account: {
-        purpose: LEGACY,
-        accountNumber: 0
-      },
+      purpose: LEGACY,
+      accountNumber: 0,
       index: 3,
       isChange: false,
       //1 BTC
       value: 100000000
     },
     {
-      account: {
-        purpose: NATIVE_SEGWIT,
-        accountNumber: 0
-      },
+      purpose: NATIVE_SEGWIT,
+      accountNumber: 0,
       index: 5,
       isChange: false,
       //0.2 BTC
       value: 20000000
     },
     {
-      account: {
-        purpose: NATIVE_SEGWIT,
-        accountNumber: 1
-      },
+      purpose: NATIVE_SEGWIT,
+      accountNumber: 1,
       index: 8,
       isChange: false,
       //0.9 BTC
       value: 90000000
     },
     {
-      account: {
-        purpose: NESTED_SEGWIT,
-        accountNumber: 0
-      },
+      purpose: NESTED_SEGWIT,
+      accountNumber: 0,
       index: 1,
       isChange: true,
       //0.8 BTC

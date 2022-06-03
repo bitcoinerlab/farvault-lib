@@ -7,6 +7,7 @@ localhost.pem
 *.swp
 *.swo
 *.swn
+*.swm
 *.log
 .DS_Store
 test/integration/*.json

@@ -92,12 +92,22 @@ async function createPSBT({
     let redeemScript = undefined;
     let witnessScript = undefined;
     let sequence = undefined;
-    if (typeof utxo.witnessScript !== 'undefined') {
+    if (
+      typeof utxo.witnessScript !== 'undefined' ||
+      typeof utxo.redeemScript !== 'undefined'
+    ) {
+      if (
+        typeof utxo.witnessScript !== 'undefined' &&
+        typeof utxo.redeemScript !== 'undefined'
+      )
+        throw new Error('This PSBT cannot be P2SH and P2WSH at the same time!');
+      const script = utxo.witnessScript || utxo.redeemScript;
       //This is a P2WSH utxo.
       //This wallet only knows how to spend relativeTimeLockScript's
-      const parsedScript = parseRelativeTimeLockScript(utxo.witnessScript);
+      const parsedScript = parseRelativeTimeLockScript(script);
       if (parsedScript === false) {
-        throw new Error('This wallet cannot spend this input witnessScript.');
+        console.log('TRACE', {script});
+        throw new Error('This wallet cannot spend this script.');
       } else {
         const {
           maturedPublicKey,
@@ -106,16 +116,16 @@ async function createPSBT({
         } = parsedScript;
         const pubkey = await getPublicKey(utxo.path, network);
         if (Buffer.compare(pubkey, maturedPublicKey) === 0) {
-          witnessScript = Buffer.from(utxo.witnessScript);
+          if (utxo.witnessScript) witnessScript = Buffer.from(script, 'hex');
+          else redeemScript = Buffer.from(script, 'hex');
           sequence = bip68LockTime;
           //console.log('WARNING: Test this', { sequence });
           //sequence = bip68LockTime;
         } else if (Buffer.compare(pubkey, rushedPublicKey) === 0) {
-          witnessScript = Buffer.from(utxo.witnessScript);
+          if (utxo.witnessScript) witnessScript = Buffer.from(script, 'hex');
+          else redeemScript = Buffer.from(script, 'hex');
         } else {
-          throw new Error(
-            "This wallet's pubkey cannot spend this input witnessScript."
-          );
+          throw new Error("This wallet's pubkey cannot spend this script.");
         }
       }
     } else {
@@ -126,7 +136,7 @@ async function createPSBT({
         redeemScript = payments.p2sh({ redeem: p2wpkh, network }).redeem.output;
       } else if (purpose !== NATIVE_SEGWIT && purpose !== LEGACY) {
         throw new Error(
-          'Can only freeze P2WPKH, P2SH-P2WPKH, P2PKH  and FarVault P2WSH addresses'
+          'Can only freeze P2WPKH, P2SH-P2WPKH, P2PKH  and FarVault P2WSH/P2SH addresses'
         );
       }
     }
@@ -183,11 +193,11 @@ async function createPSBT({
  * * `path` is the BIP-44/49/84 serialized derivation path string that can spend this utxo. F.ex.: `44'/1'/1'/0/0`.
  *
  * For relativeTimeLockScript utxos, the utxo must be:
- *`{tx, n, path, witnessScript}`, where
+ *`{tx, n, path, witnessScript|redeemScript}`, where
  * * `tx` is a string containing the complete previous transaction in hex
  * * `n` is the index of the output
  * * `path` is a BIP84 serialized derivation path that can spend this utxo. F.ex.: `84'/1'/1'/0/0`. Note that this path may correspond to the rushedPublicKey or the maturedPublicKey. This is checked internally comparing the pubkey of `utxo.path` with the `rushedPublicKey` and `maturedPublicKey` pubkeys from `witnessScript` 
- * * `witnessScript` is the relative timeLock script. The script is internally decompiled to obtain the rushedPublicKey, maturedPublicKey and also the bip68LockTime. Then, it is possible to deduce if this `path` belongs to the rushedPublicKey or the maturedPublicKey. With that information, the appropriate unlocking script is chosen and added into the transaction.
+ * * `witnessScript|redeemScript` is the relative timeLock script. The script is internally decompiled to obtain the rushedPublicKey, maturedPublicKey and also the bip68LockTime. Then, it is possible to deduce if this `path` belongs to the rushedPublicKey or the maturedPublicKey. With that information, the appropriate unlocking script is chosen and added into the transaction. `witnessScript` is for segwit txs and `redeemScript` for P2SH txs.
  *
  * You must provide the (async) function that gives back the public key of a
  * derivationPath.
@@ -233,8 +243,8 @@ export async function createTransaction({
     });
   }
 
+  //This is very slow... turn it off with validateSignatures=false
   if (validateSignatures) {
-    //This is very slow...
     psbt.validateSignaturesOfAllInputs(validator);
   }
 
@@ -243,58 +253,49 @@ export async function createTransaction({
   //using different to paths. When finalizing we must set the unlocking condition.
   for (let i = 0; i < utxos.length; i++) {
     const utxo = utxos[i];
-    if (typeof utxo.witnessScript === 'undefined') {
+    const scriptHex = utxo.witnessScript || utxo.redeemScript;
+    if (typeof scriptHex === 'undefined') {
       psbt.finalizeInput(i);
     } else {
-      //This wallet only knows how to spend relativeTimeLockScript's
-      const parsedScript = parseRelativeTimeLockScript(utxo.witnessScript);
-      if (parsedScript === false) {
-        throw new Error('This wallet cannot spend this input witnessScript.');
-      } else {
-        const { maturedPublicKey, rushedPublicKey } = parsedScript;
-        const pubkey = await getPublicKey(utxo.path, network);
+      //This wallet only knows how to spend relativeTimeLockScript's:
+      const parsedScript = parseRelativeTimeLockScript(scriptHex);
+      if (parsedScript === false)
+        throw new Error('This wallet cannot spend this input script.');
+
+      const pubkey = await getPublicKey(utxo.path, network);
+      const { maturedPublicKey, rushedPublicKey } = parsedScript;
+
+      psbt.finalizeInput(i, (inputIndex, input, lockingScript) => {
+        if (Buffer.compare(lockingScript, Buffer.from(scriptHex, 'hex')) !== 0)
+          throw new Error('Different scripts during finalizeInput.');
+
+        //partialSig[0] has a zero because the input is only signed with
+        //one pubkey. Either rushed or matured. It's not multi-sig
+        let unlockingScript;
         if (Buffer.compare(pubkey, maturedPublicKey) === 0) {
-          psbt.finalizeInput(i, (inputIndex, input, scriptParam) => {
-            const maturedBranch = payments.p2wsh({
-              redeem: {
-                //parsedScript[0] has a zero because the input is only signed by
-                //one pubkey. Either rushed or matured. It's not multi-sig
-                input: script.compile([input.partialSig[0].signature]),
-                output: utxo.witnessScript
-              }
-            });
-            return {
-              finalScriptWitness: witnessStackToScriptWitness(
-                maturedBranch.witness
-              )
-            };
-          });
+          //this is how matured transactions can be unlocked:
+          unlockingScript = script.compile([input.partialSig[0].signature]);
         } else if (Buffer.compare(pubkey, rushedPublicKey) === 0) {
-          psbt.finalizeInput(i, (inputIndex, input, scriptParam) => {
-            const rushedBranch = payments.p2wsh({
-              redeem: {
-                //Force the 1st OP_CHECKSIG to fail. OP_0 === OP_FALSE
-                input: script.compile([
-                  //parsedScript[0] has a zero because the input is only signed by
-                  //one pubkey. Either rushed or matured. It's not multi-sig
-                  input.partialSig[0].signature,
-                  opcodes.OP_0
-                ]),
-                output: utxo.witnessScript
-              }
-            });
-            return {
-              finalScriptWitness: witnessStackToScriptWitness(
-                rushedBranch.witness
-              )
-            };
-          });
+          //this is how rushed transactions can are unlocked:
+          unlockingScript = script.compile([
+            input.partialSig[0].signature,
+            opcodes.OP_0
+          ]);
         } else {
-          throw new Error(
-            "This wallet's pubkey cannot spend this input witnessScript."
-          );
+          throw new Error("This wallet's pubkey cannot spend this script.");
         }
-      }
+        const paymentFn = utxo.witnessScript ? payments.p2wsh : payments.p2sh;
+        const unlockingPayment = paymentFn({
+          redeem: { input: unlockingScript, output: lockingScript },
+          network
+        });
+        return {
+          finalScriptWitness: witnessStackToScriptWitness(
+            unlockingPayment.witness
+          ),
+          finalScriptSig: unlockingPayment.input
+        };
+      });
     }
   }
 

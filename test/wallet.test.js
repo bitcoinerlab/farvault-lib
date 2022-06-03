@@ -24,7 +24,7 @@ describe('wallet', () => {
       extPub,
       network,
       mnemonic
-    } of fixtures.addressesDescriptors) {
+    } of fixtures.addressDescriptors) {
       const HDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
         mnemonic
       });
@@ -39,7 +39,7 @@ describe('wallet', () => {
   });
   let i = 0;
   for (const {
-    addressesDescriptors,
+    addressDescriptors,
     isChange,
     accountNumber,
     purpose,
@@ -47,10 +47,10 @@ describe('wallet', () => {
     network,
     mnemonic,
     gapAccountLimit
-  } of fixtures.affinedAddressesDescriptors.valid) {
+  } of fixtures.affineAddressesDescriptors.valid) {
     test(`getLastDerivationPath works - test ${i}`, () => {
       const usedPaths = [];
-      for (const addressDescriptor of addressesDescriptors) {
+      for (const addressDescriptor of addressDescriptors) {
         usedPaths.push(addressDescriptor.path);
       }
       expect(lastDerivationPath).toEqual(
@@ -68,7 +68,7 @@ describe('wallet', () => {
   }
   i = 0;
   for (const {
-    addressesDescriptors,
+    addressDescriptors,
     isChange,
     accountNumber,
     purpose,
@@ -76,10 +76,10 @@ describe('wallet', () => {
     mnemonic,
     gapAccountLimit,
     errorMessage
-  } of fixtures.affinedAddressesDescriptors.invalid) {
+  } of fixtures.affineAddressesDescriptors.invalid) {
     test(`getLastDerivationPath fails - test ${i}`, () => {
       const usedPaths = [];
-      for (const addressDescriptor of addressesDescriptors) {
+      for (const addressDescriptor of addressDescriptors) {
         usedPaths.push(addressDescriptor.path);
       }
       expect(() =>
@@ -97,12 +97,12 @@ describe('wallet', () => {
   }
   test('getDefaultAccount', () => {
     for (const {
-      addressesDescriptors,
+      addressDescriptors,
       defaultAccount,
       gapAccountLimit
-    } of fixtures.affinedAddressesDescriptors.valid) {
+    } of fixtures.affineAddressesDescriptors.valid) {
       const usedPaths = [];
-      for (const addressDescriptor of addressesDescriptors) {
+      for (const addressDescriptor of addressDescriptors) {
         usedPaths.push(addressDescriptor.path);
       }
       expect(
