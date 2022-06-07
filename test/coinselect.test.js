@@ -21,7 +21,7 @@ describe('Coinselect', () => {
             changeAddress: async () => fixture.changeAddress,
             network: fixture.network
           });
-        expect(t).rejects.toThrow(fixture.exception);
+        expect(t()).rejects.toThrow(fixture.exception);
       });
     });
   });
@@ -61,10 +61,7 @@ describe('Coinselect', () => {
           const purpose = parseDerivationPath(utxo.path).purpose;
           let redeemScript = undefined;
           if (purpose === NESTED_SEGWIT) {
-            const pubkey = await HDInterface.getPublicKey(
-              utxo.path,
-              network
-            );
+            const pubkey = await HDInterface.getPublicKey(utxo.path, network);
             const p2wpkh = payments.p2wpkh({ pubkey, network });
             redeemScript = payments.p2sh({ redeem: p2wpkh, network }).redeem
               .output;

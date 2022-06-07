@@ -106,8 +106,8 @@ async function createPSBT({
       //This wallet only knows how to spend relativeTimeLockScript's
       const parsedScript = parseRelativeTimeLockScript(script);
       if (parsedScript === false) {
-        console.log('TRACE', {script});
-        throw new Error('This wallet cannot spend this script.');
+        //console.log('TRACE', {script});
+        throw new Error('This wallet cannot spend this script: ' + script);
       } else {
         const {
           maturedPublicKey,
@@ -136,7 +136,7 @@ async function createPSBT({
         redeemScript = payments.p2sh({ redeem: p2wpkh, network }).redeem.output;
       } else if (purpose !== NATIVE_SEGWIT && purpose !== LEGACY) {
         throw new Error(
-          'Can only freeze P2WPKH, P2SH-P2WPKH, P2PKH  and FarVault P2WSH/P2SH addresses'
+          'Can only process P2WPKH, P2SH-P2WPKH, P2PKH and FarVault P2WSH, P2SH, P2SH-P2WPKH addresses'
         );
       }
     }
