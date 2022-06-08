@@ -75,7 +75,9 @@ for (const type of process.env.__LEDGER_NANO_DETECTED__ === 'true' //Note proces
             await regtestUtils.broadcast(tx);
 
             //Retrieve the tx:
-            const fetchedTx = await regtestUtils.fetch(decodeTx(tx).txid);
+            const fetchedTx = await regtestUtils.fetch(
+              decodeTx(tx, network).txid
+            );
             return { tx, fetchedTx };
           };
           let fetchedTx;
@@ -104,7 +106,10 @@ for (const type of process.env.__LEDGER_NANO_DETECTED__ === 'true' //Note proces
             let inputValue = 0;
             for (let i = 0; i < utxos.length; i++) {
               const utxo = utxos[i];
-              expect({ txid: decodeTx(utxo.tx).txid, n: utxo.n }).toEqual({
+              expect({
+                txid: decodeTx(utxo.tx, network).txid,
+                n: utxo.n
+              }).toEqual({
                 txid: fetchedTx.ins[i].txId,
                 n: fetchedTx.ins[i].vout
               });

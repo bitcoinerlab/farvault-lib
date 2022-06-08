@@ -72,7 +72,7 @@ describe('Coinselect', () => {
           }
 
           psbt.addInput({
-            hash: decodeTx(utxo.tx).txid,
+            hash: decodeTx(utxo.tx, network).txid,
             index: utxo.n,
             nonWitnessUtxo: Buffer.from(utxo.tx, 'hex'),
             ...(redeemScript ? { redeemScript } : {})
@@ -121,7 +121,8 @@ describe('Coinselect', () => {
         //The total value in the utxos = fee + total value un the targets
         expect(
           utxos.reduce(
-            (accumul, utxo) => accumul + decodeTx(utxo.tx).vout[utxo.n].value,
+            (accumul, utxo) =>
+              accumul + decodeTx(utxo.tx, network).vout[utxo.n].value,
             0
           )
         ).toEqual(

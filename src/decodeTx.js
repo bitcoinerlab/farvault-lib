@@ -17,6 +17,7 @@ export const decodeTx = memoize(
       vin: tx.ins.map(input => ({
         txid: Buffer.from(input.hash).reverse().toString('hex'),
         vout: input.index,
+        script: input.script,
         scriptSig: {
           asm: script.toASM(input.script),
           hex: input.script.toString('hex')
@@ -25,6 +26,7 @@ export const decodeTx = memoize(
         sequence: input.sequence
       })),
       vout: tx.outs.map((output, i) => ({
+        script: output.script,
         value: output.value,
         n: i,
         scriptPubKey: {

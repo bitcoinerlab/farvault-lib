@@ -123,6 +123,19 @@ const recoveryTargetP2SH = [
   { address: recoveryAddressP2SH, valueRatioBeforeFee: 1 }
 ];
 
+const recoveryAddressP2SH_P2WSH = payments.p2sh({
+  redeem: payments.p2wsh({
+    redeem: {
+      output: Buffer.from(relativeTimeLockScript, 'hex')
+    },
+    network
+  }),
+  network
+}).address;
+const recoveryTargetP2SH_P2WSH = [
+  { address: recoveryAddressP2SH_P2WSH, valueRatioBeforeFee: 1 }
+];
+
 const recoveryAddressP2SH0Secs = payments.p2sh({
   redeem: {
     output: Buffer.from(relativeTimeLockScript0Secs, 'hex')
@@ -166,7 +179,7 @@ const P2SH_P2WPKH = {
 };
 
 const P2WPKH = {
-  purpose: LEGACY,
+  purpose: NATIVE_SEGWIT,
   accountNumber: 0,
   index: 0,
   isChange: false,
@@ -221,7 +234,10 @@ function createFixture(
           .map(descriptor => fundingDescriptors.indexOf(descriptor))
           .map(index => walletUtxos[index])
       );
-    if ((witnessScript || redeemScript) && decodeTx(lastTx).vout.length !== 1) {
+    if (
+      (witnessScript || redeemScript) &&
+      decodeTx(lastTx, network).vout.length !== 1
+    ) {
       throw new Error(
         'When consuming previous tx, then we assume that it only had one output'
       );
@@ -232,7 +248,7 @@ function createFixture(
   };
   const targetsSelector = utxos => {
     const inputValue = utxos.reduce(
-      (sum, utxo) => sum + decodeTx(utxo.tx).vout[utxo.n].value,
+      (sum, utxo) => sum + decodeTx(utxo.tx, network).vout[utxo.n].value,
       0
     );
     return targetTemplates.map(t => ({
@@ -256,220 +272,253 @@ export const fixtures = {
   mnemonic,
   fundingDescriptors,
   createTransaction: [
-      createFixture(
-        {
-          description: 'Spend one P2PKH output',
-          utxoDescriptors: [{ ...P2PKH }],
-          targetTemplates: oneTarget
-        },
-        fundingDescriptors
-      ),
-      createFixture(
-        {
-          description: 'Spend two P2PKH outputs from the same address',
-          utxoDescriptors: [{ ...P2PKH }, { ...P2PKH }],
-          targetTemplates: oneTarget
-        },
-        fundingDescriptors
-      ),
-      createFixture(
-        {
-          description: 'Spend two P2PKH outputs from two different addresses',
-          utxoDescriptors: [{ ...P2PKH }, { ...P2PKH, index: 1 }],
-          targetTemplates: oneTarget
-        },
-        fundingDescriptors
-      ),
-      createFixture(
-        {
-          description: 'Spend one P2SH_P2WPKH output',
-          utxoDescriptors: [{ ...P2SH_P2WPKH }],
-          targetTemplates: oneTarget
-        },
-        fundingDescriptors
-      ),
-      createFixture(
-        {
-          description: 'Spend two P2SH_P2WPKH outputs from the same address',
-          utxoDescriptors: [{ ...P2SH_P2WPKH }, { ...P2SH_P2WPKH }],
-          targetTemplates: oneTarget
-        },
-        fundingDescriptors
-      ),
-      createFixture(
-        {
-          description:
-            'Spend two P2SH_P2WPKH outputs from two different addresses',
-          utxoDescriptors: [{ ...P2SH_P2WPKH }, { ...P2SH_P2WPKH, index: 1 }],
-          targetTemplates: oneTarget
-        },
-        fundingDescriptors
-      ),
-      createFixture(
-        {
-          description: 'Spend one P2WPKH output',
-          utxoDescriptors: [{ ...P2WPKH }],
-          targetTemplates: oneTarget
-        },
-        fundingDescriptors
-      ),
-      createFixture(
-        {
-          description: 'Spend two P2WPKH outputs from the same address',
-          utxoDescriptors: [{ ...P2WPKH }, { ...P2WPKH }],
-          targetTemplates: oneTarget
-        },
-        fundingDescriptors
-      ),
-      createFixture(
-        {
-          description: 'Spend two P2WPKH outputs from two different addresses',
-          utxoDescriptors: [{ ...P2WPKH }, { ...P2WPKH, index: 1 }],
-          targetTemplates: oneTarget
-        },
-        fundingDescriptors
-      ),
-      createFixture(
-        {
-          description:
-            'Spend from P2PKH, P2SH_P2WPKH and P2PKH and send to 2 outputs',
-          utxoDescriptors: [{ ...P2PKH }, { ...P2SH_P2WPKH }, { ...P2WPKH }],
-          targetTemplates: twoTargets
-        },
-        fundingDescriptors
-      ),
+    createFixture(
+      {
+        description: 'Spend one P2PKH output',
+        utxoDescriptors: [{ ...P2PKH }],
+        targetTemplates: oneTarget
+      },
+      fundingDescriptors
+    ),
+    createFixture(
+      {
+        description: 'Spend two P2PKH outputs from the same address',
+        utxoDescriptors: [{ ...P2PKH }, { ...P2PKH }],
+        targetTemplates: oneTarget
+      },
+      fundingDescriptors
+    ),
+    createFixture(
+      {
+        description: 'Spend two P2PKH outputs from two different addresses',
+        utxoDescriptors: [{ ...P2PKH }, { ...P2PKH, index: 1 }],
+        targetTemplates: oneTarget
+      },
+      fundingDescriptors
+    ),
+    createFixture(
+      {
+        description: 'Spend one P2SH_P2WPKH output',
+        utxoDescriptors: [{ ...P2SH_P2WPKH }],
+        targetTemplates: oneTarget
+      },
+      fundingDescriptors
+    ),
+    createFixture(
+      {
+        description: 'Spend two P2SH_P2WPKH outputs from the same address',
+        utxoDescriptors: [{ ...P2SH_P2WPKH }, { ...P2SH_P2WPKH }],
+        targetTemplates: oneTarget
+      },
+      fundingDescriptors
+    ),
+    createFixture(
+      {
+        description:
+          'Spend two P2SH_P2WPKH outputs from two different addresses',
+        utxoDescriptors: [{ ...P2SH_P2WPKH }, { ...P2SH_P2WPKH, index: 1 }],
+        targetTemplates: oneTarget
+      },
+      fundingDescriptors
+    ),
+    createFixture(
+      {
+        description: 'Spend one P2WPKH output',
+        utxoDescriptors: [{ ...P2WPKH }],
+        targetTemplates: oneTarget
+      },
+      fundingDescriptors
+    ),
+    createFixture(
+      {
+        description: 'Spend two P2WPKH outputs from the same address',
+        utxoDescriptors: [{ ...P2WPKH }, { ...P2WPKH }],
+        targetTemplates: oneTarget
+      },
+      fundingDescriptors
+    ),
+    createFixture(
+      {
+        description: 'Spend two P2WPKH outputs from two different addresses',
+        utxoDescriptors: [{ ...P2WPKH }, { ...P2WPKH, index: 1 }],
+        targetTemplates: oneTarget
+      },
+      fundingDescriptors
+    ),
+    createFixture(
+      {
+        description:
+          'Spend from P2PKH, P2SH_P2WPKH and P2PKH and send to 2 outputs',
+        utxoDescriptors: [{ ...P2PKH }, { ...P2SH_P2WPKH }, { ...P2WPKH }],
+        targetTemplates: twoTargets
+      },
+      fundingDescriptors
+    ),
 
-      //They go in pairs
-      createFixture(
-        {
-          description:
-            'Send to FarVault timelocked address from Legacy to P2SH',
-          utxoDescriptors: [{ ...P2PKH }],
-          targetTemplates: recoveryTargetP2SH
-        },
-        fundingDescriptors
-      ),
-      createFixture(
-        {
-          description:
-            'Unlock: Take the previous tested tx and spend a matured key P2SH.',
-          //If we pass a relativeTimeLockScript, we are consuming an additional
-          //utxo that we assume that it corresponds to the unique output of the
-          //last tx (created in the previous createFixture)
-          redeemScript: relativeTimeLockScript,
-          prevBlocksToMine: bip68LockTime,
-          path: maturedPath,
-          targetTemplates: oneTarget
-        },
-        fundingDescriptors
-      ),
+    //They go in pairs
+    createFixture(
+      {
+        description:
+          'Send to FarVault timelocked address from Legacy to P2SH-P2WSH',
+        utxoDescriptors: [{ ...P2PKH }],
+        targetTemplates: recoveryTargetP2SH_P2WSH
+      },
+      fundingDescriptors
+    ),
+    createFixture(
+      {
+        description:
+          'Unlock: Take the previous tested tx and spend a matured key P2SH-P2WSH.',
+        //If we pass a relativeTimeLockScript, we are consuming an additional
+        //utxo that we assume that it corresponds to the unique output of the
+        //last tx (created in the previous createFixture)
+        //redeemScript: payments
+        //  .p2sh({
+        //    redeem: payments.p2wsh({
+        //      redeem: {
+        //        output: Buffer.from(relativeTimeLockScript, 'hex')
+        //      },
+        //      network
+        //    }),
+        //    network
+        //  })
+        //  .redeem.output.toString('hex'),
+        witnessScript: relativeTimeLockScript,
+        prevBlocksToMine: bip68LockTime,
+        path: maturedPath,
+        targetTemplates: oneTarget
+      },
+      fundingDescriptors
+    ),
 
-      //They go in pairs
-      createFixture(
-        {
-          description:
-            'Send to FarVault timelocked address from Legacy to P2SH',
-          utxoDescriptors: [{ ...P2PKH }],
-          targetTemplates: recoveryTargetP2SH
-        },
-        fundingDescriptors
-      ),
-      createFixture(
-        {
-          description:
-            'Unlock: Take the previous tested tx and spend a matured key P2SH. In addition also spend a P2WPKH',
-          utxoDescriptors: [{ ...P2WPKH }],
-          //If we pass a relativeTimeLockScript, we are consuming an additional
-          //utxo that we assume that it corresponds to the unique output of the
-          //last tx (created in the previous createFixture)
-          redeemScript: relativeTimeLockScript,
-          prevBlocksToMine: bip68LockTime,
-          path: maturedPath,
-          targetTemplates: oneTarget
-        },
-        fundingDescriptors
-      ),
+    //They go in pairs
+    createFixture(
+      {
+        description: 'Send to FarVault timelocked address from Legacy to P2SH',
+        utxoDescriptors: [{ ...P2PKH }],
+        targetTemplates: recoveryTargetP2SH
+      },
+      fundingDescriptors
+    ),
+    createFixture(
+      {
+        description:
+          'Unlock: Take the previous tested tx and spend a matured key P2SH.',
+        //If we pass a relativeTimeLockScript, we are consuming an additional
+        //utxo that we assume that it corresponds to the unique output of the
+        //last tx (created in the previous createFixture)
+        redeemScript: relativeTimeLockScript,
+        prevBlocksToMine: bip68LockTime,
+        path: maturedPath,
+        targetTemplates: oneTarget
+      },
+      fundingDescriptors
+    ),
 
-      //They go in pairs
-      createFixture(
-        {
-          description:
-            'Send to FarVault timelocked address from Legacy to P2SH',
-          utxoDescriptors: [{ ...P2PKH }],
-          targetTemplates: recoveryTargetP2SH
-        },
-        fundingDescriptors
-      ),
-      createFixture(
-        {
-          description:
-            'Unlock: Take the previous tested tx and spend a rushed key P2SH. In addition also spend a P2SH_P2WPKH and a P2PKH. Then send the unlocked funds to twoTargets.',
-          utxoDescriptors: [{ ...P2SH_P2WPKH }, { ...P2PKH }],
-          //If we pass a relativeTimeLockScript, we are consuming an additional
-          //utxo that we assume that it corresponds to the unique output of the
-          //last tx (created in the previous createFixture)
-          redeemScript: relativeTimeLockScript,
-          prevBlocksToMine: 0,
-          //rushed branch:
-          path: rushedPath,
-          targetTemplates: twoTargets
-        },
-        fundingDescriptors
-      ),
+    //They go in pairs
+    createFixture(
+      {
+        description: 'Send to FarVault timelocked address from Legacy to P2SH',
+        utxoDescriptors: [{ ...P2PKH }],
+        targetTemplates: recoveryTargetP2SH
+      },
+      fundingDescriptors
+    ),
+    createFixture(
+      {
+        description:
+          'Unlock: Take the previous tested tx and spend a matured key P2SH. In addition also spend a P2WPKH',
+        utxoDescriptors: [{ ...P2WPKH }],
+        //If we pass a relativeTimeLockScript, we are consuming an additional
+        //utxo that we assume that it corresponds to the unique output of the
+        //last tx (created in the previous createFixture)
+        redeemScript: relativeTimeLockScript,
+        prevBlocksToMine: bip68LockTime,
+        path: maturedPath,
+        targetTemplates: oneTarget
+      },
+      fundingDescriptors
+    ),
 
-      //They go in pairs
-      createFixture(
-        {
-          description:
-            'Send to FarVault timelocked address from Legacy to a P2SH script that locks 0 seconds',
-          utxoDescriptors: [{ ...P2PKH }],
-          targetTemplates: recoveryTargetP2SH0Secs
-        },
-        fundingDescriptors
-      ),
-      createFixture(
-        {
-          description:
-            'Unlock using the matured branch, without mining after 0 seconds.',
-          utxoDescriptors: [{ ...P2PKH }, { ...P2PKH }],
-          //If we pass a relativeTimeLockScript, we are consuming an additional
-          //utxo that we assume that it corresponds to the unique output of the
-          //last tx (created in the previous createFixture)
-          redeemScript: relativeTimeLockScript0Secs,
-          prevBlocksToMine: 0,
-          //matured branch:
-          path: maturedPath,
-          targetTemplates: twoTargets
-        },
-        fundingDescriptors
-      ),
+    //They go in pairs
+    createFixture(
+      {
+        description: 'Send to FarVault timelocked address from Legacy to P2SH',
+        utxoDescriptors: [{ ...P2PKH }],
+        targetTemplates: recoveryTargetP2SH
+      },
+      fundingDescriptors
+    ),
+    createFixture(
+      {
+        description:
+          'Unlock: Take the previous tested tx and spend a rushed key P2SH. In addition also spend a P2SH_P2WPKH and a P2PKH. Then send the unlocked funds to twoTargets.',
+        utxoDescriptors: [{ ...P2SH_P2WPKH }, { ...P2PKH }],
+        //If we pass a relativeTimeLockScript, we are consuming an additional
+        //utxo that we assume that it corresponds to the unique output of the
+        //last tx (created in the previous createFixture)
+        redeemScript: relativeTimeLockScript,
+        prevBlocksToMine: 0,
+        //rushed branch:
+        path: rushedPath,
+        targetTemplates: twoTargets
+      },
+      fundingDescriptors
+    ),
 
-      //They go in pairs
-      createFixture(
-        {
-          description:
-            'Send to FarVault timelocked address from Legacy to a P2SH script that locks 512 seconds',
-          utxoDescriptors: [{ ...P2PKH }],
-          targetTemplates: recoveryTargetP2SH512Secs
-        },
-        fundingDescriptors
-      ),
-      createFixture(
-        {
-          description:
-            'Unlock using the matured branch, without mining after 512 seconds.',
-          errorMessage: 'Error: non-BIP68-final',
-          utxoDescriptors: [{ ...P2PKH }, { ...P2PKH }],
-          //If we pass a relativeTimeLockScript, we are consuming an additional
-          //utxo that we assume that it corresponds to the unique output of the
-          //last tx (created in the previous createFixture)
-          redeemScript: relativeTimeLockScript512Secs,
-          prevBlocksToMine: 1, //Even with one block is not enough
-          //matured branch:
-          path: maturedPath,
-          targetTemplates: twoTargets
-        },
-        fundingDescriptors
-      )
-    ]
+    //They go in pairs
+    createFixture(
+      {
+        description:
+          'Send to FarVault timelocked address from Legacy to a P2SH script that locks 0 seconds',
+        utxoDescriptors: [{ ...P2PKH }],
+        targetTemplates: recoveryTargetP2SH0Secs
+      },
+      fundingDescriptors
+    ),
+    createFixture(
+      {
+        description:
+          'Unlock using the matured branch, without mining after 0 seconds.',
+        utxoDescriptors: [{ ...P2PKH }, { ...P2PKH }],
+        //If we pass a relativeTimeLockScript, we are consuming an additional
+        //utxo that we assume that it corresponds to the unique output of the
+        //last tx (created in the previous createFixture)
+        redeemScript: relativeTimeLockScript0Secs,
+        prevBlocksToMine: 0,
+        //matured branch:
+        path: maturedPath,
+        targetTemplates: twoTargets
+      },
+      fundingDescriptors
+    ),
+
+    //They go in pairs
+    createFixture(
+      {
+        description:
+          'Send to FarVault timelocked address from Legacy to a P2SH script that locks 512 seconds',
+        utxoDescriptors: [{ ...P2PKH }],
+        targetTemplates: recoveryTargetP2SH512Secs
+      },
+      fundingDescriptors
+    ),
+    createFixture(
+      {
+        description:
+          'Unlock using the matured branch, without mining after 512 seconds.',
+        errorMessage: 'Error: non-BIP68-final',
+        utxoDescriptors: [{ ...P2PKH }, { ...P2PKH }],
+        //If we pass a relativeTimeLockScript, we are consuming an additional
+        //utxo that we assume that it corresponds to the unique output of the
+        //last tx (created in the previous createFixture)
+        redeemScript: relativeTimeLockScript512Secs,
+        prevBlocksToMine: 1, //Even with one block is not enough
+        //matured branch:
+        path: maturedPath,
+        targetTemplates: twoTargets
+      },
+      fundingDescriptors
+    )
+  ]
 };

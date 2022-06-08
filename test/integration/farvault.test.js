@@ -96,7 +96,18 @@ describe('FarVault full pipe', () => {
         });
 
         expect(utxos).toEqual(expect.arrayContaining(walletUtxos));
-        expect(walletUtxos.length - utxos.length >= 0).toEqual(true);
+        //if (walletUtxos.length - utxos.length < 0) {
+        //  console.log('DEBUG', {
+        //    walletUtxos,
+        //    utxos,
+        //    fundingDescriptors,
+        //    fundedPaths,
+        //    usedPaths
+        //  });
+        //}
+        //Don't test this since I might create more utxos than expected:
+        //https://github.com/bitcoinjs/regtest-client/issues/3
+        //expect(walletUtxos.length - utxos.length >= 0).toEqual(true);
         expect(fundedPaths).toEqual(expect.arrayContaining(walletPaths));
         expect(fundedPaths.length).toEqual(walletPaths.length);
 
@@ -222,7 +233,7 @@ describe('FarVault full pipe', () => {
           createSigners: hotHDInterface.createSigners,
           network
         });
-        const guardTxid = decodeTx(guardTx).txid;
+        const guardTxid = decodeTx(guardTx, network).txid;
         console.log('WARNING! Should check the fees here somehow');
 
         const bip68LockTime = bip68.encode({
@@ -308,8 +319,10 @@ describe('FarVault full pipe', () => {
             network
           });
 
-          setup.vaults[guardTxid].recoverTxs[decodeTx(recoverTx.tx).txid] = {
-            txid: decodeTx(recoverTx.tx).txid,
+          setup.vaults[guardTxid].recoverTxs[
+            decodeTx(recoverTx.tx, network).txid
+          ] = {
+            txid: decodeTx(recoverTx.tx, network).txid,
             tx: recoverTx.tx,
             feeRate: recoverTx.feeRate,
             fee: recoverTx.fee,
@@ -347,7 +360,7 @@ describe('FarVault full pipe', () => {
         //CREATE A FUNCTION IN FEES FOR THIS BLOCK
         //Note that we're picking 5 below. Use the function to get the correct tx based on fee.
 
-        const recoverTxid = decodeTx(recoverTx.tx).txid;
+        const recoverTxid = decodeTx(recoverTx.tx, network).txid;
 
         await regtestUtils.broadcast(guardTx);
         const unlockTx =
@@ -365,7 +378,7 @@ describe('FarVault full pipe', () => {
         await expect(regtestUtils.broadcast(unlockTx)).resolves.toEqual(null);
         //console.log(await regtestUtils.mine(1));
         await regtestUtils.fetch(recoverTxid);
-        await regtestUtils.fetch(decodeTx(unlockTx).txid);
+        await regtestUtils.fetch(decodeTx(unlockTx, network).txid);
 
         //await regtestUtils.broadcast(guardTx);
         //const cancelTx = setup.vaults.[guardTxid].recoverTxs[recoverTxid].cancelTxs[5].tx;
@@ -373,7 +386,7 @@ describe('FarVault full pipe', () => {
         //await regtestUtils.broadcast(cancelTx);
         //console.log(await regtestUtils.mine(6));
         //console.log(await regtestUtils.fetch(recoverTxid));
-        //console.log(await regtestUtils.fetch(decodeTx(cancelTx).txid));
+        //console.log(await regtestUtils.fetch(decodeTx(cancelTx, network).txid));
       },
       ESPLORA_CATCH_UP_TIME +
         BITCOIND_CATCH_UP_TIME +

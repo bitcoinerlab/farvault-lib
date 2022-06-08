@@ -67,6 +67,44 @@ function witnessStackToScriptWitness(witness) {
 }
 
 /**
+ * These 4 functions below are basically
+ * bitcoinjs-lib's PSBT: classifyScript
+ */
+
+function isP2SH(script) {
+  try {
+    payments.p2sh({ output: script });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+function isP2WSH(script) {
+  try {
+    payments.p2wsh({ output: script });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+function isP2WPKH(script) {
+  try {
+    payments.p2wpkh({ output: script });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+function isP2PKH(script) {
+  try {
+    payments.p2pkh({ output: script });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+/**
  * Builds a PSBT object ready to be signed.
  * It assumes that all the utxos can be spent using this wallet.
  * It sends funds to targets, where targets are [{ address, value (in sats) }]
@@ -74,6 +112,18 @@ function witnessStackToScriptWitness(witness) {
  * This is an internal function that separates concerns with
  * {@link module:transactions.createTransaction createTransaction}. Using PSBTs may end up being useful
  * when multi-sig is implemented in the future.
+ *
+ * This function validates several things:
+ * * It makes sure that params in a utxo: redeemScript, witnessScript and path
+ * are compatible.
+ * * It makes sure that if a script is passed in the utxo then this script can be
+ * spent with the path.
+ * * It makes sure that if a redeemScript is passed, then the utxo corresponds to
+ * a P2SH
+ * * It makes sure that if a witnessScript is passed, then the utxo corresponds to
+ * a P2SH (for nested P2SH-P2WSH) or a P2WSH for a native witness script.
+ * * For standard payments it makes sure that the utxo script corresponds to
+ * the correct BIP-44, BIP-49 or BIP-84 specifications.
  *
  * It's only called by createTransaction and tested using createTransaction unit
  * tests.
@@ -87,20 +137,18 @@ async function createPSBT({
 }) {
   const psbt = new Psbt({ network });
   for (const utxo of utxos) {
-    const txid = decodeTx(utxo.tx).txid;
+    const decodedUtxo = decodeTx(utxo.tx, network);
+    const txid = decodedUtxo.txid;
+    const utxoScript = decodedUtxo.vout[utxo.n].script;
 
     let redeemScript = undefined;
     let witnessScript = undefined;
     let sequence = undefined;
-    if (
-      typeof utxo.witnessScript !== 'undefined' ||
-      typeof utxo.redeemScript !== 'undefined'
-    ) {
-      if (
-        typeof utxo.witnessScript !== 'undefined' &&
-        typeof utxo.redeemScript !== 'undefined'
-      )
-        throw new Error('This PSBT cannot be P2SH and P2WSH at the same time!');
+    //P2SH, P2WSH or P2SW-P2WSH:
+    if (utxo.witnessScript || utxo.redeemScript) {
+      //Do some validations:
+      if (utxo.witnessScript && utxo.redeemScript)
+        throw new Error('A PSBT cannot be P2SH and P2WSH at the same time.');
       const script = utxo.witnessScript || utxo.redeemScript;
       //This is a P2WSH utxo.
       //This wallet only knows how to spend relativeTimeLockScript's
@@ -108,33 +156,66 @@ async function createPSBT({
       if (parsedScript === false) {
         //console.log('TRACE', {script});
         throw new Error('This wallet cannot spend this script: ' + script);
-      } else {
-        const {
-          maturedPublicKey,
-          rushedPublicKey,
-          bip68LockTime
-        } = parsedScript;
-        const pubkey = await getPublicKey(utxo.path, network);
-        if (Buffer.compare(pubkey, maturedPublicKey) === 0) {
-          if (utxo.witnessScript) witnessScript = Buffer.from(script, 'hex');
-          else redeemScript = Buffer.from(script, 'hex');
-          sequence = bip68LockTime;
-          //console.log('WARNING: Test this', { sequence });
-          //sequence = bip68LockTime;
-        } else if (Buffer.compare(pubkey, rushedPublicKey) === 0) {
-          if (utxo.witnessScript) witnessScript = Buffer.from(script, 'hex');
-          else redeemScript = Buffer.from(script, 'hex');
-        } else {
-          throw new Error("This wallet's pubkey cannot spend this script.");
-        }
       }
-    } else {
+
+      const { maturedPublicKey, rushedPublicKey, bip68LockTime } = parsedScript;
+      const pubkey = await getPublicKey(utxo.path, network);
+      //Does this script have a CSV lock?
+      if (Buffer.compare(pubkey, maturedPublicKey) === 0) {
+        sequence = bip68LockTime;
+      }
+      //Get the redeemScript and/or the witnessScript
+      //P2SH:
+      if (utxo.redeemScript) {
+        redeemScript = Buffer.from(script, 'hex');
+        if (!isP2SH(utxoScript))
+          throw new Error('Got a redeemScript but this is not a P2SH utxo');
+      }
+      //P2WSH:
+      else if (utxo.witnessScript && isP2WSH(utxoScript)) {
+        witnessScript = Buffer.from(script, 'hex');
+      }
+      //P2SH-P2WSH:
+      else if (utxo.witnessScript && isP2SH(utxoScript)) {
+        witnessScript = Buffer.from(script, 'hex');
+        const nestedUnlockingPayment = payments.p2wsh({
+          redeem: { output: Buffer.from(script, 'hex') },
+          network
+        });
+        redeemScript = payments.p2sh({
+          redeem: nestedUnlockingPayment,
+          network
+        }).redeem.output;
+      } else {
+        throw new Error(
+          'Got an script but could not classify it into P2SH, P2WSH or P2SH-P2WSH'
+        );
+      }
+    }
+    //Standard payments: P2PKH, P2WPKH, P2SH-P2WPKH:
+    //We will make sure the path corresponds to the script type of the utxo to
+    //detect possible errors:
+    else {
       const purpose = parseDerivationPath(utxo.path).purpose;
       if (purpose === NESTED_SEGWIT) {
+        if (!isP2SH(utxoScript))
+          throw new Error(
+            'This is a NESTED_SEGWIT utxo that does not have a P2SH script'
+          );
         const pubkey = await getPublicKey(utxo.path, network);
         const p2wpkh = payments.p2wpkh({ pubkey, network });
         redeemScript = payments.p2sh({ redeem: p2wpkh, network }).redeem.output;
-      } else if (purpose !== NATIVE_SEGWIT && purpose !== LEGACY) {
+      } else if (purpose === NATIVE_SEGWIT) {
+        if (!isP2WPKH(utxoScript))
+          throw new Error(
+            'This is a NATIVE_SEGWIT utxo that does not have a P2WPKH script'
+          );
+      } else if (purpose === LEGACY) {
+        if (!isP2PKH(utxoScript))
+          throw new Error(
+            'This is a LEGACY utxo that does not have a P2PKH script'
+          );
+      } else {
         throw new Error(
           'Can only process P2WPKH, P2SH-P2WPKH, P2PKH and FarVault P2WSH, P2SH, P2SH-P2WPKH addresses'
         );
@@ -199,6 +280,8 @@ async function createPSBT({
  * * `path` is a BIP84 serialized derivation path that can spend this utxo. F.ex.: `84'/1'/1'/0/0`. Note that this path may correspond to the rushedPublicKey or the maturedPublicKey. This is checked internally comparing the pubkey of `utxo.path` with the `rushedPublicKey` and `maturedPublicKey` pubkeys from `witnessScript` 
  * * `witnessScript|redeemScript` is the relative timeLock script. The script is internally decompiled to obtain the rushedPublicKey, maturedPublicKey and also the bip68LockTime. Then, it is possible to deduce if this `path` belongs to the rushedPublicKey or the maturedPublicKey. With that information, the appropriate unlocking script is chosen and added into the transaction. `witnessScript` is for segwit txs and `redeemScript` for P2SH txs.
  *
+ * This function validates the utxos in child function `createPSBT`.
+ *
  * You must provide the (async) function that gives back the public key of a
  * derivationPath.
  *
@@ -207,7 +290,8 @@ async function createPSBT({
  * @param {Object[]} parameters.utxos List of spendable utxos.
  * @param {string} parameters.utxos[].path Derivation path. F.ex.: `44'/1'/1'/0/0`.
  * @param {string} parameters.utxos[].tx The transaction serialized in hex.
- * @param {string} [parameters.utxos[].witnessScript] The witnessScript serialized in hex in case the utxo can be redeemed with an unlocking script.
+ * @param {string} [parameters.utxos[].redeemScript The legacy-P2SH script serialized in hex in case the utxo can be redeemed with an unlocking legacy-P2SH script.
+ * @param {string} [parameters.utxos[].witnessScript The witnessScript serialized in hex in case the utxo is a P2WSH or P2SH-P2WSH output. When an utxo has a witnessScript string, this function automatically detects the output type: P2WSH or P2SH-P2WSH.
  * @param {number} parameters.utxos[].n The vout index of the tx above.
  * @param {Object[]} parameters.targets List of addresses to send funds.
  * @param {string} parameters.targets[].address The address to send funds.
@@ -227,6 +311,7 @@ export async function createTransaction({
   validateSignatures = true,
   network = networks.bitcoin
 }) {
+  //createPSBT validates the utxo (many checks done there)
   const psbt = await createPSBT({
     targets,
     utxos,
@@ -284,15 +369,49 @@ export async function createTransaction({
         } else {
           throw new Error("This wallet's pubkey cannot spend this script.");
         }
-        const paymentFn = utxo.witnessScript ? payments.p2wsh : payments.p2sh;
-        const unlockingPayment = paymentFn({
-          redeem: { input: unlockingScript, output: lockingScript },
-          network
-        });
+        const utxoScript = decodeTx(utxo.tx, network).vout[utxo.n].script;
+
+        let witness = [],
+          unlockingPayment;
+
+        //Classify between P2SH, P2SH-P2WSH or P2WSH:
+        //P2WSH:
+        if (typeof utxo.witnessScript !== 'undefined' && isP2WSH(utxoScript)) {
+          unlockingPayment = payments.p2wsh({
+            redeem: { input: unlockingScript, output: lockingScript },
+            network
+          });
+          witness = unlockingPayment.witness;
+          //P2SH-P2WSH:
+        } else if (
+          typeof utxo.witnessScript !== 'undefined' &&
+          isP2SH(utxoScript)
+        ) {
+          const nestedUnlockingPayment = payments.p2wsh({
+            redeem: { input: unlockingScript, output: lockingScript },
+            network
+          });
+          unlockingPayment = payments.p2sh({
+            redeem: nestedUnlockingPayment,
+            network
+          });
+          witness = nestedUnlockingPayment.witness;
+          //P2SH:
+        } else if (
+          typeof utxo.redeemScript !== 'undefined' &&
+          isP2SH(utxoScript)
+        ) {
+          unlockingPayment = payments.p2sh({
+            redeem: { input: unlockingScript, output: lockingScript },
+            network
+          });
+        } else {
+          throw new Error('Cannot not classify this script');
+        }
         return {
-          finalScriptWitness: witnessStackToScriptWitness(
-            unlockingPayment.witness
-          ),
+          finalScriptWitness: witnessStackToScriptWitness(witness),
+          //scriptSig === unlockingScript:
+          //https://www.mycryptopedia.com/scriptpubkey-scriptsig/
           finalScriptSig: unlockingPayment.input
         };
       });
@@ -314,7 +433,7 @@ export async function createMultiFeeTransactions({
   const txs = [];
   const feeRates = feeRateSampling(feeRateSamplingParams);
   const value = utxos.reduce(
-    (acc, utxo) => acc + decodeTx(utxo.tx).vout[utxo.n].value,
+    (acc, utxo) => acc + decodeTx(utxo.tx, network).vout[utxo.n].value,
     0
   );
   //We'll get the vzise of from an initial tx, assuming 0 fees: [0, ...feeRates]
@@ -334,7 +453,7 @@ export async function createMultiFeeTransactions({
         network
       });
       if (vsize === 0) {
-        vsize = decodeTx(tx).vsize;
+        vsize = decodeTx(tx, network).vsize;
       } else {
         const realFeeRate = fee / vsize;
         txs.push({ tx, feeRate: realFeeRate, fee });
