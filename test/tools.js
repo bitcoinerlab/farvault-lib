@@ -99,7 +99,7 @@ export async function fundRegtest({
     //console.log({ unspent, utxo });
   }
   // All of the above faucet payments will confirm
-  const results = await regtestUtils.mine(6);
+  if (utxos.length > 0) await regtestUtils.mine(6);
   return {
     HDInterface,
     extPubs,

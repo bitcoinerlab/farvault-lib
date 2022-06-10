@@ -1,8 +1,10 @@
-//This file is used by jest for the tests
 {
+  //This is used by jest:
   "env": {
     "test": {
       "plugins": ["@babel/plugin-transform-modules-commonjs"]
-    },
-  }
+    }
+  },
+  //This is used in the scripts (createTransactionFixtures)
+  "plugins": ["@babel/plugin-transform-modules-commonjs"]
 }

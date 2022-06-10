@@ -15,6 +15,7 @@ import { NATIVE_SEGWIT, NESTED_SEGWIT, LEGACY } from '../walletConstants';
 import memoize from 'lodash.memoize';
 export const WEB_TRANSPORT = 'WEB_TRANSPORT';
 export const NODEJS_TRANSPORT = 'NODEJS_TRANSPORT';
+import { unlockScript } from '../scripts';
 
 import {
   //  crypto,
@@ -89,7 +90,11 @@ export async function init(transport = WEB_TRANSPORT) {
     name,
     version
   };
-  return ledgerAppBtc;
+  return { ledgerTransport, ledgerAppBtc };
+}
+
+export async function close(ledgerTransport) {
+  await ledgerTransport.close();
 }
 
 //Ledger nano uses uncompressed pub keys but bitcoinjs and FarVault use
@@ -202,14 +207,12 @@ async function getUtxoSequence(ledgerAppBtc, utxo, network) {
     script = utxo.redeemScript;
   }
   if (typeof script !== 'undefined') {
-    const parsedScript = parseRelativeTimeLockScript(script);
-    if (parsedScript !== false) {
-      const pubkey = await getPublicKey(ledgerAppBtc, utxo.path, network);
-      const { maturedPublicKey, rushedPublicKey, bip68LockTime } = parsedScript;
-      if (Buffer.compare(pubkey, maturedPublicKey) === 0) {
-        sequence = bip68LockTime;
-      }
+    const pubkey = await getPublicKey(ledgerAppBtc, utxo.path, network);
+    const unlockedScript = unlockScript({ script, pubkey });
+    if (unlockedScript === false) {
+      throw new Error('It is impossible to unlock this script');
     }
+    sequence = unlockedScript.sequence;
   }
   return sequence;
 }
@@ -267,9 +270,9 @@ export async function createSigners(
     }
     if (utxo.witnessScript && utxo.redeemScript) {
       throw new Error(
-        'Either pass only a utxo.path for P2PKH, P2SH-P2WPKH, P2WPKH. \
-        Or utxo.path + utxo.witnessScript for P2WSH. \
-        Or utxo.path +  utxo.redeemScript for P2SH.'
+        'Either pass a single utxo.path for P2PKH, P2SH-P2WPKH, P2WPKH. \
+        Or utxo.path + utxo.witnessScript for P2WSH/P2SH-P2WSH. \
+        Or utxo.path +  utxo.redeemScript for Legacy P2SH.'
       );
     }
     const purpose =
@@ -278,27 +281,25 @@ export async function createSigners(
       parseDerivationPath(utxo.path).purpose;
 
     const sequence = await getUtxoSequence(ledgerAppBtc, utxo, network);
-
     let redeemScript;
-
-    if (purpose === NATIVE_SEGWIT) {
-      redeemScript = undefined;
-      segwitInputTypes.push(true);
-    } else if (purpose === NESTED_SEGWIT) {
-      //The redeemScript for NESTED_SEGWIT must be p2pkh
+    if (purpose === NATIVE_SEGWIT || purpose === NESTED_SEGWIT) {
+      //The redeemScript for NESTED_SEGWIT and NATIVE_SEGWIT must be p2pkh
+      //for some reason?!?!?!?
       const pubkey = await getPublicKey(ledgerAppBtc, utxo.path, network);
       redeemScript = payments.p2pkh({ pubkey, network }).output.toString('hex');
       segwitInputTypes.push(true);
     } else if (purpose === LEGACY) {
       redeemScript = undefined;
       segwitInputTypes.push(false);
-    } else if (utxo.redeemScript) {
-      throw new Error('P2SH has never been tested! Make tests first!');
-      //P2SH
+    }
+    //Legacy P2SH (not P2SH-P2WSH)
+    else if (utxo.redeemScript) {
       redeemScript = utxo.redeemScript;
       segwitInputTypes.push(false);
-    } else if (utxo.witnessScript) {
-      //PW2SH
+    }
+    //P2WSH or P2SH-P2WSH
+    else if (utxo.witnessScript) {
+      //Yeah, the redeemScript = witnessScript even for P2SH-P2WSH...
       redeemScript = utxo.witnessScript;
       segwitInputTypes.push(true);
     } else {
@@ -322,23 +323,13 @@ export async function createSigners(
     const ledgerOutputScriptHex = ledgerAppBtc
       .serializeTransactionOutputs(ledgerTx)
       .toString('hex');
-    // From BtcNew.js
-    // segwit for P2SH-P2WPKH.
-    // additionals["bech32"] for P2WPKH.
-    // additionals["bech32m"] for taproot.
-    // I believe it cannot mix accounts.
-    //const ledgerTxSignatures = await ledgerAppBtc.createPaymentTransactionNew({
+
     const ledgerTxSignatures = await ledgerAppBtc.signP2SHTransaction({
       inputs: ledgerInputs,
       associatedKeysets: ledgerDerivationPaths,
-      //associatedKeysets: [undefined, ledgerDerivationPaths[1]],
       outputScriptHex: ledgerOutputScriptHex,
       segwit: isSegwit,
-      //segwit: true,
-      //segwit: false,
       transactionVersion: psbt.version
-      //additionals: ["bech32"]
-      //additionals: [""]
     });
     return ledgerTxSignatures;
   };

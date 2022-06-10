@@ -1,7 +1,7 @@
 /** @module scripts */
 
 import bip68 from 'bip68';
-import { script, opcodes } from 'bitcoinjs-lib';
+import { payments, script as bscript, opcodes } from 'bitcoinjs-lib';
 
 /**
  * Use this function to encode numbers to Assembly code, which is the symbolic
@@ -21,11 +21,11 @@ import { script, opcodes } from 'bitcoinjs-lib';
  * However, the `OP_0` is an edge case that we specially handle with this
  * function:
  *
- * bitcoinjs-lib's `script.number.encode(0)` produces an empty Buffer
+ * bitcoinjs-lib's `bscript.number.encode(0)` produces an empty Buffer
  * I believe this should not be the default behaviour of number.encode. This is
- * what the Bitcoin interpreter does but script.number.encode should not do that.
+ * what the Bitcoin interpreter does but bscript.number.encode should not do that.
  * Anyway this is an open discussion.
- * The thing is `script.number.encode(0).toString('hex')` will them produces an
+ * The thing is `bscript.number.encode(0).toString('hex')` will them produces an
  * empty string.
  *
  * However a zero should produce the OP_0 ASM symbolic code and a `0` when
@@ -55,24 +55,24 @@ function numberEncodeAsm(number) {
   }
   if (number === 0) {
     return 'OP_0';
-  } else return script.number.encode(number).toString('hex');
+  } else return bscript.number.encode(number).toString('hex');
 }
 
 /**
  * Use this function to decode numbers after they have been decompiled using
- * bitcoinjs-lib's `script.decompile`.
+ * bitcoinjs-lib's `bscript.decompile`.
  *
  * Note that numbers are compiled as `OP_0` for `0`, and to:
  * `OP_1,... OP_16` for `1,... 16`,
  * where `OP_1 = 0x51 = 81`, `OP_2 = 0x52 = 82`, ...
  *
- * Thats the reason for `script.decompile` to produce `Buffer` types for
+ * Thats the reason for `bscript.decompile` to produce `Buffer` types for
  * numbers > 16 and to produce `number` types for numbers <= 16.
  * The later correspond to an op code. For example. `OP_1` = 0x51 (of type number).
  * And `Buffer` types correspond to binary representations of encoded numbers in
  * Little Endian.
  *
- * Other numbers can be successfully decompiled using `script.number.decode`.
+ * Other numbers can be successfully decompiled using `bscript.number.decode`.
  *
  * Read more about the this {@link https://github.com/bitcoinjs/bitcoinjs-lib/issues/1799#issuecomment-1121656429 here}.
  *
@@ -89,12 +89,12 @@ function scriptNumberDecode(decompiled) {
       decompiled >= 0x51 && // OP_1 (or OP_TRUE)
       decompiled <= 0x60 // OP_16
     ) {
-      return script.number.decode(Buffer.from([decompiled - 0x50]));
+      return bscript.number.decode(Buffer.from([decompiled - 0x50]));
     } else {
       if (!Buffer.isBuffer(decompiled))
         throw new Error('Invalid decompiled number');
       // this is a Buffer
-      const decoded = script.number.decode(decompiled);
+      const decoded = bscript.number.decode(decompiled);
       if (decoded >= 0 && decoded <= 16)
         throw new Error('0 to 16 should have been compiled using op codes');
       return decoded;
@@ -208,7 +208,7 @@ export function createRelativeTimeLockScript({
   ) {
     throw new Error('Invalid bip68LockTime');
   }
-  return script.fromASM(
+  return bscript.fromASM(
     `
       ${maturedPublicKey.toString('hex')}
       OP_CHECKSIG
@@ -223,6 +223,53 @@ export function createRelativeTimeLockScript({
       .trim()
       .replace(/\s+/g, ' ')
   );
+}
+
+/**
+ * Gets the sequence and the unlockingScript for a given script.
+ * Right now it only parses FarVault's relativeTimeLockScripts.
+ * Use this function to handle any other speciffic script.
+ *
+ * @param {object} parameters
+ * @param {string} parameters.script The locking script in hex
+ * @param {Buffer} parameters.pubkey The public key that unlocks this script
+ *
+ * Note that we cannot return the unlockingScript since very ofter will depends
+ * on the signature. We return a callback function
+ * createUnlockingScripts(signature) instead.
+ *
+ * @returns {object|boolean} false if if cannot be parsed or {sequence, createUnlockingScripts}
+ * where `sequence` is a `number` containing the bip68 encoded lock time and
+ * `createUnlockingScript` is a callback function that you can pass a signature
+ * and it will return the unlockingScript.
+ */
+export function unlockScript({ script, pubkey }) {
+  let sequence;
+  let createUnlockingScript;
+
+  //This wallet only knows how to spend relativeTimeLockScript's
+  const parsedScript = parseRelativeTimeLockScript(script);
+  if (parsedScript === false) {
+    return false;
+  }
+  const { maturedPublicKey, rushedPublicKey, bip68LockTime } = parsedScript;
+  //partialSig[0] has a zero because the input is only signed with
+  //one pubkey. Either rushed or matured. It's not multi-sig
+  if (Buffer.compare(pubkey, maturedPublicKey) === 0) {
+    //This script have a CSV lock if it is unlocking the matured branch:
+    sequence = bip68LockTime;
+    //this is how matured transactions can be unlocked:
+    createUnlockingScript = signature => bscript.compile([signature]);
+  } else if (Buffer.compare(pubkey, rushedPublicKey) === 0) {
+    //this is how rushed transactions can are unlocked:
+    createUnlockingScript = signature =>
+      bscript.compile([signature, opcodes.OP_0]);
+  } else {
+    throw new Error(
+      "This wallet's utxo pubkey cannot spend this relativeTimeLockScript."
+    );
+  }
+  return { sequence, createUnlockingScript };
 }
 
 /**
@@ -249,7 +296,7 @@ export function parseRelativeTimeLockScript(relativeTimeLockScript) {
     );
   }
   //No need to memoize
-  const decompiled = script.decompile(
+  const decompiled = bscript.decompile(
     Buffer.from(relativeTimeLockScript, 'hex')
   );
   if (
@@ -258,11 +305,11 @@ export function parseRelativeTimeLockScript(relativeTimeLockScript) {
     //Make sure the relativeTimeLockScript was encoded using minimal ops.
     //For example it is an error to use 0a instead of OP_10 for representing
     //numbers
-    //However script.decompile will take a 0a and decompile it. Even worse it will
+    //However bscript.decompile will take a 0a and decompile it. Even worse it will
     //will convert it to OP_10! But this is wrong!
     //See test with description for an invalid script that this will catch:
     //'parseRelativeTimeLockScript returns false when using 0a instead of OP_10 for the bip68LockTime in the script'
-    script.compile(decompiled).toString('hex') === relativeTimeLockScript &&
+    bscript.compile(decompiled).toString('hex') === relativeTimeLockScript &&
     decompiled.length === 9 &&
     Buffer.isBuffer(decompiled[0]) &&
     Buffer.byteLength(decompiled[0]) === 33 &&
@@ -290,3 +337,41 @@ export const exportedForTesting = {
   numberEncodeAsm,
   scriptNumberDecode
 };
+
+/**
+ * These 4 functions below are basically
+ * bitcoinjs-lib's PSBT: classifyScript
+ */
+
+export function isP2SH(script) {
+  try {
+    payments.p2sh({ output: script });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+export function isP2WSH(script) {
+  try {
+    payments.p2wsh({ output: script });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+export function isP2WPKH(script) {
+  try {
+    payments.p2wpkh({ output: script });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+export function isP2PKH(script) {
+  try {
+    payments.p2pkh({ output: script });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}

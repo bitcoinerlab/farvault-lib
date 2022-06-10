@@ -104,11 +104,12 @@ async function getPublicKey(HDInterface, path, network = networks.bitcoin) {
 export async function initHDInterface(type, { transport, mnemonic } = {}) {
   let HDInterface = null;
   if (type === LEDGER_NANO_INTERFACE) {
-    const ledgerAppBtc = await ledgerNano.init(transport);
+    const { ledgerTransport, ledgerAppBtc } = await ledgerNano.init(transport);
     HDInterface = {
       getExtPub: (...args) => ledgerNano.getExtPub(ledgerAppBtc, ...args),
       createSigners: (...args) =>
-        ledgerNano.createSigners(ledgerAppBtc, ...args)
+        ledgerNano.createSigners(ledgerAppBtc, ...args),
+      close: () => ledgerNano.close(ledgerTransport)
     };
   } else if (type === SOFT_HD_INTERFACE) {
     if (typeof mnemonic === 'undefined') {
@@ -117,7 +118,8 @@ export async function initHDInterface(type, { transport, mnemonic } = {}) {
     const seed = await soft.init(mnemonic);
     HDInterface = {
       getExtPub: (...args) => soft.getExtPub(seed, ...args),
-      createSigners: (...args) => soft.createSigners(seed, ...args)
+      createSigners: (...args) => soft.createSigners(seed, ...args),
+      close: () => {}
     };
   } else throw new Error('Cannot initialize this type of HD Wallet');
 

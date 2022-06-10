@@ -7,8 +7,9 @@ import {
 module.exports = async function (globalConfig, projectConfig) {
   const start =
     globalConfig.testPathPattern === '' ||
-    globalConfig.testPathPattern.indexOf('farvault.test.js') !== -1 ||
-    globalConfig.testPathPattern.indexOf('transactions.test.js') !== -1
+    globalConfig.testPathPattern.indexOf('farvault.test.js') !==
+      -1 /* ||
+    globalConfig.testPathPattern.indexOf('transactions.test.js') !== -1*/
       ? true
       : false;
   const startElectrs =
@@ -19,9 +20,10 @@ module.exports = async function (globalConfig, projectConfig) {
 
   process.env.__LEDGER_NANO_DETECTED__ = true;
   try {
-    await initHDInterface(LEDGER_NANO_INTERFACE, {
+    const HDInterface = await initHDInterface(LEDGER_NANO_INTERFACE, {
       transport: NODEJS_TRANSPORT
     });
+    await HDInterface.close();
   } catch (err) {
     process.env.__LEDGER_NANO_DETECTED__ = false;
   }

@@ -7,12 +7,16 @@
     "keys": "mkcert localhost",
     "build": "webpack -w",
     "playground": "concurrently \"node --openssl-legacy-provider playground/server.js\" \"open-cli https://localhost:3443\"",
-    "test": "node --openssl-legacy-provider  --experimental-vm-modules node_modules/.bin/jest",
+
+    "createTransactionsFixtures": "NODE_OPTIONS=\"--openssl-legacy-provider\" npx babel-node ./test/createTransactionsFixtures.js",
+    "test": "node --openssl-legacy-provider --experimental-vm-modules node_modules/.bin/jest",
     "docs": "jsdoc -c jsdoc.json"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@babel/core": "^7.18.2",
+    "@babel/node": "^7.17.10",
     "@babel/plugin-transform-modules-commonjs": "^7.17.7",
     "child_process": "^1.0.2",
     "concurrently": "^7.0.0",
@@ -24,6 +28,7 @@
     "node-domexception": "^1.0.0",
     "open-cli": "^7.0.1",
     "path": "^0.12.7",
+    "prettier": "^2.6.2",
     "process": "^0.11.10",
     "regtest-client": "^0.2.0",
     "webpack": "^5.68.0",
