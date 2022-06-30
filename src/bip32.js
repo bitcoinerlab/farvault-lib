@@ -200,7 +200,7 @@ export function parseDerivationPath(path) {
   let isChange;
   let accountNumber;
   if (typeof path !== 'string') {
-    throw new Error('Invalid type');
+    throw new Error('Invalid path type');
   }
   //Remove initial m/ or M/ (if present)
   path = path.replace(/^(m\/)/i, '');
@@ -208,7 +208,7 @@ export function parseDerivationPath(path) {
   path = path.replace(/H/gi, "'");
   const pathComponents = path.split('/');
   if (pathComponents.length !== 5) {
-    throw new Error('Invalid number of elements');
+    throw new Error('Invalid number of elements in path');
   }
 
   if (
@@ -216,7 +216,7 @@ export function parseDerivationPath(path) {
     pathComponents[0] !== `${NESTED_SEGWIT}'` &&
     pathComponents[0] !== `${NATIVE_SEGWIT}'`
   ) {
-    throw new Error('Invalid purpose');
+    throw new Error('Invalid purpose in path');
   } else {
     purpose = parseInt(pathComponents[0].replace("'", ''));
   }
@@ -226,22 +226,22 @@ export function parseDerivationPath(path) {
     pathComponents[1] !== `${getNetworkCoinType(networks.testnet)}'` &&
     pathComponents[1] !== `${getNetworkCoinType(networks.regtest)}'`
   ) {
-    throw new Error('Invalid coin type');
+    throw new Error('Invalid coin type in path');
   } else {
     coinType = parseInt(pathComponents[1]);
   }
   if (`${Math.abs(parseInt(pathComponents[2]))}'` !== pathComponents[2]) {
-    throw new Error('Invalid account number');
+    throw new Error('Invalid account number in path');
   } else {
     accountNumber = parseInt(pathComponents[2]);
   }
   if (pathComponents[3] !== '0' && pathComponents[3] !== '1') {
-    throw new Error('Invalid change type');
+    throw new Error('Invalid change type in path');
   } else {
     isChange = pathComponents[3] === '1';
   }
   if (`${Math.abs(parseInt(pathComponents[4]))}` !== pathComponents[4]) {
-    throw new Error('Invalid index');
+    throw new Error('Invalid index in path');
   } else {
     index = parseInt(pathComponents[4]);
   }

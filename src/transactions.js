@@ -101,6 +101,8 @@ function createPSBT({
 
     let redeemScript = undefined;
     let witnessScript = undefined;
+
+    const bjsTx = Transaction.fromHex(utxo.tx);
     //P2SH, P2WSH or P2SW-P2WSH:
     if (utxo.witnessScript || utxo.redeemScript) {
       //Get the redeemScript and/or the witnessScript
@@ -125,9 +127,19 @@ function createPSBT({
           redeem: nestedUnlockingPayment,
           network
         }).redeem.output;
+
+        const redeemScriptOutput = payments.p2sh({
+          redeem: { output: redeemScript },
+          network
+        }).output;
+        if (!redeemScriptOutput.equals(bjsTx.outs[utxo.n].script)) {
+          throw new Error(
+            'Got a witnessScript but this is not a P2WSH neither a P2SH-P2WSH utxo'
+          );
+        }
       } else {
         throw new Error(
-          'Got an script but could not classify it into P2SH, P2WSH or P2SH-P2WSH'
+          'Got a script but could not classify it into P2SH, P2WSH or P2SH-P2WSH'
         );
       }
     }
@@ -178,7 +190,7 @@ function createPSBT({
       //hash: Transaction.fromHex(utxo.tx).getHash(), //Passes a Buffer. forWitness defaults to false anyway so no need to set false.
       //hash: Transaction.fromHex(utxo.tx).getId(), //Passes a string. This is a string that corresponds to the Buffer above (in reverse order) and serialized.
       index: utxo.n,
-      nonWitnessUtxo: Transaction.fromHex(utxo.tx).toBuffer(),
+      nonWitnessUtxo: bjsTx.toBuffer(),
       ...(typeof redeemScript !== 'undefined' ? { redeemScript } : {}),
       ...(typeof witnessScript !== 'undefined' ? { witnessScript } : {}),
       ...(typeof sequence !== 'undefined' ? { sequence } : {})
@@ -203,20 +215,20 @@ function createPSBT({
  * Targets are expressed as: `[{ address, value }]`, with value in satoshis.
  *
  * Utxos can be standard: P2PKH, P2WPKH, P2WH-P2WPKH. And they can also be
- * P2WSH for FarVault's timelocked utxos.
+ * P2SH, P2SH-P2WSH or P2WSH for FarVault's timelocked utxos.
  *
- * For regular P2PKH, P2WPKH, P2WH-P2WPKH utxos, an utxo must be like this:
+ * For regular P2PKH, P2WPKH, P2SH-P2WPKH utxos, an utxo must have these fields:
  * `{tx, n, path}`, where
  * * `tx` is a string containing the complete previous transaction in hex
  * * `n` is the index of the output
  * * `path` is the BIP-44/49/84 serialized derivation path string that can spend this utxo. F.ex.: `44'/1'/1'/0/0`.
  *
  * For relativeTimeLockScript utxos, the utxo must be:
- *`{tx, n, path, witnessScript|redeemScript}`, where
+ *`{tx, n, path, witnessScript|redeemScript}`, where:
  * * `tx` is a string containing the complete previous transaction in hex
  * * `n` is the index of the output
- * * `path` is a BIP84 serialized derivation path that can spend this utxo. F.ex.: `84'/1'/1'/0/0`. Note that this path may correspond to the rushedPublicKey or the maturedPublicKey. This is checked internally comparing the pubkey of `utxo.path` with the `rushedPublicKey` and `maturedPublicKey` pubkeys from `witnessScript` 
- * * `witnessScript|redeemScript` is the relative timeLock script. The script is internally decompiled to obtain the rushedPublicKey, maturedPublicKey and also the bip68LockTime. Then, it is possible to deduce if this `path` belongs to the rushedPublicKey or the maturedPublicKey. With that information, the appropriate unlocking script is chosen and added into the transaction. `witnessScript` is for segwit txs and `redeemScript` for P2SH txs.
+ * * `path` is a BIP84 serialized derivation path that can spend this utxo. F.ex.: `84'/1'/1'/0/0`. Note that this path may correspond to the rushedPublicKey or the maturedPublicKey. This is checked internally comparing the pubkey of `utxo.path` with the `rushedPublicKey` and `maturedPublicKey` pubkeys extracted from the `witnessScript`/`redeemScript`.
+ * * `witnessScript|redeemScript` is the relative timeLock script. The script is internally decompiled to obtain the rushedPublicKey, maturedPublicKey and also the bip68LockTime. Then, it is possible to deduce if this `path` belongs to the rushedPublicKey or the maturedPublicKey. With that information, the appropriate unlocking script is chosen and added into the transaction. `witnessScript` is for segwit transactions (P2WSH and P2SH-P2WSH) and `redeemScript` for P2SH transactions.
  *
  * This function validates the utxos in child function `createPSBT`.
  *
@@ -236,16 +248,16 @@ function createPSBT({
  * @param {number} parameters.targets[].value Number of satoshis to send the address above.
  * @param {module:HDInterface.createSigners} parameters.createSigners An **async** function that returns an array of signer functions. One for each utxo. Signer functions sign the hash of the transaction.
  * @param {module:HDInterface.getPublicKey} parameters.getPublicKey An **async** function that resolves the public key from a derivation path and the network.
- * @param {boolean} [validateSignatures=true] Whether you want to validate signatures. This should always be true to detect errors. However, when createMultiFeeTransactions it is ok to only validate one of the txs (for one of the fees). Signature validation is slow and this helps improving speed when creating a large number of transactions.
+ * @param {boolean} [parameters.validateSignatures=true] Whether you want to validate signatures. This should always be true to detect errors. However, when createMultiFeeTransactions it is ok to only validate one of the transactions (for one of the fees). Signature validation is slow and this helps improving speed when creating a large number of transactions.
  * @param {object} [parameters.network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
- * @returns {Promise<string>} The transaction in hex
+ * @returns {Promise<string>} A promise that resolves into a transaction string in hex
  */
 
 export async function createTransaction({
   utxos,
   targets,
-  createSigners,
   getPublicKey,
+  createSigners,
   validateSignatures = true,
   network = networks.bitcoin
 }) {
@@ -282,7 +294,11 @@ export async function createTransaction({
     psbt.signInput(i, { publicKey: pubkeys[i], sign: signers[i], network });
     //This is very slow... turn it off with validateSignatures=false
     if (validateSignatures) {
-      psbt.validateSignaturesOfInput(i, validator, pubkeys[i]);
+      //This is a very important test to do specially when signing using a HW wallet since
+      //it gets tricky to make bitcoinjs-lib to work well with ledgerjs.
+      if (psbt.validateSignaturesOfInput(i, validator, pubkeys[i]) !== true) {
+        throw new Error('Invalid signature detected');
+      }
     }
     const utxo = utxos[i];
     const script = utxo.witnessScript || utxo.redeemScript;
@@ -343,13 +359,43 @@ export async function createTransaction({
       });
     }
   }
+  //extractTransaction also catches if trying to spend more than in inputs
+  //(there's a test in test/fixtures/transactions.js)
   const tx = psbt.extractTransaction(true).toHex();
   return tx;
 }
 
+/**
+ * Same as {@link module:transactions.createTransaction createTransaction} but it returns an array of
+ * transactions for a set of different fees.
+ *
+ * The number of transactions is dictated by `feeRateSamplingParams`.
+ *
+ * Note that signatures are only validated in the case of `minSatsPerByte` (see
+ * {@link module:fees.feeRateSampling feeRateSampling}).
+ * If this signature is valid, then we assume the rest of signatures are also
+ * valid. This is done for performance reasons.
+ *
+ * @async
+ * @param {Object} parameters
+ * @param {Object[]} parameters.utxos List of spendable utxos.
+ * @param {string} parameters.utxos[].path Derivation path. F.ex.: `44'/1'/1'/0/0`.
+ * @param {string} parameters.utxos[].tx The transaction serialized in hex.
+ * @param {string} [parameters.utxos[].redeemScript The legacy-P2SH script serialized in hex in case the utxo can be redeemed with an unlocking legacy-P2SH script.
+ * @param {string} [parameters.utxos[].witnessScript The witnessScript serialized in hex in case the utxo is a P2WSH or P2SH-P2WSH output. When an utxo has a witnessScript string, this function automatically detects the output type: P2WSH or P2SH-P2WSH.
+ * @param {number} parameters.utxos[].n The vout index of the tx above.
+ * @param {Object[]} parameters.targets List of addresses to send funds.
+ * @param {string} parameters.targets[].address The address to send funds.
+ * @param {number} parameters.targets[].value Number of satoshis to send the address above.
+ * @param {module:HDInterface.createSigners} parameters.createSigners An **async** function that returns an array of signer functions. One for each utxo. Signer functions sign the hash of the transaction.
+ * @param {object} parameters.feeRateSamplingParams Same params as the ones in {@link module:fees.feeRateSampling feeRateSampling}.
+ * @param {module:HDInterface.getPublicKey} parameters.getPublicKey An **async** function that resolves the public key from a derivation path and the network.
+ * @param {object} [parameters.network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * @returns {Array.<Promise<{tx:string, fee:number, feeRate:number}>>} An array of promises that resolve to transactions in hex, the fee in sats and the feeRate in sats/vbyte
+ */
 export async function createMultiFeeTransactions({
   utxos,
-  address, //do not set {address, value } because itx max value (it's multifee)
+  address, //do not set {address, value } because multifee assumes we send max value
   getPublicKey,
   createSigners,
   feeRateSamplingParams = {},
@@ -364,7 +410,11 @@ export async function createMultiFeeTransactions({
   //We'll get the vzise of from an initial tx, assuming 0 fees: [0, ...feeRates]
   let vsize = 0;
   for (const feeRate of [0, ...feeRates]) {
-    const fee = Math.ceil(vsize * feeRate);
+    //The vsize for a tx with different fees may slightly vary
+    //because of the signature.
+    //(I've observed 1 vbyte difference sometimes)
+    //Let's assume a slightly larger tx size (+1vbyte).
+    const fee = Math.ceil((vsize + 1) * feeRate);
     if (fee <= value) {
       const tx = await createTransaction({
         utxos,
@@ -372,15 +422,17 @@ export async function createMultiFeeTransactions({
         getPublicKey,
         createSigners,
         //Signature validation is very expensive. Only validate signatures in
-        //the case of minSatsPerByte. If this works, then the rest will also
+        //the case of minSatsPerByte. If this signature is valudworks, then the rest will also
         //have valid signatures.
         validateSignatures: feeRate === feeRates[0],
         network
       });
       if (vsize === 0) {
-        vsize = decodeTx(tx, network).vsize;
+        //Take the vsize for a tx with 0 fees.
+        vsize = Transaction.fromHex(tx).virtualSize();
       } else {
-        const realFeeRate = fee / vsize;
+        const realVsize = Transaction.fromHex(tx).virtualSize();
+        const realFeeRate = fee / realVsize;
         txs.push({ tx, feeRate: realFeeRate, fee });
       }
     }

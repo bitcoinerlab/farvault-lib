@@ -7,6 +7,7 @@ import {
 import assert from 'assert';
 
 import { createTransaction } from '../src/transactions';
+import { createRelativeTimeLockScript } from '../src/scripts';
 
 import fs from 'fs';
 import path from 'path';
@@ -20,6 +21,7 @@ const transactionsFixturesFile = path.resolve(
 import prettier from 'prettier';
 
 const VALID_TRANSACTION_FIXTURES = [];
+const INVALID_TRANSACTION_FIXTURES = [];
 
 //Send p2pkh -> address
 //Send p2wpkh -> address
@@ -292,7 +294,9 @@ async function createFixture({
   //It may be slightly different because of rounding
   assert.deepStrictEqual(FEE, inputValue - outputValue);
 
-  fixtures.push({ description, utxos, tx, targets });
+  if (Array.isArray(fixtures)) {
+    fixtures.push({ description, utxos, tx, targets });
+  }
 
   return tx;
 }
@@ -304,6 +308,13 @@ async function main() {
 
   let tx;
 
+  tx = await createFixture({
+    description:
+      'Spend from P2PKH, P2SH_P2WPKH and P2WPKH and send to 2 outputs',
+    fundingDescriptors: [P2PKH, P2SH_P2WPKH, P2WPKH],
+    targetTemplates: twoTargets,
+    fixtures: VALID_TRANSACTION_FIXTURES
+  });
   tx = await createFixture({
     description: 'Spend one P2PKH output',
     fundingDescriptors: [P2PKH],
@@ -356,13 +367,6 @@ async function main() {
     description: 'Spend two P2WPKH outputs from two different addresses',
     fundingDescriptors: [P2WPKH, { ...P2WPKH, index: 1 }],
     targetTemplates: oneTarget,
-    fixtures: VALID_TRANSACTION_FIXTURES
-  });
-  tx = await createFixture({
-    description:
-      'Spend from P2PKH, P2SH_P2WPKH and P2WPKH and send to 2 outputs',
-    fundingDescriptors: [P2PKH, P2SH_P2WPKH, P2WPKH],
-    targetTemplates: twoTargets,
     fixtures: VALID_TRANSACTION_FIXTURES
   });
   //They go in pairs
@@ -480,6 +484,7 @@ async function main() {
     targetTemplates: twoTargets,
     fixtures: VALID_TRANSACTION_FIXTURES
   });
+
   //They go in pairs
   tx = await createFixture({
     description:
@@ -488,7 +493,6 @@ async function main() {
     targetTemplates: recoveryTargetP2SH512Secs,
     fixtures: VALID_TRANSACTION_FIXTURES
   });
-
   //  tx = await createFixture({
   //    description:
   //      'Unlock using the matured branch, without mining after 512 seconds.',
@@ -506,6 +510,163 @@ async function main() {
   //    targetTemplates: twoTargets,
   //    fixtures: VALID_TRANSACTION_FIXTURES
   //  });
+
+  //INVALID TESTS:
+  //
+  {
+    const validFixtures = [];
+    await createFixture({
+      description: 'Spend one P2PKH output',
+      fundingDescriptors: [P2PKH],
+      targetTemplates: oneTarget,
+      fixtures: validFixtures
+    });
+    //Remove the path
+    const { path, ...utxo } = validFixtures[0].utxos[0];
+    INVALID_TRANSACTION_FIXTURES.push({
+      description: 'Try to spend more than available in the inputs',
+      utxos: validFixtures[0].utxos,
+      targets: [{ address: burnAddress, value: 200000000 }],
+      exception: 'Outputs are spending more than Inputs'
+    });
+  }
+  {
+    const validFixtures = [];
+    await createFixture({
+      description: 'Spend one P2PKH output',
+      fundingDescriptors: [P2PKH],
+      targetTemplates: oneTarget,
+      fixtures: validFixtures
+    });
+    //Remove the path
+    const { path, ...utxo } = validFixtures[0].utxos[0];
+    INVALID_TRANSACTION_FIXTURES.push({
+      description: 'Utxo with missing path',
+      utxos: [utxo],
+      targets: { ...validFixtures[0].targets },
+      exception: 'Invalid path type'
+    });
+  }
+  {
+    const validFixtures = [];
+    const tx = await createFixture({
+      description:
+        'Send to FarVault timelocked address from Legacy to a P2SH script that locks 0 seconds',
+      fundingDescriptors: [P2PKH],
+      targetTemplates: recoveryTargetP2SH0Secs
+    });
+    await createFixture({
+      description:
+        'Unlock using the matured branch, without mining after 0 seconds.',
+      utxos: [
+        {
+          redeemScript: relativeTimeLockScript0Secs,
+          path: maturedPath,
+          tx,
+          n: 0
+        }
+      ],
+      fundingDescriptors: [P2PKH, P2PKH],
+      prevBlocksToMine: 0,
+      targetTemplates: twoTargets,
+      fixtures: validFixtures
+    });
+    //Remove the redeemScript from the utxo and add a witnessScript instead
+    const { redeemScript, ...utxo } = {
+      ...validFixtures[0].utxos[0],
+      witnessScript: validFixtures[0].utxos[0].redeemScript
+    };
+    INVALID_TRANSACTION_FIXTURES.push({
+      description:
+        'Pass a witnessScript instead of a redeemScript for P2SH but it is not a P2SH-P2WSH',
+      utxos: [utxo],
+      targets: validFixtures[0].targets,
+      exception:
+        'Got a witnessScript but this is not a P2WSH neither a P2SH-P2WSH utxo'
+    });
+  }
+  {
+    const validFixtures = [];
+    const tx = await createFixture({
+      description: 'Send to P2PKH',
+      fundingDescriptors: [P2PKH],
+      targetTemplates: recoveryTargetP2SH0Secs,
+      fixtures: validFixtures
+    });
+    const { HDInterface } = await fundRegtest({
+      mnemonic,
+      fundingDescriptors: []
+    });
+    const utxoPubKey = await HDInterface.getPublicKey(
+      validFixtures[0].utxos[0].path,
+      network
+    );
+    const utxo = {
+      redeemScript: createRelativeTimeLockScript({
+        maturedPublicKey: utxoPubKey,
+        rushedPublicKey: Buffer.from(pubKey_84h_1h_5h_0_9, 'hex'),
+        bip68LockTime
+      }).toString('hex'),
+      ...validFixtures[0].utxos[0]
+    };
+    INVALID_TRANSACTION_FIXTURES.push({
+      description: 'Add a redeemScript to a P2PKH utxo',
+      utxos: [utxo],
+      targets: validFixtures[0].targets,
+      exception: 'Got a redeemScript but this is not a P2SH utxo'
+    });
+  }
+  {
+    INVALID_TRANSACTION_FIXTURES.push({
+      description: 'Pass both redeemScript and witnessScript',
+      utxos: [
+        {
+          redeemScript: 'a',
+          witnessScript: 'a',
+          path: maturedPath,
+          tx,
+          n: 0
+        }
+      ],
+      targets: [{ address: burnAddress, value: 0.0000001 }],
+      exception: 'A PSBT cannot be P2SH and P2WSH at the same time.'
+    });
+  }
+  {
+    INVALID_TRANSACTION_FIXTURES.push({
+      description: 'Try to unlock using a script using an unknown script',
+      utxos: [
+        {
+          redeemScript: 'a',
+          path: maturedPath,
+          tx,
+          n: 0
+        }
+      ],
+      targets: [{ address: burnAddress, value: 0.0000001 }],
+      exception: 'This wallet cannot spend this script: a'
+    });
+  }
+  {
+    INVALID_TRANSACTION_FIXTURES.push({
+      description: 'Try to unlock using a script using an invalid path',
+      utxos: [
+        {
+          redeemScript: createRelativeTimeLockScript({
+            maturedPublicKey: Buffer.from(pubKey_84h_1h_5h_0_9, 'hex'),
+            rushedPublicKey: Buffer.from(pubKey_84h_1h_5h_0_9, 'hex'),
+            bip68LockTime
+          }).toString('hex'),
+          path: maturedPath,
+          tx,
+          n: 0
+        }
+      ],
+      targets: [{ address: burnAddress, value: 0.0000001 }],
+      exception:
+        "This wallet's utxo pubkey cannot spend this relativeTimeLockScript."
+    });
+  }
 
   await stopTestingEnvironment({ bitcoind, electrs, regtest_server });
 
@@ -527,7 +688,8 @@ export const fixtures = {
   network,
   mnemonic: '${mnemonic}',
   createTransaction: {
-    valid: ${JSON.stringify(VALID_TRANSACTION_FIXTURES)}
+    valid: ${JSON.stringify(VALID_TRANSACTION_FIXTURES)},
+    invalid: ${JSON.stringify(INVALID_TRANSACTION_FIXTURES)}
   }
 };
 `;

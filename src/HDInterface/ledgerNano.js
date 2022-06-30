@@ -225,7 +225,7 @@ async function getUtxoSequence(ledgerAppBtc, utxo, network) {
  * Read some discussion about the motivation behind this function [here](https://github.com/bitcoinjs/bitcoinjs-lib/issues/1517#issuecomment-1064914601).
  *
  * Utxos must include:
- * * utxo.witnessScript for P2WSH.
+ * * utxo.witnessScript for P2WSH pr P2SH-P2WSH
  * * utxo.redeemScript for P2SH.
  *
  * The sequence is obtained from the locking script in witnessScript and redeemScript
@@ -285,6 +285,7 @@ export async function createSigners(
     if (purpose === NATIVE_SEGWIT || purpose === NESTED_SEGWIT) {
       //The redeemScript for NESTED_SEGWIT and NATIVE_SEGWIT must be p2pkh
       //for some reason?!?!?!?
+      //This has been thoroughly tested
       const pubkey = await getPublicKey(ledgerAppBtc, utxo.path, network);
       redeemScript = payments.p2pkh({ pubkey, network }).output.toString('hex');
       segwitInputTypes.push(true);
@@ -300,6 +301,7 @@ export async function createSigners(
     //P2WSH or P2SH-P2WSH
     else if (utxo.witnessScript) {
       //Yeah, the redeemScript = witnessScript even for P2SH-P2WSH...
+      //This has been thoroughly tested
       redeemScript = utxo.witnessScript;
       segwitInputTypes.push(true);
     } else {
@@ -334,10 +336,19 @@ export async function createSigners(
     return ledgerTxSignatures;
   };
   let ledgerTxSignaturesSegwit, ledgerTxSignaturesLegacy;
+  //If one of the inputs was segwit we request the ledger device to sign a
+  //segwit tx as if all the utxos were segwit. This is a limitation with
+  //signP2SHTransaction. It forces to sign assuming everything is segwit/not seg.
+  //Later we will pair the correct signature with the correct utxo
   if (segwitInputTypes.includes(true))
     ledgerTxSignaturesSegwit = await getLedgerTxSignatures(true);
+  //If one of the inputs was NOT segwit we request the ledger device to sign a
+  //segwit tx as if all the utxos were NOT segwit.
   if (segwitInputTypes.includes(false))
     ledgerTxSignaturesLegacy = await getLedgerTxSignatures(false);
+
+  //This is were we match legacySignatures with legacy utxos and segwitSignatures
+  //with segwit utxos:
   const ledgerTxSignatures = [];
   for (let index = 0; index < utxos.length; index++) {
     ledgerTxSignatures.push(

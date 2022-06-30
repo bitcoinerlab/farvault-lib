@@ -4,39 +4,47 @@ import bip68 from 'bip68';
 import { payments, script as bscript, opcodes } from 'bitcoinjs-lib';
 
 /**
- * Use this function to encode numbers to Assembly code, which is the symbolic
- * representation of the Bitcoin's Script language op-codes.
+ *
+ * Use this function instead of bitcoinjs-lib's equivalent `script.number.encode`
+ * when encoding numbers to be compiled with `fromASM` to avoid problems.
+ *
+ * Motivation:
  *
  * Numbers in Bitcoin assembly code are represented in hex and in Little Endian.
  * Decimal: 32766 - Big endian: 0x7FFE - Little Endian: 0xFE7F.
  *
  * This function takes an integer and encodes it so that bitcoinjs-lib `fromASM`
- * can compile it.
+ * can compile it. This is basically what bitcoinjs-lib's `script.number.encode`
+ * does.
  *
- * Note that `fromASM` converts integers from 1 to 16 to
- * OP_1 ... OP_16 {@link https://github.com/bitcoinjs/bitcoinjs-lib/blob/59b21162a2c4645c64271ca004c7a3755a3d72fb/src/script.js#L33 here}. This is done to save some bits.
- * In principle, this function would not need to convert numbers to their
- * op code equivalent since this is done later in `fromASM`.
- * It should simply convert numbers to Little Endian (in hex).
- * However, the `OP_0` is an edge case that we specially handle with this
- * function:
+ * Note that `fromASM` already converts integers from 1 to 16 to
+ * OP_1 ... OP_16 {@link https://github.com/bitcoinjs/bitcoinjs-lib/blob/59b21162a2c4645c64271ca004c7a3755a3d72fb/src/script.js#L33 here}.
+ * This is done in Bitcoin to save some bits.
  *
- * bitcoinjs-lib's `bscript.number.encode(0)` produces an empty Buffer
- * I believe this should not be the default behaviour of number.encode. This is
- * what the Bitcoin interpreter does but bscript.number.encode should not do that.
- * Anyway this is an open discussion.
- * The thing is `bscript.number.encode(0).toString('hex')` will them produces an
- * empty string.
+ * Neither this function nor `script.number.encode` convert numbers to
+ * their op code equivalent since this is done later in `fromASM`.
  *
- * However a zero should produce the OP_0 ASM symbolic code and a `0` when
- * compiled.
+ * Both functions simply convert numbers to Little Endian.
+ *
+ * However, the `0` number is an edge case that we specially handle with this
+ * function.
+ *
+ * bitcoinjs-lib's `bscript.number.encode(0)` produces an empty Buffer.
+ * This is what the Bitcoin interpreter does and it is what `script.number.encode` was
+ * implemented to do.
+ *
+ * The problem is `bscript.number.encode(0).toString('hex')` produces an
+ * empty string and thus it should not be used to serialize number zero before `fromASM`.
+ *
+ * A zero should produce the OP_0 ASM symbolic code (corresponding to a `0` when
+ * compiled).
  *
  * So, this function will produce a string in hex format in Little Endian
  * encoding for integers not equal to `0` and it will return `OP_0` for `0`.
  *
  * Read more about the this {@link https://github.com/bitcoinjs/bitcoinjs-lib/issues/1799#issuecomment-1122591738 here}.
  *
- * Use it like this:
+ * Use it in combination with `fromASM` like this:
  *
  * ```javascript
  * //To produce "0 1 OP_ADD":
@@ -47,7 +55,7 @@ import { payments, script as bscript, opcodes } from 'bitcoinjs-lib';
  * ```
  *
  * @param {number} number An integer.
- * @returns {string|Buffer} Returns `"OP_0"` for `number === 0` and a `Buffer` for other numbers.
+ * @returns {string} Returns `"OP_0"` for `number === 0` and a hex string representing other numbers in Little Endian encoding.
  */
 function numberEncodeAsm(number) {
   if (Number.isSafeInteger(number) === false) {
@@ -60,13 +68,13 @@ function numberEncodeAsm(number) {
 
 /**
  * Use this function to decode numbers after they have been decompiled using
- * bitcoinjs-lib's `bscript.decompile`.
+ * bitcoinjs-lib's `script.decompile`.
  *
  * Note that numbers are compiled as `OP_0` for `0`, and to:
  * `OP_1,... OP_16` for `1,... 16`,
  * where `OP_1 = 0x51 = 81`, `OP_2 = 0x52 = 82`, ...
  *
- * Thats the reason for `bscript.decompile` to produce `Buffer` types for
+ * Thats the reason for `script.decompile` to produce `Buffer` types for
  * numbers > 16 and to produce `number` types for numbers <= 16.
  * The later correspond to an op code. For example. `OP_1` = 0x51 (of type number).
  * And `Buffer` types correspond to binary representations of encoded numbers in
@@ -116,7 +124,7 @@ function scriptNumberDecode(decompiled) {
  * OP_ENDIF
  * ```
  * @param {Buffer} maturedPublicKey The public key that can unlock funds after timelock.
- * @param {Buffer} rushedBranch The public key that can unlock the funds anytime.
+ * @param {Buffer} rushedPublicKey The public key that can unlock the funds anytime.
  * @param {number} bip68LockTime A BIP68 encoded timelock time.
  * @returns {Buffer} The script
  */
@@ -228,17 +236,21 @@ export function createRelativeTimeLockScript({
 /**
  * Gets the sequence and the unlockingScript for a given script.
  * Right now it only parses FarVault's relativeTimeLockScripts.
- * Use this function to handle any other speciffic script.
+ *
+ * Note that this function cannot return the unlockingScript since unlocking
+ * scripts will often include a signature.
+ * Instead, we return a callback function
+ * createUnlockingScripts(signature) that will create a unlockingScript
+ * given a signature.
+ *
+ * This function can be expanded to implement other scripts in the future.
  *
  * @param {object} parameters
  * @param {string} parameters.script The locking script in hex
  * @param {Buffer} parameters.pubkey The public key that unlocks this script
  *
- * Note that we cannot return the unlockingScript since very ofter will depends
- * on the signature. We return a callback function
- * createUnlockingScripts(signature) instead.
- *
- * @returns {object|boolean} false if if cannot be parsed or {sequence, createUnlockingScripts}
+ * @returns {object|boolean} `false` if if cannot be parsed or
+ * `{sequence, createUnlockingScripts}`
  * where `sequence` is a `number` containing the bip68 encoded lock time and
  * `createUnlockingScript` is a callback function that you can pass a signature
  * and it will return the unlockingScript.
@@ -281,10 +293,6 @@ export function unlockScript({ script, pubkey }) {
  * false on the top of the stack (read comments on function
  * `createRelativeTimeLockScript` to see how unlocking would work).
  *
- * It returns `{maturedPublicKey, rushedPublicKey, bip68LockTime}`
- * if `script` was a FarVault relativeTimeLockScript or `false` if it is a
- * different script.
- *
  * @param {string} relativeTimeLockScript The locking script in hex
  * @returns {bool|object} Returns `false` if `relativeTimeLockScript` is not a FarVault locking script or `{maturedPublicKey, rushedPublicKey, bip68LockTime}` otherwise, where `maturedPublicKey` and `rushedPath` are public keys (type: `Buffer`) and `bip68LockTime` is a BIP68 encoded time (type: `number`).
  */
@@ -305,7 +313,7 @@ export function parseRelativeTimeLockScript(relativeTimeLockScript) {
     //Make sure the relativeTimeLockScript was encoded using minimal ops.
     //For example it is an error to use 0a instead of OP_10 for representing
     //numbers
-    //However bscript.decompile will take a 0a and decompile it. Even worse it will
+    //However script.decompile will take a 0a and decompile it. Even worse it will
     //will convert it to OP_10! But this is wrong!
     //See test with description for an invalid script that this will catch:
     //'parseRelativeTimeLockScript returns false when using 0a instead of OP_10 for the bip68LockTime in the script'
@@ -338,7 +346,7 @@ export const exportedForTesting = {
   scriptNumberDecode
 };
 
-/**
+/*
  * These 4 functions below are basically
  * bitcoinjs-lib's PSBT: classifyScript
  */

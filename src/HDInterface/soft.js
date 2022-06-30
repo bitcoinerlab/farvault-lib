@@ -60,6 +60,7 @@ export async function createSigners(
     const signature = rootDerivePath(seed, root, utxo.path, network).sign(
       $hash
     );
+    //console.log({signature: signature.toString('hex')});
     return signature;
   });
 }

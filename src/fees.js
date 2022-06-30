@@ -9,16 +9,16 @@ import { checkFeeEstimates } from './check';
  *
  * Maybe you only want to change the number of samples.
  * @param {Object} parameters
- * @param {number} parameters.minSatsPerByte The minimum fee rate.
+ * @param {number} [parameters.minSatsPerByte=1] The minimum fee rate.
  * Default value is 1, which is Bitcoin core's default policy for minimum relay fee.
  * It should be greater than `0` and lower than `1E6`.
  * **NOTE**: it doesn't make sense to make it lower than 1 for the mainnet.
- * @param {number} parameters.maxSatsPerByte The maximum fee rate.
+ * @param {number} [parameters.maxSatsPerByte=10000] The maximum fee rate.
  * Default value is `10000`, which is 10 times larger than 22-dec-2017 fee rates.
  * It should be greater than minSatsPerByte and lower than `1E6`.
- * @param {number} parameters.samples The number of samples, that is, the length of the returned array.
+ * @param {number} [parameters.samples=100] The number of samples, that is, the length of the returned array.
  * Must be an integer. Default value is `100`. Accepted values go from `2` to `1E5`.
- * @param {boolean} parameters.logScale Whether to use logarithmic (`true`) or lineal scale (`false`).
+ * @param {boolean} [parameters.logScale=true] Whether to use logarithmic (`true`) or lineal scale (`false`).
  * Default is `true`, that is to use logarithmic scale to give more granularity to lower fee rates.
  * @returns {Array} An array of numbers containing the sampled fee rates.
  */

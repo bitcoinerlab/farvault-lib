@@ -1,4 +1,24 @@
 /** @module HDInterface */
+/*
+ * This module inits an HD device (software or ledger nano) and returns
+ * an object with 2 methods:
+ *
+ * getPublicKey
+ * createSigners
+ *
+ * These 2 methods are then used in createTransaction.
+ *
+ * createTransaction is robust to errors within this module (if the HW devices
+ * changed their behaviour, f.ex.).
+ *
+ * A very large set of test transactions have been set in transactions.test.js
+ * that test all the methods in this file.
+ *
+ * Even in case these 2 methods provided bad data this is detected in
+ * createTransaction.  See the speciffic tests Transactions with
+ * "invalid HDInterface data" in transactions.test.js.
+ */
+ 
 export const LEDGER_NANO_INTERFACE = 'LEDGER_NANO_INTERFACE';
 export const SOFT_HD_INTERFACE = 'SOFT_HD_INTERFACE';
 
