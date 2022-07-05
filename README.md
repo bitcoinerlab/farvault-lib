@@ -1,3 +1,5 @@
+FarVault Lib
+
 FarVault helps people easily store their Bitcoin in an extremely secure way.
 
 Let's compare Bitcoin storage to gold storage. You can have gold virtually in a broker's account or you can have it physically.
