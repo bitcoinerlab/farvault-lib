@@ -1,8 +1,18 @@
-export { default as dataFetchers } from './src/dataFetchers';
-export { default as transactions } from './src/transactions';
-export { default as scripts } from './src/scripts';
-export { default as decodeTx } from './src/decodeTx';
-export { default as HDInterface } from './src/HDInterface';
-export { default as coinselect } from './src/coinselect';
-export { default as fees } from './src/fees';
-export { default as serialization } from './src/serialization';
+import * as dataFetchers from './src/dataFetchers';
+import * as transactions from './src/transactions';
+import * as scripts from './src/scripts';
+import * as decodeTx from './src/decodeTx';
+import * as HDInterface from './src/HDInterface';
+import * as coinselect from './src/coinselect';
+import * as fees from './src/fees';
+import * as serialization from './src/serialization';
+export {
+  dataFetchers,
+  transactions,
+  scripts,
+  decodeTx,
+  HDInterface,
+  coinselect,
+  fees,
+  serialization
+};
