@@ -17,15 +17,34 @@ import {
   REGTEST_COINTYPE
 } from './walletConstants';
 import { networks } from 'bitcoinjs-lib';
+//import memoize from 'lodash.memoize';
 
-import BIP32Factory from 'bip32';
-let bjsBip32;
-import('tiny-secp256k1').then(ecc => (bjsBip32 = BIP32Factory(ecc)));
+//let bjsBip32;
+//import BIP32Factory from 'bip32';
+//import('tiny-secp256k1').then(ecc => (bjsBip32 = BIP32Factory(ecc)));
+
+import { bip32 as bjsBip32 } from './noble_ecc';
 
 export async function fromSeed(seed, network = networks.bitcoin) {
-  //No need to memoize it
   return await bjsBip32.fromSeed(seed, network);
 }
+
+//Using this was not useful. Not faster.
+//const fromBase58 = memoize(
+//  function (extPub, network) {
+//    return bjsBip32.fromBase58(extPub, network);
+//  },
+//  (extPub, network) => extPub + network.bip32.public.toString()
+//);
+
+//This was not useful
+//export const fromSeed = memoize(
+//  async function (seed, network = networks.bitcoin) {
+//    return await bjsBip32.fromSeed(seed, network);
+//  },
+//  //The memoize resolver: how to get a key from the params ->
+//  (seed, network) => seed.toString() + network.bip32.public.toString()
+//);
 
 /**
  * Converts and returns an extended pub to use a new `purpose`. The `purpose`

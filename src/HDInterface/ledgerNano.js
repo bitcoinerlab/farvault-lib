@@ -26,12 +26,6 @@ import {
   networks
 } from 'bitcoinjs-lib';
 
-import ECPairFactory from 'ecpair';
-let fromPublicKey;
-import('tiny-secp256k1').then(ecc => {
-  fromPublicKey = ECPairFactory(ecc).fromPublicKey;
-});
-
 import { checkNetwork, checkPurpose, checkExtPub } from '../check';
 import {
   setExtPubPrefix,
@@ -95,13 +89,6 @@ export async function init(transport = WEB_TRANSPORT) {
 
 export async function close(ledgerTransport) {
   await ledgerTransport.close();
-}
-
-//Ledger nano uses uncompressed pub keys but bitcoinjs and FarVault use
-//compressed pub keys
-function compressPublicKey(pk) {
-  const { publicKey } = fromPublicKey(pk);
-  return publicKey;
 }
 
 export const getExtPub = memoize(

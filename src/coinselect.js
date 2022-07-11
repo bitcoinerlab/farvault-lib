@@ -3,9 +3,8 @@
 import bjsCoinselect from 'coinselect';
 import bjsCoinselectSplit from 'coinselect/split';
 import { parseDerivationPath } from './bip32';
-import { decodeTx } from './decodeTx';
 import { LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT } from './walletConstants';
-import { networks, address as bjsAddress } from 'bitcoinjs-lib';
+import { networks, address as bjsAddress, Transaction } from 'bitcoinjs-lib';
 import { checkAddress } from './check';
 
 /**
@@ -63,9 +62,9 @@ export async function coinselect({
   let addedWitness = false;
   const csUtxos = utxos.map(utxo => {
     const { purpose } = parseDerivationPath(utxo.path);
-    let decodedTx;
+    let value;
     try {
-      decodedTx = decodeTx(utxo.tx, network);
+      value = Transaction.fromHex(utxo.tx).outs[utxo.n].value;
     } catch (error) {
       throw new Error('Invalid tx');
     }
@@ -76,7 +75,7 @@ export async function coinselect({
     )
       throw new Error('Invalid network');
     const csUtxo = {};
-    csUtxo.value = decodedTx.vout[utxo.n].value;
+    csUtxo.value = value;
     csUtxo.vout = utxo.n;
     csUtxo.tx = utxo.tx;
     csUtxo.path = utxo.path;

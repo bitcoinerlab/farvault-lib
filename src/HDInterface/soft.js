@@ -44,9 +44,10 @@ export async function getExtPub(
   return extPub;
 }
 
-//Create the key with the seed but derive with the root:
+//Create the cache-key for memoize with the seed:
 const rootDerivePath = memoize(
   (seed, root, path, network) => root.derivePath(path),
+  //The root directly depends from the seed and network:
   (seed, root, path, network) =>
     seed.toString() + '_' + path + '_' + network.bip32.public.toString()
 );

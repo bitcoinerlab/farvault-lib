@@ -7,15 +7,19 @@ import {
   PSBT_VERSION
 } from './walletConstants';
 import { Psbt, payments, networks, Transaction } from 'bitcoinjs-lib';
-import { decodeTx } from './decodeTx';
 import { parseDerivationPath } from './bip32';
 import varuint from 'varuint-bitcoin';
 
-import ECPairFactory from 'ecpair';
-let fromPublicKey;
-import('tiny-secp256k1').then(ecc => {
-  fromPublicKey = ECPairFactory(ecc).fromPublicKey;
-});
+import memoize from 'lodash.memoize';
+
+//import ECPairFactory from 'ecpair';
+//let fromPublicKey;
+//import('tiny-secp256k1').then(ecc => {
+//  fromPublicKey = ECPairFactory(ecc).fromPublicKey;
+//});
+
+import { ECPair } from './noble_ecc';
+const fromPublicKey = ECPair.fromPublicKey;
 
 import { feeRateSampling } from './fees';
 
@@ -23,6 +27,10 @@ import { unlockScript, isP2SH, isP2WSH, isP2WPKH, isP2PKH } from './scripts';
 
 const validator = (pubkey, msghash, signature) =>
   fromPublicKey(pubkey).verify(msghash, signature);
+
+const txFromHex = memoize(function (tx) {
+  return Transaction.fromHex(tx);
+});
 
 /**
  * Same utility function, line-by-line, as the one used in bitcoinjs-lib for
@@ -94,15 +102,15 @@ function createPSBT({
   const psbt = new Psbt({ network });
   for (let i = 0; i < utxos.length; i++) {
     const utxo = utxos[i];
-    const decodedUtxo = decodeTx(utxo.tx, network);
-    const txid = decodedUtxo.txid;
+    const bjsTx = txFromHex(utxo.tx);
+
+    const txid = bjsTx.getId();
     const sequence = sequences[i];
-    const utxoScript = decodedUtxo.vout[utxo.n].script;
+    const utxoScript = bjsTx.outs[utxo.n].script;
 
     let redeemScript = undefined;
     let witnessScript = undefined;
 
-    const bjsTx = Transaction.fromHex(utxo.tx);
     //P2SH, P2WSH or P2SW-P2WSH:
     if (utxo.witnessScript || utxo.redeemScript) {
       //Get the redeemScript and/or the witnessScript
@@ -132,7 +140,7 @@ function createPSBT({
           redeem: { output: redeemScript },
           network
         }).output;
-        if (!redeemScriptOutput.equals(bjsTx.outs[utxo.n].script)) {
+        if (!redeemScriptOutput.equals(utxoScript)) {
           throw new Error(
             'Got a witnessScript but this is not a P2WSH neither a P2SH-P2WSH utxo'
           );
@@ -147,6 +155,7 @@ function createPSBT({
     //We will make sure the path corresponds to the script type of the utxo to
     //detect possible errors:
     else {
+      //const purpose = parseInt(utxo.path.split('/')[0]);
       const purpose = parseDerivationPath(utxo.path).purpose;
       if (purpose === NESTED_SEGWIT) {
         if (!isP2SH(utxoScript))
@@ -186,9 +195,9 @@ function createPSBT({
       //string_txid = reverseBuffer(buffer_hash).toString('hex')
       hash: txid,
       //The three below will also work:
-      //hash: Transaction.fromHex(utxo.tx).getHash(false /*forWitness = false*/), //Passes a Buffer. getHash() returns a Buffer
-      //hash: Transaction.fromHex(utxo.tx).getHash(), //Passes a Buffer. forWitness defaults to false anyway so no need to set false.
-      //hash: Transaction.fromHex(utxo.tx).getId(), //Passes a string. This is a string that corresponds to the Buffer above (in reverse order) and serialized.
+      //hash: txFromHex(utxo.tx).getHash(false /*forWitness = false*/), //Passes a Buffer. getHash() returns a Buffer
+      //hash: txFromHex(utxo.tx).getHash(), //Passes a Buffer. forWitness defaults to false anyway so no need to set false.
+      //hash: txFromHex(utxo.tx).getId(), //Passes a string. This is a string that corresponds to the Buffer above (in reverse order) and serialized.
       index: utxo.n,
       nonWitnessUtxo: bjsTx.toBuffer(),
       ...(typeof redeemScript !== 'undefined' ? { redeemScript } : {}),
@@ -315,7 +324,7 @@ export async function createTransaction({
         }
         const signature = input.partialSig[0].signature;
         let unlockingScript = createUnlockingScripts[i](signature);
-        const utxoScript = decodeTx(utxo.tx, network).vout[utxo.n].script;
+        const utxoScript = txFromHex(utxo.tx).outs[utxo.n].script;
 
         let witness = [];
         let unlockingPayment;
@@ -404,7 +413,7 @@ export async function createMultiFeeTransactions({
   const txs = [];
   const feeRates = feeRateSampling(feeRateSamplingParams);
   const value = utxos.reduce(
-    (acc, utxo) => acc + decodeTx(utxo.tx, network).vout[utxo.n].value,
+    (acc, utxo) => acc + txFromHex(utxo.tx).outs[utxo.n].value,
     0
   );
   //We'll get the vzise of from an initial tx, assuming 0 fees: [0, ...feeRates]
@@ -429,9 +438,9 @@ export async function createMultiFeeTransactions({
       });
       if (vsize === 0) {
         //Take the vsize for a tx with 0 fees.
-        vsize = Transaction.fromHex(tx).virtualSize();
+        vsize = txFromHex(tx).virtualSize();
       } else {
-        const realVsize = Transaction.fromHex(tx).virtualSize();
+        const realVsize = txFromHex(tx).virtualSize();
         const realFeeRate = fee / realVsize;
         txs.push({ tx, feeRate: realFeeRate, fee });
       }

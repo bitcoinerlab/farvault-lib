@@ -1,5 +1,5 @@
 {
-  "name": "farvault-lib",
+  "name": "@farvault/lib",
   "version": "0.1.0",
   "description": "",
   "main": "index.js",
@@ -37,6 +37,7 @@
     "@ledgerhq/hw-app-btc": "^6.24.1",
     "@ledgerhq/hw-transport-node-hid-noevents": "^6.27.1",
     "@ledgerhq/hw-transport-webusb": "^6.24.1",
+    "@noble/secp256k1": "^1.6.0",
     "auth-header": "^1.0.0",
     "bip32": "^3.0.1",
     "bip39": "^3.0.4",
@@ -46,6 +47,7 @@
     "bs58check": "^2.1.2",
     "buffer": "^6.0.3",
     "coinselect": "^3.1.12",
+    "create-hmac": "^1.1.7",
     "cross-fetch": "^3.1.5",
     "ecpair": "^2.0.1",
     "express": "^4.17.2",
