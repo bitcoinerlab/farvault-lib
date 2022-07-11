@@ -6,6 +6,7 @@ import * as HDInterface from './src/HDInterface';
 import * as coinselect from './src/coinselect';
 import * as fees from './src/fees';
 import * as serialization from './src/serialization';
+import * as walletConstants from './src/walletConstants';
 export {
   dataFetchers,
   transactions,
@@ -14,5 +15,6 @@ export {
   HDInterface,
   coinselect,
   fees,
-  serialization
+  serialization,
+  walletConstants
 };
