@@ -17,13 +17,8 @@ import {
   REGTEST_COINTYPE
 } from './walletConstants';
 import { networks } from 'bitcoinjs-lib';
-//import memoize from 'lodash.memoize';
 
-//let bjsBip32;
-//import BIP32Factory from 'bip32';
-//import('tiny-secp256k1').then(ecc => (bjsBip32 = BIP32Factory(ecc)));
-
-import { bip32 as bjsBip32 } from './noble_ecc';
+import { bip32 as bjsBip32 } from './secp256k1';
 
 export async function fromSeed(seed, network = networks.bitcoin) {
   return await bjsBip32.fromSeed(seed, network);

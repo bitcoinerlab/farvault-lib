@@ -57,6 +57,7 @@
     "randombytes": "^2.1.0",
     "stream-browserify": "^3.0.0",
     "tiny-secp256k1": "^2.2.0",
+    "tiny-secp256k1-v1": "npm:tiny-secp256k1@^1.1.6",
     "varuint-bitcoin": "^1.1.2"
   }
 }

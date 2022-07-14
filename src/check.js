@@ -21,10 +21,9 @@ import {
 //import { P2PKH, P2WPKH, P2SH_P2WPKH } from './accounts';
 
 import { networks, address as bjsAddress } from 'bitcoinjs-lib';
-import BIP32Factory from 'bip32';
-//let bjsBip32;
-//import('tiny-secp256k1').then(ecc => (bjsBip32 = BIP32Factory(ecc)));
-import {bip32 as bjsBip32} from './noble_ecc';
+
+import { bip32 as bjsBip32 } from './secp256k1';
+
 import b58 from 'bs58check';
 
 /**

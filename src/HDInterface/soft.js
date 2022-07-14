@@ -15,6 +15,20 @@ import {
   serializeDerivationPath
 } from '../bip32';
 
+//Not useful
+const _fromSeed = memoize(
+  async (seed, network) => await fromSeed(seed, network),
+  (seed, network) => seed.toString() + network.bip32.public.toString()
+);
+
+//Not useful
+const _getExtPub = memoize(
+  async (seed, { purpose, accountNumber, network = networks.bitcoin }) =>
+    await getExtPub(seed, { purpose, accountNumber, network }),
+  (seed, { purpose, accountNumber, network = networks.bitcoin }) =>
+    seed.toString() + purpose + accountNumber + network.bip32.public.toString()
+);
+
 export async function getExtPub(
   seed,
   { purpose, accountNumber, network = networks.bitcoin }

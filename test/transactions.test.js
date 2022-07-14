@@ -75,11 +75,7 @@ for (const type of process.env.__LEDGER_NANO_DETECTED__ === 'true' //Note proces
             type === LEDGER_NANO_INTERFACE
               ? ledgerHDInterface
               : softHDInterface;
-          const createInvalidSigners = async ({
-            psbt,
-            utxos,
-            network = networks.bitcoin
-          }) => {
+          const createInvalidSigners = async ({ psbt, utxos, network }) => {
             const signers = await HDInterface.createSigners({
               psbt,
               utxos,

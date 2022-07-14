@@ -12,21 +12,14 @@ import varuint from 'varuint-bitcoin';
 
 import memoize from 'lodash.memoize';
 
-//import ECPairFactory from 'ecpair';
-//let fromPublicKey;
-//import('tiny-secp256k1').then(ecc => {
-//  fromPublicKey = ECPairFactory(ecc).fromPublicKey;
-//});
-
-import { ECPair } from './noble_ecc';
-const fromPublicKey = ECPair.fromPublicKey;
+import { ECPair } from './secp256k1';
 
 import { feeRateSampling } from './fees';
 
 import { unlockScript, isP2SH, isP2WSH, isP2WPKH, isP2PKH } from './scripts';
 
 const validator = (pubkey, msghash, signature) =>
-  fromPublicKey(pubkey).verify(msghash, signature);
+  ECPair.fromPublicKey(pubkey).verify(msghash, signature);
 
 const txFromHex = memoize(function (tx) {
   return Transaction.fromHex(tx);
@@ -295,6 +288,7 @@ export async function createTransaction({
   const psbt = createPSBT({ targets, utxos, pubkeys, sequences, network });
 
   const signers = await createSigners({ psbt, utxos, network });
+
 
   //Instead of a psbt.finalizeAllInputs(); we go one by one
   //There are the 2 special cases where we are redeeming the relativeTimeLockScript

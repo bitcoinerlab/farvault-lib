@@ -3,12 +3,14 @@
  * https://github.com/BitGo/BitGoJS/blob/bitcoinjs_lib_6_sync/modules/utxo-lib/src/noble_ecc.ts
  */
 
-import { crypto as bcrypto } from 'bitcoinjs-lib';
-import createHmac from 'create-hmac';
-import { ECPairFactory } from 'ecpair';
-import * as necc from '@noble/secp256k1';
+//import { crypto as bcrypto } from 'bitcoinjs-lib';
+//import createHmac from 'create-hmac';
+//import * as necc from '@noble/secp256k1';
 
-import { BIP32Factory } from 'bip32';
+const { crypto: bcrypto } = require('bitcoinjs-lib');
+const createHmac = require('create-hmac');
+const necc = require('@noble/secp256k1');
+
 necc.utils.sha256Sync = (...messages) => {
   return bcrypto.sha256(Buffer.concat(messages));
 };
@@ -25,7 +27,7 @@ function throwToNull(fn) {
     return null;
   }
 }
-function isPoint(p, xOnly) {
+function _isPoint(p, xOnly) {
   if ((p.length === 32) !== xOnly) return false;
   try {
     return !!necc.Point.fromHex(p);
@@ -34,9 +36,9 @@ function isPoint(p, xOnly) {
   }
 }
 const ecc = {
-  isPoint: p => isPoint(p, false),
+  isPoint: p => _isPoint(p, false),
   isPrivate: d => necc.utils.isValidPrivateKey(d),
-  isXOnlyPoint: p => isPoint(p, true),
+  isXOnlyPoint: p => _isPoint(p, true),
   xOnlyPointAddTweak: (p, tweak) =>
     throwToNull(() => {
       const P = necc.utils.pointAddScalar(p, tweak, true);
@@ -77,6 +79,23 @@ const ecc = {
     return necc.schnorr.verifySync(signature, h, Q);
   }
 };
-const ECPair = ECPairFactory(ecc);
-const bip32 = BIP32Factory(ecc);
-export { ecc, ECPair, bip32 };
+
+//export const {
+//  isPoint,
+//  isPrivate,
+//  isXOnlyPoint,
+//  xOnlyPointAddTweak,
+//  pointFromScalar,
+//  pointCompress,
+//  pointMultiply,
+//  pointAdd,
+//  pointAddScalar,
+//  privateAdd,
+//  privateNegate,
+//  sign,
+//  signSchnorr,
+//  verify,
+//  verifySchnorr
+//} = ecc;
+
+module.exports = ecc;
