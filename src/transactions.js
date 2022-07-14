@@ -289,7 +289,6 @@ export async function createTransaction({
 
   const signers = await createSigners({ psbt, utxos, network });
 
-
   //Instead of a psbt.finalizeAllInputs(); we go one by one
   //There are the 2 special cases where we are redeeming the relativeTimeLockScript
   //using different to paths. When finalizing we must set the unlocking condition.

@@ -16,6 +16,10 @@ export { bip32, ECPair };
 
 //https://stackoverflow.com/a/47880734/1660381
 function wasmSupported() {
+  //Do not let it run on react-native (it will run on iOS simulator but not on
+  //real device. It's better to debug using the same engine.
+  if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative')
+    return false;
   try {
     if (
       typeof WebAssembly === 'object' &&
@@ -45,15 +49,15 @@ const eccEngine = wasmSupported()
 let bip32, ECPair;
 import ECPairFactory from 'ecpair';
 import BIP32Factory from 'bip32';
-(async () => {
-  console.log(`Importing ecc engine: ${eccEngine}.`);
-  const ecc =
-    eccEngine === NOBLE_ECC
-      ? (await import('./noble_ecc.js')).default
-      : eccEngine === BITCORE_WASM_ECC
-      ? await import('tiny-secp256k1')
-      : await import('tiny-secp256k1-v1/js.js');
-  bip32 = BIP32Factory(ecc);
-  ECPair = ECPairFactory(ecc);
-})();
+
+console.log(`Importing ecc engine: ${eccEngine}.`);
+const ecc =
+  eccEngine === NOBLE_ECC
+    ? require('./noble_ecc.js')
+    : eccEngine === BITCORE_WASM_ECC
+    ? require('tiny-secp256k1')
+    : require('tiny-secp256k1-v1/js.js');
+bip32 = BIP32Factory(ecc);
+ECPair = ECPairFactory(ecc);
+
 export { bip32, ECPair };
