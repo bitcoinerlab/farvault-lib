@@ -34,11 +34,6 @@ function wasmSupported() {
 const NOBLE_ECC = 'NOBLE_ECC';
 const ELLIPTIC_ECC = 'ELLIPTIC_ECC';
 const BITCORE_WASM_ECC = 'BITCORE_WASM_ECC';
-const ECC_PACKAGE = {
-  [NOBLE_ECC]: './noble_ecc.js',
-  [ELLIPTIC_ECC]: 'tiny-secp256k1-v1/js.js',
-  [BITCORE_WASM_ECC]: 'tiny-secp256k1'
-};
 
 //const eccEngine = NOBLE_ECC;
 const eccEngine = wasmSupported()
@@ -51,16 +46,14 @@ let bip32, ECPair;
 import ECPairFactory from 'ecpair';
 import BIP32Factory from 'bip32';
 (async () => {
-  console.log(
-    `Importing ecc engine: ${eccEngine} from package: "${ECC_PACKAGE[eccEngine]}"`
-  );
-  const ecc = await import(ECC_PACKAGE[eccEngine]);
-  if (eccEngine === NOBLE_ECC) {
-    bip32 = BIP32Factory(ecc.default);
-    ECPair = ECPairFactory(ecc.default);
-  } else {
-    bip32 = BIP32Factory(ecc);
-    ECPair = ECPairFactory(ecc);
-  }
+  console.log(`Importing ecc engine: ${eccEngine}.`);
+  const ecc =
+    eccEngine === NOBLE_ECC
+      ? (await import('./noble_ecc.js')).default
+      : eccEngine === BITCORE_WASM_ECC
+      ? await import('tiny-secp256k1')
+      : await import('tiny-secp256k1-v1/js.js');
+  bip32 = BIP32Factory(ecc);
+  ECPair = ECPairFactory(ecc);
 })();
 export { bip32, ECPair };
