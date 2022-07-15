@@ -35,7 +35,7 @@ import {
   fetchDerivationPathsUtxos,
   getNextDerivationPath
 } from '../../src/wallet';
-import { VAULT_SKIP } from '../../src/walletConstants';
+import { VAULT_SKIP } from '../../src/constants';
 import { esploraFetchAddress, esploraFetchUtxos } from '../../src/dataFetchers';
 import { coinselect } from '../../src/coinselect';
 

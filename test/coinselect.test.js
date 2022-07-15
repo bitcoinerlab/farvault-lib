@@ -1,7 +1,7 @@
 import { coinselect } from '../src/coinselect';
 import { decodeTx } from '../src/decodeTx';
 import { parseDerivationPath } from '../src/bip32';
-import { LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT } from '../src/walletConstants';
+import { LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT } from '../src/constants';
 import { initHDInterface, SOFT_HD_INTERFACE } from '../src/HDInterface';
 import { fixtures } from './fixtures/coinselect';
 import { Psbt, payments } from 'bitcoinjs-lib';

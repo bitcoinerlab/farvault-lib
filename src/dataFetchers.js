@@ -4,7 +4,7 @@ import fetch from 'cross-fetch';
 import {
   BLOCKSTREAM_EXPLORER_BASEURL,
   ESPLORA_BASEURL
-} from './walletConstants';
+} from './constants';
 import { networks } from 'bitcoinjs-lib';
 import { checkNetwork, checkFeeEstimates } from './check';
 

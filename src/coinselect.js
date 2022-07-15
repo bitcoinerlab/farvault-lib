@@ -3,7 +3,7 @@
 import bjsCoinselect from 'coinselect';
 import bjsCoinselectSplit from 'coinselect/split';
 import { parseDerivationPath } from './bip32';
-import { LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT } from './walletConstants';
+import { LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT } from './constants';
 import { networks, address as bjsAddress, Transaction } from 'bitcoinjs-lib';
 import { checkAddress } from './check';
 

@@ -15,7 +15,7 @@ import {
   BITCOIN_COINTYPE,
   TESTNET_COINTYPE,
   REGTEST_COINTYPE
-} from './walletConstants';
+} from './constants';
 import { networks } from 'bitcoinjs-lib';
 
 import { bip32 as bjsBip32 } from './secp256k1';

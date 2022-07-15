@@ -5,7 +5,7 @@ import {
   checkFeeEstimates,
   checkExtPub
 } from '../src/check';
-import { LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT } from '../src/walletConstants';
+import { LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT } from '../src/constants';
 import { networks } from 'bitcoinjs-lib';
 //import { P2PKH, P2WPKH, P2SH_P2WPKH } from '../src/accounts';
 describe('data check', () => {

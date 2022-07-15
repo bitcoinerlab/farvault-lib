@@ -11,7 +11,7 @@
 import LedgerTransport from '@ledgerhq/hw-transport-webusb';
 import LedgerTransportNodejs from '@ledgerhq/hw-transport-node-hid-noevents';
 import LedgerAppBtc from '@ledgerhq/hw-app-btc';
-import { NATIVE_SEGWIT, NESTED_SEGWIT, LEGACY } from '../walletConstants';
+import { NATIVE_SEGWIT, NESTED_SEGWIT, LEGACY } from '../constants';
 import memoize from 'lodash.memoize';
 export const WEB_TRANSPORT = 'WEB_TRANSPORT';
 export const NODEJS_TRANSPORT = 'NODEJS_TRANSPORT';
@@ -123,8 +123,8 @@ export const getExtPub = memoize(
         //bitcoinjs-lib (network.bip32.public) also only references xpub or tpub
         //for network = bitcoin, and network = testnet, respectively
         //Read setExtPubPrefix documentation to understand why this is here.
-        //Note that network.bip32.public will be === walletConstants.XPUBVERSION
-        //for mainnet and === walletConstants.TPUBVERSION for testnet and regtest
+        //Note that network.bip32.public will be === constants.XPUBVERSION
+        //for mainnet and === constants.TPUBVERSION for testnet and regtest
         xpubVersion: network.bip32.public
       }),
       purpose,

@@ -48,7 +48,7 @@ const INVALID_TRANSACTION_FIXTURES = [];
 //
 
 import { payments, networks } from 'bitcoinjs-lib';
-import { LEGACY, NATIVE_SEGWIT, NESTED_SEGWIT } from '../src/walletConstants';
+import { LEGACY, NATIVE_SEGWIT, NESTED_SEGWIT } from '../src/constants';
 import { decodeTx } from '../src/decodeTx';
 
 const network = networks.regtest;

@@ -1,19 +1,5 @@
 //npm install tiny-secp256k1-v1@npm:tiny-secp256k1@1
 
-/*
-//import * as ecc from 'tiny-secp256k1-v1';
-//import * as ecc from 'tiny-secp256k1';
-//import * as ecc from './noble_ecc.js';
-import * as ecc from 'tiny-secp256k1-v1/js.js';
-
-import ECPairFactory from 'ecpair';
-import BIP32Factory from 'bip32';
-
-const bip32 = BIP32Factory(ecc);
-const ECPair = ECPairFactory(ecc);
-export { bip32, ECPair };
-*/
-
 //https://stackoverflow.com/a/47880734/1660381
 function wasmSupported() {
   //Do not let it run on react-native (it will run on iOS simulator but not on

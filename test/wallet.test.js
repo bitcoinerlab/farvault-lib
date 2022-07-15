@@ -12,7 +12,7 @@ import {
   GAP_LIMIT,
   GAP_ACCOUNT_LIMIT,
   VAULT_SKIP
-} from '../src/walletConstants';
+} from '../src/constants';
 import { serializeDerivationPath } from '../src/bip32';
 import { networks } from 'bitcoinjs-lib';
 

@@ -4,7 +4,7 @@ import {
   NESTED_SEGWIT,
   GAP_LIMIT,
   VAULT_SKIP
-} from '../../src/walletConstants';
+} from '../../src/constants';
 import { networks } from 'bitcoinjs-lib';
 import { parseDerivationPath } from '../../src/bip32';
 const addressDescriptors = [

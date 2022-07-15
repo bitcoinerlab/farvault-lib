@@ -16,7 +16,7 @@ import {
   BITCOIN_COINTYPE,
   TESTNET_COINTYPE,
   REGTEST_COINTYPE
-} from './walletConstants';
+} from './constants';
 
 //import { P2PKH, P2WPKH, P2SH_P2WPKH } from './accounts';
 

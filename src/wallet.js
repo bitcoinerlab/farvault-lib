@@ -24,7 +24,7 @@ import {
   LEGACY,
   NESTED_SEGWIT,
   NATIVE_SEGWIT
-} from './walletConstants';
+} from './constants';
 
 import { blockstreamFetchAddress, blockstreamFetchUtxos } from './dataFetchers';
 import { checkPurpose, checkNetwork, checkExtPub } from './check';

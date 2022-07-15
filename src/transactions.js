@@ -5,7 +5,7 @@ import {
   NATIVE_SEGWIT,
   LEGACY,
   PSBT_VERSION
-} from './walletConstants';
+} from './constants';
 import { Psbt, payments, networks, Transaction } from 'bitcoinjs-lib';
 import { parseDerivationPath } from './bip32';
 import varuint from 'varuint-bitcoin';

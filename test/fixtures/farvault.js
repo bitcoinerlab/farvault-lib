@@ -2,7 +2,7 @@ import {
   LEGACY,
   NATIVE_SEGWIT,
   NESTED_SEGWIT
-} from '../../src/walletConstants';
+} from '../../src/constants';
 import { networks } from 'bitcoinjs-lib';
 export const fixtures = {
   //Integration test:

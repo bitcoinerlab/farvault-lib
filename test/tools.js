@@ -18,7 +18,7 @@ const regtestUtils = new RegtestUtils(bJs);
 export const BITCOIND_CATCH_UP_TIME = 2000;
 export const REGTEST_SERVER_CATCH_UP_TIME = 1000;
 
-import { REGTEST_COINTYPE } from '../src/walletConstants';
+import { REGTEST_COINTYPE } from '../src/constants';
 
 /**
  * Creates an HD wallet and funds it using mined coins from a regtest-server faucet.
