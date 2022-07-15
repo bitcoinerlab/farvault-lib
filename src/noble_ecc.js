@@ -3,10 +3,6 @@
  * https://github.com/BitGo/BitGoJS/blob/bitcoinjs_lib_6_sync/modules/utxo-lib/src/noble_ecc.ts
  */
 
-//import { crypto as bcrypto } from 'bitcoinjs-lib';
-//import createHmac from 'create-hmac';
-//import * as necc from '@noble/secp256k1';
-
 const { crypto: bcrypto } = require('bitcoinjs-lib');
 const createHmac = require('create-hmac');
 const necc = require('@noble/secp256k1');
