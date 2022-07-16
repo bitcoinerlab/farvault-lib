@@ -17,15 +17,18 @@ import { feeRateSampling } from './fees';
 import { unlockScript, isP2SH, isP2WSH, isP2WPKH, isP2PKH } from './scripts';
 
 import ECPairFactory from 'ecpair';
+import * as ecc from './secp256k1';
 let ECPair;
-(async () => {
-  //webpack modules will load WASM asynchronously. Node won't.
-  //Also webpack and node will return differently (that's the reason
-  //for the .default
-  const importedModule = await import('./secp256k1.js');
-  const ecc = importedModule.default || importedModule;
+if (typeof ecc === 'object' && typeof ecc.then === 'function') {
+  (async () => {
+    //webpack modules will load WASM asynchronously. Node won't.
+    //Also webpack and node will return differently (that's the reason
+    //for the .default
+    ECPair = ECPairFactory(await ecc);
+  })();
+} else {
   ECPair = ECPairFactory(ecc);
-})();
+}
 
 const validator = (pubkey, msghash, signature) =>
   ECPair.fromPublicKey(pubkey).verify(msghash, signature);

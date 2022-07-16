@@ -37,5 +37,4 @@ const ecc =
     : eccEngine === ELLIPTIC_ECC
     ? require('tiny-secp256k1-v1/js.js') //npm install tiny-secp256k1-v1@npm:tiny-secp256k1@1
     : require('tiny-secp256k1');
-//export { ecc };
 module.exports = ecc;
