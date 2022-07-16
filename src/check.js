@@ -22,7 +22,12 @@ import {
 
 import { networks, address as bjsAddress } from 'bitcoinjs-lib';
 
-import { bip32 as bjsBip32 } from './secp256k1';
+import BIP32Factory from 'bip32';
+let bjsBip32;
+(async () => {
+  const ecc = (await import('./secp256k1.js')).default;
+  bjsBip32 = BIP32Factory(ecc);
+})();
 
 import b58 from 'bs58check';
 

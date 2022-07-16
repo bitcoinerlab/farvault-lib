@@ -18,7 +18,13 @@ import {
 } from './constants';
 import { networks } from 'bitcoinjs-lib';
 
-import { bip32 as bjsBip32 } from './secp256k1';
+import BIP32Factory from 'bip32';
+let bjsBip32;
+(async () => {
+  const ecc = (await import('./secp256k1.js')).default;
+  console.log({ ecc });
+  bjsBip32 = BIP32Factory(ecc);
+})();
 
 export async function fromSeed(seed, network = networks.bitcoin) {
   return await bjsBip32.fromSeed(seed, network);

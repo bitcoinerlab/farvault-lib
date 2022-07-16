@@ -29,25 +29,13 @@ const eccEngine = wasmSupported()
   ? NOBLE_ECC
   : ELLIPTIC_ECC;
 
-import ECPairFactory from 'ecpair';
-import BIP32Factory from 'bip32';
-
 console.log(`Importing ecc engine: ${eccEngine}.`);
-//window.webAssemblyIsLoadingAsynchronous must be set by webpack so that
-//we know when we are loading async web assembly packages. Read comments in
-//src/tinySecp256k1AsyncLoader.js to learn more.
-const asyncWebAssembly =
-  typeof window !== 'undefined' && window.webAssemblyIsLoadingAsynchronous;
+
 const ecc =
   eccEngine === NOBLE_ECC
     ? require('./noble_ecc.js')
     : eccEngine === ELLIPTIC_ECC
     ? require('tiny-secp256k1-v1/js.js') //npm install tiny-secp256k1-v1@npm:tiny-secp256k1@1
-    : asyncWebAssembly
-    ? require('./tinySecp256k1AsyncLoader.js')
     : require('tiny-secp256k1');
-
-const bip32 = BIP32Factory(ecc);
-const ECPair = ECPairFactory(ecc);
-
-export { bip32, ECPair };
+//export { ecc };
+module.exports = ecc;

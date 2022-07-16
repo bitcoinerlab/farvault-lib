@@ -12,11 +12,16 @@ import varuint from 'varuint-bitcoin';
 
 import memoize from 'lodash.memoize';
 
-import { ECPair } from './secp256k1';
-
 import { feeRateSampling } from './fees';
 
 import { unlockScript, isP2SH, isP2WSH, isP2WPKH, isP2PKH } from './scripts';
+
+import ECPairFactory from 'ecpair';
+let ECPair;
+(async () => {
+  const ecc = (await import('./secp256k1.js')).default;
+  ECPair = ECPairFactory(ecc);
+})();
 
 const validator = (pubkey, msghash, signature) =>
   ECPair.fromPublicKey(pubkey).verify(msghash, signature);
