@@ -19,7 +19,11 @@ import { unlockScript, isP2SH, isP2WSH, isP2WPKH, isP2PKH } from './scripts';
 import ECPairFactory from 'ecpair';
 let ECPair;
 (async () => {
-  const ecc = (await import('./secp256k1.js')).default;
+  //webpack modules will load WASM asynchronously. Node won't.
+  //Also webpack and node will return differently (that's the reason
+  //for the .default
+  const importedModule = await import('./secp256k1.js');
+  const ecc = importedModule.default || importedModule;
   ECPair = ECPairFactory(ecc);
 })();
 

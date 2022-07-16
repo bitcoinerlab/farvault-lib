@@ -25,7 +25,11 @@ import { networks, address as bjsAddress } from 'bitcoinjs-lib';
 import BIP32Factory from 'bip32';
 let bjsBip32;
 (async () => {
-  const ecc = (await import('./secp256k1.js')).default;
+  //webpack modules will load WASM asynchronously. Node won't.
+  //Also webpack and node will return differently (that's the reason
+  //for the .default
+  const importedModule = await import('./secp256k1.js');
+  const ecc = importedModule.default || importedModule;
   bjsBip32 = BIP32Factory(ecc);
 })();
 
