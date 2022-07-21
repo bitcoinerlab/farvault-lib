@@ -6,6 +6,7 @@ import * as decodeTx from './src/decodeTx';
 import * as HDInterface from './src/HDInterface';
 import * as coinselect from './src/coinselect';
 import * as fees from './src/fees';
+import * as bip32 from './src/bip32';
 //import * as serialization from './src/serialization';
 import * as constants from './src/constants';
 export {
