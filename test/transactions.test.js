@@ -144,7 +144,7 @@ for (const type of process.env.__LEDGER_NANO_DETECTED__ === 'true' //Note proces
             type === LEDGER_NANO_INTERFACE
               ? ledgerHDInterface
               : softHDInterface;
-          expect(
+          await expect(
             createTransaction({
               utxos,
               targets,

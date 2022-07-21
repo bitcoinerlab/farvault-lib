@@ -17,6 +17,7 @@ export {
   HDInterface,
   coinselect,
   fees,
+  bip32,
   //serialization,
   constants
 };
