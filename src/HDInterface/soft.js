@@ -15,21 +15,7 @@ import {
   serializeDerivationPath
 } from '../bip32';
 
-//Not useful
-const _fromSeed = memoize(
-  async (seed, network) => await fromSeed(seed, network),
-  (seed, network) => seed.toString() + network.bip32.public.toString()
-);
-
-//Not useful
-const _getExtPub = memoize(
-  async (seed, { purpose, accountNumber, network = networks.bitcoin }) =>
-    await getExtPub(seed, { purpose, accountNumber, network }),
-  (seed, { purpose, accountNumber, network = networks.bitcoin }) =>
-    seed.toString() + purpose + accountNumber + network.bip32.public.toString()
-);
-
-export async function getExtPub(
+export function getExtPub(
   seed,
   { purpose, accountNumber, network = networks.bitcoin }
 ) {
@@ -39,7 +25,7 @@ export async function getExtPub(
   if (!Number.isInteger(accountNumber) || accountNumber < 0)
     throw new Error('Invalid accountNumber');
 
-  const root = await fromSeed(seed, network);
+  const root = fromSeed(seed, network);
   const extPub = setExtPubPrefix({
     extPub: root
       .derivePath(
@@ -66,11 +52,11 @@ const rootDerivePath = memoize(
     seed.toString() + '_' + path + '_' + network.bip32.public.toString()
 );
 
-export async function createSigners(
+export function createSigners(
   seed,
   { psbt, utxos, network = networks.bitcoin }
 ) {
-  const root = await fromSeed(seed, network);
+  const root = fromSeed(seed, network);
   return utxos.map(utxo => $hash => {
     const signature = rootDerivePath(seed, root, utxo.path, network).sign(
       $hash
@@ -79,14 +65,3 @@ export async function createSigners(
     return signature;
   });
 }
-
-//export async function createSigners(
-//  seed,
-//  { psbt, utxos, network = networks.bitcoin }
-//) {
-//  const root = await fromSeed(seed, network);
-//  return utxos.map(utxo => $hash => {
-//    const signature = root.derivePath(utxo.path).sign($hash);
-//    return signature;
-//  });
-//}

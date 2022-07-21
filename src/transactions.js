@@ -22,8 +22,6 @@ let ECPair;
 if (typeof ecc === 'object' && typeof ecc.then === 'function') {
   (async () => {
     //webpack modules will load WASM asynchronously. Node won't.
-    //Also webpack and node will return differently (that's the reason
-    //for the .default
     ECPair = ECPairFactory(await ecc);
   })();
 } else {

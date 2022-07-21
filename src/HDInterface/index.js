@@ -126,7 +126,9 @@ export async function initHDInterface(type, { transport, mnemonic } = {}) {
   if (type === LEDGER_NANO_INTERFACE) {
     const { ledgerTransport, ledgerAppBtc } = await ledgerNano.init(transport);
     HDInterface = {
+      //getExtPub is async for ledger nano
       getExtPub: (...args) => ledgerNano.getExtPub(ledgerAppBtc, ...args),
+      //createSigners is async for ledger nano
       createSigners: (...args) =>
         ledgerNano.createSigners(ledgerAppBtc, ...args),
       close: () => ledgerNano.close(ledgerTransport)
