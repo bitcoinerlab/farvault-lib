@@ -55,4 +55,4 @@ The initial idea of this project was outlined by [Adam Back](https://en.wikipedi
 
 This library is heavily based on the excellent [bitcoinjs](https://github.com/bitcoinjs) umbrella of Bitcoin libraries.
 
-(Salvatore Ingala)[https://github.com/bigspider] helped find a better script that saves some bytes.
+[Salvatore Ingala](https://github.com/bigspider) helped find a better script that saves some bytes.
