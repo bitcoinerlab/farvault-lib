@@ -2,6 +2,10 @@ A javascript Bitcoin cold storage time-lock wallet for Node.js, browsers and Rea
 
 This is the complementary cryptographic library for the FarVault App (iOS/Android/Macos/Win/Linux) [@farvault/FarVault](https://github.com/farvault/FarVault) (private until alpha).
 
+## Can I use it?
+
+At your own risk. We've not cut a release version yet and the API can change anytime.
+
 ## How does it work?
 
 FarVault helps protect Bitcoiners against extortion and coin theft. Stolen or extorted coins can be canceled for a week. And the cancellation can be delegated to third parties without risk.
@@ -31,7 +35,7 @@ where `<MATURED_PUB>` corresponds to a pubKey controlled by the user's hot walle
 - Supports creating transactions mixing different input types: P2PKH, P2WPKH, P2SH-P2WPKH and P2SH/P2WSH/P2SW-P2WSH (FarVarvault scripts).
 - It has a plugin-like interface to make it easy to add different HW wallet support.
 - It currently has support for the Ledger Nano signing device. The Ledger device can sign FarVault P2SH/P2WSH scripts even when combined with other inputs.
-- A fair amount of tests.
+- A fair amount of tests but DO NOT TRUST, VERIFY!
 
 ## Usage
 
