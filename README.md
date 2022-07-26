@@ -53,6 +53,6 @@ See [the testing environment](./testing_environment) for details.
 
 The initial idea of this project was outlined by [Adam Back](https://en.wikipedia.org/wiki/Adam_Back) in the btc_pro Telegram group as a response to the [author of this library](https://github.com/landabaso) who was looking for interesting ideas that could be build for Bitcoin.
 
-This library is heavily based on the excellent [bitcoinjs](https://github.com/bitcoinjs) umbrella of Bitcoin libraries. Thanks [Jonathan Underwood](https://github.com/junderw) for all the effor put in there.
+This library is heavily based on the excellent [bitcoinjs](https://github.com/bitcoinjs) umbrella of Bitcoin libraries. Thanks to [Jonathan Underwood](https://github.com/junderw) for all the work put in there.
 
 [Salvatore Ingala](https://github.com/bigspider) helped find a better script that saves some bytes.
