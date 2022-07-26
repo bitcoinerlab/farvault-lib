@@ -3,7 +3,7 @@ This is the complementary cryptographic library for the Vault App (iOS/Android/M
 
 - Supports P2PKH, P2SH-P2WPKH, and P2WPKH.
 - Supports creating transactions covering multiple accounts from the same BIP32 seed. This can be useful in case a user wants to protect all funds under the seed.
-- Supports creating transactions with inputs mixing different input types: P2PKH, P2WPKH, P2SH-P2WPKH and P2SH/P2WSH/P2SW-P2WSH (FarVarvault scripts).
+- Supports creating transactions mixing different input types: P2PKH, P2WPKH, P2SH-P2WPKH and P2SH/P2WSH/P2SW-P2WSH (FarVarvault scripts).
 - It has a plugin-like interface to make it easy to add different HW wallet support.
 - It currently has support for the Ledger Nano signing device. The ledger device can also sign FarVault P2SH/P2WSH scripts even when mixing different input types.
 - A fair amount of tests.
