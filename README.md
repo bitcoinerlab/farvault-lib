@@ -4,7 +4,7 @@ This is the complementary cryptographic library for the FarVault App (iOS/Androi
 
 ## Can I use it?
 
-At your own risk. We've not cut a release version yet and the API can change anytime.
+At your own risk. We've not cut a release version yet and the API can change anytime so you should not consider it stable. You're basically looking at a development branch. It's functional but may contain bugs.
 
 ## How does it work?
 
