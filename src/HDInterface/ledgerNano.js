@@ -1,13 +1,5 @@
 /** @module HDInterface/ledgerNano */
 
-//FIXME: Usar createPaymentTransactionNew en lugar de signP2SHTransaction y
-//extraer las signatures de las tx generadas.
-//Ver si sirve para P2SH. Creo que sí! Creo que incluso quizá valga para taproot
-//FIXME: Opcion 2 arreglar signP2SHTransaction para que sea como createPaymentTransactionNew
-//https://github.com/LedgerHQ/ledgerjs/blob/3577b9ffa748028faba8a95c05c666df90bbf3d3/packages/hw-app-btc/src/createTransaction.js#L65
-//=
-//https://github.com/LedgerHQ/ledgerjs/blob/master/packages/hw-app-btc/src/signP2SHTransaction.ts
-
 import LedgerTransport from '@ledgerhq/hw-transport-webusb';
 import LedgerTransportNodejs from '@ledgerhq/hw-transport-node-hid-noevents';
 import LedgerAppBtc from '@ledgerhq/hw-app-btc';
