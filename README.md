@@ -8,7 +8,7 @@ FarVault helps protect Bitcoiners against extortion and coin theft. Stolen or ex
 
 Pre-signed transactions are stored, not keys. Keys are deleted. Pre-signed transactions are relative-time-locked. They are cancellable for a week -or whatever the user chooses-, and freely spendable by the wallet key after a week.
 
-The cancelation is another pre-signed transaction that can be safely given to 3rd parties. The cancellation transaction immediately sends the comprimised coins to very cold storage. For example a BIP39 plate stored in bank vault in a different country or somewhere really annoying to get since this is a very low probability event.
+Cancellation is another pre-signed transaction that can be safely given to 3rd parties. The cancellation transaction immediately sends the compromised coins to very cold storage. For example a BIP39 plate stored in bank vault in a different country or somewhere really annoying to get since this is a very low probability event.
 
 A FarVault script looks like this:
 
@@ -54,3 +54,5 @@ See [the testing environment](./testing_environment) for details.
 The initial idea of this project was outlined by [Adam Back](https://en.wikipedia.org/wiki/Adam_Back) in the btc_pro Telegram group as a response to the [author of this library](https://github.com/landabaso) who was looking for interesting ideas that could be build for Bitcoin.
 
 This library is heavily based on the excellent [bitcoinjs](https://github.com/bitcoinjs) umbrella of Bitcoin libraries.
+
+(Salvatore Ingala)[https://github.com/bigspider] helped find a better script that saves some bytes.
