@@ -20,7 +20,6 @@ import {
   BITCOIND_CATCH_UP_TIME,
   REGTEST_SERVER_CATCH_UP_TIME
 } from '../tools';
-import { blockstreamFetchFeeEstimates } from '../../src/dataFetchers';
 import {
   createTransaction,
   createMultiFeeTransactions
@@ -36,7 +35,11 @@ import {
   getNextDerivationPath
 } from '../../src/wallet';
 import { VAULT_SKIP } from '../../src/constants';
-import { esploraFetchAddress, esploraFetchUtxos } from '../../src/dataFetchers';
+import {
+  blockstreamFetchFeeEstimates,
+  esploraFetchAddress,
+  esploraFetchUtxos
+} from '../../src/dataFetchers';
 import { coinselect } from '../../src/coinselect';
 
 import { fixtures } from '../fixtures/farvault';

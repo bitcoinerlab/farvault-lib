@@ -5,8 +5,6 @@
     "include": [
       "src/",
       "src/HDInterface",
-      "src/digiSign",
-      "src/digiSign",
       "test",
       "test/fixtures",
       "test/integration"
