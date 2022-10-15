@@ -1,4 +1,4 @@
-import { networks } from 'bitcoinjs-lib';
+import { networks } from '../../src/networks';
 export const fixtures = {
   invalid: [
     {

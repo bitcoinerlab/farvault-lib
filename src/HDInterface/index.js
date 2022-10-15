@@ -18,7 +18,7 @@
  * createTransaction.  See the speciffic tests Transactions with
  * "invalid HDInterface data" in transactions.test.js.
  */
- 
+
 export const LEDGER_NANO_INTERFACE = 'LEDGER_NANO_INTERFACE';
 export const SOFT_HD_INTERFACE = 'SOFT_HD_INTERFACE';
 
@@ -30,12 +30,8 @@ export const NODEJS_TRANSPORT = ledgerNano.NODEJS_TRANSPORT;
 
 import memoize from 'lodash.memoize';
 
-import {
-  deriveExtPub,
-  parseDerivationPath,
-  getNetworkCoinType
-} from '../bip32';
-import { networks } from 'bitcoinjs-lib';
+import { deriveExtPub, parseDerivationPath } from '../bip44';
+import { networks, getNetworkId, getNetworkCoinType } from '../networks';
 
 /**
  * @async
@@ -43,17 +39,12 @@ import { networks } from 'bitcoinjs-lib';
  * Returns the extended pub key of an initialized HDInterface.
  * @param {object} params
  * @param {string} params.path The serialized derivation path.
- * @param {object} [params.network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}.
  * @returns {Promise<Buffer>} The public key.
  */
 async function getPublicKey(HDInterface, path, network = networks.bitcoin) {
-  const {
-    purpose,
-    coinType,
-    accountNumber,
-    index,
-    isChange
-  } = parseDerivationPath(path);
+  const { purpose, coinType, accountNumber, index, isChange } =
+    parseDerivationPath(path);
   if (getNetworkCoinType(network) !== coinType) {
     throw new Error('Network mismatch');
   }
@@ -73,7 +64,7 @@ async function getPublicKey(HDInterface, path, network = networks.bitcoin) {
  * @param {number} params.purpose The purpose we want to transform to: LEGACY,
  * NATIVE_SEGWIT or NESTED_SEGWIT.
  * @param {number} params.accountNumber The account number as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
- * @param {object} [params.network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}.
  * @returns {Promise<string>} An extended pub key. F.ex.: "xpub6D4BDPcP2GT577Vvch3R8wDkScZWzQzMMUm3PWbmWvVJrZwQY4VUNgqFJPMM3No2dFDFGTsxxpG5uJh7n7epu4trkrX7x7DogT5Uv6fcLW5".
  */
 
@@ -97,7 +88,7 @@ async function getPublicKey(HDInterface, path, network = networks.bitcoin) {
  * @param {object} params.psbt The [bitcoinjs-lib Psbt object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/psbt.js) where the `tx` to be signed will be extracted.
  * @param {Object[]} params.utxos List of spendable utxos controlled by this HDInterface. The function will create a signer for each utxo.
  * @param {string} params.utxos[].path Derivation path of the key that must sign the hash. F.ex.: `44'/1'/1'/0/0`.
- * @param {object} [params.network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}.
  * @returns {Promise<function[]>} An array of functions, where each function corresponds to an utxo from the `utxos` input array.`.
  */
 
@@ -154,7 +145,7 @@ export async function initHDInterface(type, { transport, mnemonic } = {}) {
       (path, network = networks.bitcoin) =>
         getPublicKey(HDInterface, path, network),
       (path, network = networks.bitcoin) => {
-        return path + network.bip32.public.toString();
+        return path + getNetworkId(network);
       }
     )
   };

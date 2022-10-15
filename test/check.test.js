@@ -6,30 +6,32 @@ import {
   checkExtPub
 } from '../src/check';
 import { LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT } from '../src/constants';
-import { networks } from 'bitcoinjs-lib';
+import { networks } from '../src/networks';
 //import { P2PKH, P2WPKH, P2SH_P2WPKH } from '../src/accounts';
 describe('data check', () => {
   test('checkNetwork', () => {
     expect(() => checkNetwork(networks.bitcoin)).not.toThrow();
     expect(() => checkNetwork(networks.testnet)).not.toThrow();
     expect(() => checkNetwork(networks.regtest)).not.toThrow();
+    expect(() => checkNetwork(networks.signet)).not.toThrow();
     expect(() => checkNetwork()).toThrow(
-      'Network must be mainnet, testnet or regtest'
+      'Network must be mainnet, testnet, signet or regtest'
     );
     expect(() => checkNetwork(23)).toThrow(
-      'Network must be mainnet, testnet or regtest'
+      'Network must be mainnet, testnet, signet or regtest'
     );
 
     expect(() => checkNetwork(networks.bitcoin, false)).not.toThrow();
     expect(() => checkNetwork(networks.testnet, false)).not.toThrow();
+    expect(() => checkNetwork(networks.signet, false)).not.toThrow();
     expect(() => checkNetwork(networks.regtest, false)).toThrow(
-      'Network must be mainnet or testnet'
+      'Network must be mainnet, signet or testnet'
     );
     expect(() => checkNetwork()).toThrow(
-      'Network must be mainnet, testnet or regtest'
+      'Network must be mainnet, testnet, signet or regtest'
     );
     expect(() => checkNetwork(23, false)).toThrow(
-      'Network must be mainnet or testnet'
+      'Network must be mainnet, signet or testnet'
     );
   });
   test('checkPurpose fails', () => {

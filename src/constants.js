@@ -1,10 +1,16 @@
+export const BITCOIN = 'BITCOIN';
+export const REGTEST = 'REGTEST';
+export const TESTNET = 'TESTNET';
+export const SIGNET = 'SIGNET';
+
 //As defined in splip44:
 //https://github.com/satoshilabs/slips/blob/master/slip-0044.md
-export const BITCOIN_COINTYPE = 0;
-//Note that both regtest and testnet have cointype = 1
-export const TESTNET_COINTYPE = 1;
-export const REGTEST_COINTYPE = 1;
-
+export const COINTYPE = {
+  [BITCOIN]: 0,
+  [TESTNET]: 1,
+  [SIGNET]: 1,
+  [REGTEST]: 1
+};
 
 //Purposes as defined in BIP44, BIP49 and BIP84
 export const LEGACY = 44;
@@ -30,17 +36,22 @@ export const VPUBVERSION = 0x045f1cf6;
 export const PUBVERSIONSIZE = 8;
 
 export const PUBVERSIONS = {
-  [BITCOIN_COINTYPE]: {
+  [BITCOIN]: {
     [LEGACY]: XPUBVERSION,
     [NESTED_SEGWIT]: YPUBVERSION,
     [NATIVE_SEGWIT]: ZPUBVERSION
   },
-  [TESTNET_COINTYPE]: {
+  [TESTNET]: {
     [LEGACY]: TPUBVERSION,
     [NESTED_SEGWIT]: UPUBVERSION,
     [NATIVE_SEGWIT]: VPUBVERSION
   },
-  [REGTEST_COINTYPE]: {
+  [SIGNET]: {
+    [LEGACY]: TPUBVERSION,
+    [NESTED_SEGWIT]: UPUBVERSION,
+    [NATIVE_SEGWIT]: VPUBVERSION
+  },
+  [REGTEST]: {
     [LEGACY]: TPUBVERSION,
     [NESTED_SEGWIT]: UPUBVERSION,
     [NATIVE_SEGWIT]: VPUBVERSION
@@ -56,19 +67,23 @@ export const PURPOSES = {
   [VPUB]: NATIVE_SEGWIT
 };
 
-
 export const EXTENDEDPUBTYPES = {
-  [BITCOIN_COINTYPE]: {
+  [BITCOIN]: {
     [LEGACY]: XPUB,
     [NESTED_SEGWIT]: YPUB,
     [NATIVE_SEGWIT]: ZPUB
   },
-  [TESTNET_COINTYPE]: {
+  [TESTNET]: {
     [LEGACY]: TPUB,
     [NESTED_SEGWIT]: UPUB,
     [NATIVE_SEGWIT]: VPUB
   },
-  [REGTEST_COINTYPE]: {
+  [SIGNET]: {
+    [LEGACY]: TPUB,
+    [NESTED_SEGWIT]: UPUB,
+    [NATIVE_SEGWIT]: VPUB
+  },
+  [REGTEST]: {
     [LEGACY]: TPUB,
     [NESTED_SEGWIT]: UPUB,
     [NATIVE_SEGWIT]: VPUB
@@ -77,7 +92,7 @@ export const EXTENDEDPUBTYPES = {
 
 export const GAP_ACCOUNT_LIMIT = 1;
 export const GAP_LIMIT = 20;
-export const VAULT_SKIP = 15;//How many addresses skip from latest used path
+export const VAULT_SKIP = 15; //How many addresses skip from latest used path
 
 export const BLOCKSTREAM_EXPLORER_BASEURL = 'https://blockstream.info';
 export const ESPLORA_BASEURL = 'http://127.0.0.1:3002';

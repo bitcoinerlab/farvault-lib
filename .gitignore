@@ -10,5 +10,6 @@ localhost.pem
 *.swm
 *.log
 .DS_Store
+*.tgz
 test/integration/*.json
 setup.json

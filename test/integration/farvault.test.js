@@ -28,12 +28,9 @@ import { createRelativeTimeLockScript } from '../../src/scripts';
 import { decodeTx } from '../../src/decodeTx';
 
 import { initHDInterface, SOFT_HD_INTERFACE } from '../../src/HDInterface';
-import {
-  getDerivationPathAddress,
-  fetchDerivationPaths,
-  fetchDerivationPathsUtxos,
-  getNextDerivationPath
-} from '../../src/wallet';
+import { getDerivationPathAddress } from '../../src/bip44';
+import { Discovery } from '../../src/discovery';
+import { getNextDerivationPath } from '../../src/bip44/chain';
 import { VAULT_SKIP } from '../../src/constants';
 import {
   blockstreamFetchFeeEstimates,
@@ -85,32 +82,23 @@ describe('FarVault full pipe', () => {
         //Give esplora some time to catch up
         await new Promise(r => setTimeout(r, ESPLORA_CATCH_UP_TIME));
 
-        //Get the derivation paths and utxos of the wallet
-        const { fundedPaths, usedPaths } = await fetchDerivationPaths({
+        const discovery = new Discovery({
           extPubGetter: hotHDInterface.getExtPub,
-          addressFetcher: address => esploraFetchAddress(address),
-          network
-        });
-        const utxos = await fetchDerivationPathsUtxos({
-          extPubGetter: hotHDInterface.getExtPub,
-          paths: fundedPaths,
           utxoFetcher: address => esploraFetchUtxos(address),
-          network
+          addressFetcher: address => esploraFetchAddress(address),
+          forceFetchChange: true
         });
+        await discovery.fetch(network);
+        const usedPaths = discovery.getUsedDerivationPaths({ network });
+        const fundedPaths = discovery.getFundedDerivationPaths({ network });
+        ////Get the derivation paths and utxos of the wallet
+        await discovery.fetchUtxos({ network });
+        const utxos = discovery.getUtxos({ network });
 
         expect(utxos).toEqual(expect.arrayContaining(walletUtxos));
-        //if (walletUtxos.length - utxos.length < 0) {
-        //  console.log('DEBUG', {
-        //    walletUtxos,
-        //    utxos,
-        //    fundingDescriptors,
-        //    fundedPaths,
-        //    usedPaths
-        //  });
-        //}
-        //Don't test this since I might create more utxos than expected:
-        //https://github.com/bitcoinjs/regtest-client/issues/3
-        //expect(walletUtxos.length - utxos.length >= 0).toEqual(true);
+        //This used to fail but was fixed:
+        //https://github.com/bitcoinjs/regtest-client/pull/4
+        expect(walletUtxos.length - utxos.length === 0).toEqual(true);
         expect(fundedPaths).toEqual(expect.arrayContaining(walletPaths));
         expect(fundedPaths.length).toEqual(walletPaths.length);
 

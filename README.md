@@ -49,9 +49,12 @@ See [the testing environment](./testing_environment) for details.
 
 `npm run test`
 
-## Documentation
+## API Documentation
 
 `npm run docs`
+
+Or visit the latest rendered version:
+[https://farvault.github.io/docs](https://farvault.github.io/docs)
 
 ## Acknowledgments
 

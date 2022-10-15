@@ -6,8 +6,9 @@ import {
   LEGACY,
   PSBT_VERSION
 } from './constants';
-import { Psbt, payments, networks, Transaction } from 'bitcoinjs-lib';
-import { parseDerivationPath } from './bip32';
+import { Psbt, payments, Transaction } from 'bitcoinjs-lib';
+import { networks } from './networks';
+import { parseDerivationPath } from './bip44';
 import varuint from 'varuint-bitcoin';
 
 import memoize from 'lodash.memoize';
@@ -261,7 +262,7 @@ function createPSBT({
  * @param {module:HDInterface.createSigners} parameters.createSigners An **async** function that returns an array of signer functions. One for each utxo. Signer functions sign the hash of the transaction.
  * @param {module:HDInterface.getPublicKey} parameters.getPublicKey An **async** function that resolves the public key from a derivation path and the network.
  * @param {boolean} [parameters.validateSignatures=true] Whether you want to validate signatures. This should always be true to detect errors. However, when createMultiFeeTransactions it is ok to only validate one of the transactions (for one of the fees). Signature validation is slow and this helps improving speed when creating a large number of transactions.
- * @param {object} [parameters.network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * @param {object} [parameters.network=networks.bitcoin] A {@link module:networks.networks network}.
  * @returns {Promise<string>} A promise that resolves into a transaction string in hex
  */
 
@@ -402,7 +403,7 @@ export async function createTransaction({
  * @param {module:HDInterface.createSigners} parameters.createSigners An **async** function that returns an array of signer functions. One for each utxo. Signer functions sign the hash of the transaction.
  * @param {object} parameters.feeRateSamplingParams Same params as the ones in {@link module:fees.feeRateSampling feeRateSampling}.
  * @param {module:HDInterface.getPublicKey} parameters.getPublicKey An **async** function that resolves the public key from a derivation path and the network.
- * @param {object} [parameters.network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * @param {object} [parameters.network=networks.bitcoin] A {@link module:networks.networks network}.
  * @returns {Array.<Promise<{tx:string, fee:number, feeRate:number}>>} An array of promises that resolve to transactions in hex, the fee in sats and the feeRate in sats/vbyte
  */
 export async function createMultiFeeTransactions({

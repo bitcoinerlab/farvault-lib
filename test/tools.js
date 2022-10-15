@@ -2,14 +2,17 @@
 
 import fs from 'fs';
 const TESTING_SERVERS_COOKIE = '/tmp/farvault_testing_environment_started';
-import { getDerivationPathAddress } from '../src/wallet';
 import {
   initHDInterface,
   SOFT_HD_INTERFACE,
   NODEJS_TRANSPORT
 } from '../src/HDInterface';
-import { getNetworkCoinType, serializeDerivationPath } from '../src/bip32';
-import bJs, { networks } from 'bitcoinjs-lib';
+import {
+  serializeDerivationPath,
+  getDerivationPathAddress
+} from '../src/bip44';
+import bJs from 'bitcoinjs-lib';
+import { networks, getNetworkCoinType } from '../src/networks';
 import { RegtestUtils } from 'regtest-client';
 import { spawn, spawnSync } from 'child_process';
 import { kill } from 'process';
@@ -18,7 +21,7 @@ const regtestUtils = new RegtestUtils(bJs);
 export const BITCOIND_CATCH_UP_TIME = 2000;
 export const REGTEST_SERVER_CATCH_UP_TIME = 1000;
 
-import { REGTEST_COINTYPE } from '../src/constants';
+import { COINTYPE, REGTEST } from '../src/constants';
 
 /**
  * Creates an HD wallet and funds it using mined coins from a regtest-server faucet.
@@ -32,7 +35,7 @@ import { REGTEST_COINTYPE } from '../src/constants';
  * @param {boolean} fundingDescriptors[].isChange - whether this address is a change address or not.
  * @param {number} fundingDescriptors[].value - number of sats that this address will receive.
  * @param {number} [fundingDescriptors[].coinType=REGTEST_COINTYPE] - Should always be REGTEST_COINTYPE
- * @param {object} [parameters.network=networks.regtest] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * @param {object} [parameters.network=networks.regtest] A {@link module:networks.networks network}.
  * @return {Promise<object>} `{
     HDInterface,
     extPubs,
@@ -61,7 +64,7 @@ export async function fundRegtest({
   for (const descriptor of fundingDescriptors) {
     if (
       typeof descriptor.coinType !== 'undefined' &&
-      descriptor.coinType !== REGTEST_COINTYPE
+      descriptor.coinType !== COINTYPE[REGTEST]
     ) {
       throw new Error(
         'Tests are only run on a regtest chain. All address descriptors should belong to regtest.'
@@ -82,7 +85,7 @@ export async function fundRegtest({
       isChange,
       index
     });
-    paths.push(path);
+    if (!paths[path]) paths.push(path);
     const address = await getDerivationPathAddress({
       extPubGetter: HDInterface.getExtPub,
       path,

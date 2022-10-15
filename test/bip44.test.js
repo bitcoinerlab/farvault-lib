@@ -1,22 +1,15 @@
-import { fixtures } from './fixtures/wallet';
+import { GAP_LIMIT, GAP_ACCOUNT_LIMIT, NATIVE_SEGWIT } from '../src/constants';
+import {
+  parseDerivationPath,
+  serializeDerivationPath,
+  getDerivationPathAddress
+} from '../src/bip44';
+import { fixtures } from './fixtures/bip44';
+import { getNextDerivationPath, exportedForTesting } from '../src/bip44/chain';
 import { initHDInterface, SOFT_HD_INTERFACE } from '../src/HDInterface';
-import {
-  getDerivationPathAddress,
-  getNextDerivationPath,
-  exportedForTesting
-} from '../src/wallet';
-import {
-  LEGACY,
-  NESTED_SEGWIT,
-  NATIVE_SEGWIT,
-  GAP_LIMIT,
-  GAP_ACCOUNT_LIMIT,
-  VAULT_SKIP
-} from '../src/constants';
-import { serializeDerivationPath } from '../src/bip32';
-import { networks } from 'bitcoinjs-lib';
+import { networks } from '../src/networks';
 
-describe('wallet', () => {
+describe('bip32', () => {
   test('getDerivationPathAddress', async () => {
     for (const {
       address,
@@ -37,6 +30,61 @@ describe('wallet', () => {
       ).toEqual(address);
     }
   });
+
+  test('parseDerivationPath parses paths correctly', () => {
+    fixtures.paths.valid.map(path =>
+      expect(() => parseDerivationPath(path)).not.toThrow()
+    );
+
+    expect(parseDerivationPath("44'/1'/0'/0/0")).toEqual({
+      purpose: 44,
+      coinType: 1,
+      accountNumber: 0,
+      index: 0,
+      isChange: false
+    });
+    expect(parseDerivationPath("44'/1'/10'/1/2")).toEqual({
+      purpose: 44,
+      coinType: 1,
+      accountNumber: 10,
+      index: 2,
+      isChange: true
+    });
+    //Non hardened accountNumber
+    expect(() => parseDerivationPath("44'/1'/10/1/2")).toThrow();
+    //Non hardened coinType
+    expect(() => parseDerivationPath("44'/1/10'/1/2")).toThrow();
+    //Non hardened purpose
+    expect(() => parseDerivationPath("44/1'/10'/1/2")).toThrow();
+    //4 levels only
+    expect(() => parseDerivationPath("44'/1'/10'/1")).toThrow();
+    //hardened isChange
+    expect(() => parseDerivationPath("44'/1'/10'/1'/2")).toThrow();
+    //hardened index
+    expect(() => parseDerivationPath("44'/1'/10'/1/2'")).toThrow();
+  });
+});
+
+describe('bip44/chain getNextDerivationPath', () => {
+  for (const valid of fixtures.getNextDerivationPath.valid) {
+    test(`getNextDerivationPath ${valid.description}`, () => {
+      expect(getNextDerivationPath({ ...valid })).toEqual(
+        valid.distantReceivingPath
+      );
+    });
+  }
+  for (const invalid of fixtures.getNextDerivationPath.invalid) {
+    test(`getNextDerivationPath ${invalid.description}`, () => {
+      expect(() => getNextDerivationPath({ ...invalid })).toThrow(
+        typeof invalid.errorMessage !== 'undefined'
+          ? invalid.errorMessage
+          : 'errorMessage not set'
+      );
+    });
+  }
+});
+
+describe('bip44/chain private methods', () => {
   let i = 0;
   for (const {
     addressDescriptors,
@@ -129,8 +177,6 @@ describe('wallet', () => {
       })
     ).toEqual("84'/1'/0'/0/0");
   });
-});
-describe('normalizeDerivationPaths', () => {
   for (const valid of fixtures.normalizeDerivationPaths.valid) {
     test(`normalizeDerivationPaths ${valid.description}`, () => {
       expect(
@@ -165,25 +211,6 @@ describe('normalizeDerivationPaths', () => {
           usedPaths: invalid.usedPaths
         })
       ).toThrow(
-        typeof invalid.errorMessage !== 'undefined'
-          ? invalid.errorMessage
-          : 'errorMessage not set'
-      );
-    });
-  }
-});
-
-describe('getNextDerivationPath', () => {
-  for (const valid of fixtures.getNextDerivationPath.valid) {
-    test(`getNextDerivationPath ${valid.description}`, () => {
-      expect(getNextDerivationPath({ ...valid })).toEqual(
-        valid.distantReceivingPath
-      );
-    });
-  }
-  for (const invalid of fixtures.getNextDerivationPath.invalid) {
-    test(`getNextDerivationPath ${invalid.description}`, () => {
-      expect(() => getNextDerivationPath({ ...invalid })).toThrow(
         typeof invalid.errorMessage !== 'undefined'
           ? invalid.errorMessage
           : 'errorMessage not set'

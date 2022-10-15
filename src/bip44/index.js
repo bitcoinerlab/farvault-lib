@@ -1,25 +1,39 @@
 /**
- * This module assumes BIP44, BIP49 and BIP84 account-structures in all the methods.
- * @module bip32
+ * All the methods in this module assume BIP32 HD address derivation according
+ * to the BIP44 hierarchy.
+ *
+ * In addition, they only assumes as valid purposes:
+ * * Legacy (BIP44).
+ * * Nested segwit (BIP49).
+ * * Native segwit (BIP84).
+ *
+ * @module bip44
  */
 
-import { checkPurpose, checkNetwork, checkExtPub } from './check';
+import { checkPurpose, checkNetwork, checkExtPub } from '../check';
 import b58 from 'bs58check';
 import {
+  XPUB,
+  YPUB,
+  ZPUB,
+  TPUB,
+  UPUB,
+  VPUB,
   PURPOSES,
   PUBVERSIONSIZE,
   PUBVERSIONS,
   LEGACY,
   NESTED_SEGWIT,
   NATIVE_SEGWIT,
-  BITCOIN_COINTYPE,
-  TESTNET_COINTYPE,
-  REGTEST_COINTYPE
-} from './constants';
-import { networks } from 'bitcoinjs-lib';
+  COINTYPE
+} from '../constants';
+import { networks, getNetworkCoinType, getNetworkId } from '../networks';
+
+import { payments } from 'bitcoinjs-lib';
+const { p2sh, p2wpkh, p2pkh } = payments;
 
 import BIP32Factory from 'bip32';
-import * as ecc from './secp256k1';
+import * as ecc from '../secp256k1';
 let bjsBip32;
 if (typeof ecc === 'object' && typeof ecc.then === 'function') {
   (async () => {
@@ -30,21 +44,22 @@ if (typeof ecc === 'object' && typeof ecc.then === 'function') {
   bjsBip32 = BIP32Factory(ecc);
 }
 
+//This is a bip32 pure method (not bip44)
 export function fromSeed(seed, network = networks.bitcoin) {
   return bjsBip32.fromSeed(seed, network);
 }
 
 /**
- * Converts and returns an extended pub to use a new `purpose`. The `purpose`
- * specifies whether the extended pub corresponds to a legacy, nested or native
- * segwit wallet.
+ * Converts and returns an extended pub to use a new `purpose` as defined in
+ * BIP44. The `purpose` specifies whether the extended pub corresponds to a
+ * legacy, nested or native segwit wallet.
  *
- * Use this function as an interface to any bip32 library that
+ * Use this function as an interface to any BIP32 (BIP44) library that
  * assumes that the purpose corresponds always to a legacy wallet even if the
  * wallet is being used to represent segwit addresses.
  *
  * In other words, use this tool to convert extended pubs that start with "xpub"
- * or "tpub" prefixes to the correct: "ypub", "zpub", or "upub" and "vpub".
+ * or "tpub" prefixes to: "ypub", "zpub", or "upub" and "vpub", respectively.
  *
  * Motivation: initially, BIP32 assumed that an extended pub would always start
  * with an "xpub" or "tpub" prefix for mainnet and test networks respectively.
@@ -52,26 +67,26 @@ export function fromSeed(seed, network = networks.bitcoin) {
  * `TPUBVERSION` bytes that were choosen so that the serialization would produce
  * "xpub" or "tpub" as an artifact.
  *
- * Then BIP49 and BIP84 appeared and added different version bytes to generate
- * ypub, zpub, upub and vpub prefixes. ypub/upub were used to specify nested
- * segwit wallets and vpub/zpub to specify native segwit.
+ * Then BIP49 and BIP84 appeared and proposed to add different version bytes to
+ * generate ypub, zpub, upub and vpub prefixes. ypub/upub were used to specify
+ * nested segwit wallets and vpub/zpub to specify native segwit.
  *
- * Some libs never adapted to this. This is a handy tool to be able to interact with
- * these libs.
+ * Some libs did not adopt these proposals.
+ * This is a handy tool to be able to interact with these libs.
  *
- * For example Ledger's javascript libraries will always expect to be passed an
+ * For example Ledger's javascript libraries expect to be passed an
  * xpub even when dealing with native Segwit wallets.
  *
- * Also bitcoin-js and bip32 npm packages always assume xpub and tpub too.
+ * Also bitcoinjs-lib/bip32 npm package always assume xpub and tpub too.
  *
- * Internally, FarVault works assuming always different BIP44, BIP49 and BIP84
- * prefixes.
+ * Note: Internally, FarVault works assuming always different BIP44, BIP49 and
+ * BIP84 prefixes.
  *
  * @param {object} params
  * @param {string} params.extPub An extended pub
  * @param {number} params.purpose The purpose we want to transform to: LEGACY,
  * NATIVE_SEGWIT or NESTED_SEGWIT
- * @param {object} params.network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
+ * @param {object} params.network [a network object]({@link networks#networks}).
  * @returns {string} extPub An extended pub converted to `purpose`
  */
 export function setExtPubPrefix({ extPub, purpose, network }) {
@@ -81,7 +96,7 @@ export function setExtPubPrefix({ extPub, purpose, network }) {
   data = data.slice(4);
   data = Buffer.concat([
     Buffer.from(
-      PUBVERSIONS[getNetworkCoinType(network)][purpose]
+      PUBVERSIONS[getNetworkId(network)][purpose]
         .toString(16)
         .padStart(PUBVERSIONSIZE, 0),
       'hex'
@@ -103,7 +118,7 @@ export function setExtPubPrefix({ extPub, purpose, network }) {
  * @param {string} params.extPub An extended pub key.
  * @param {number} params.index The index (an integer >= 0).
  * @param {boolean} params.isChange Whether it is a change address.
- * @param {object} [params.network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
+ * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}.
  * @returns {Buffer} a pubkey
  */
 export function deriveExtPub({
@@ -130,10 +145,10 @@ export function deriveExtPub({
  * See BIP44 to understand how to extract it: {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki}.
  * @param {object} params
  * @param {string} params.extPub An extended pub key.
- * @param {object} [params.network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
+ * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}.
  * @returns {number} The account number extracted
  */
-export function getExtPubAccountNumber({ extPub, network = networks.bitcoin }) {
+function getExtPubAccountNumber({ extPub, network = networks.bitcoin }) {
   checkExtPub({ extPub, network });
   const decoded = bjsBip32.fromBase58(
     setExtPubPrefix({ extPub, purpose: LEGACY, network }),
@@ -154,38 +169,17 @@ export function getExtPubAccountNumber({ extPub, network = networks.bitcoin }) {
  *
  * Note that the network is not needed to extract the purpose. It's optional.
  * Pass it if you want to make an additional check and make sure that the prefix
- * matches with the network
+ * matches with the network. For example regtest, signet or testnet networks
+ * must have prefix tpub/upub/ypub while bitcoin must have: xpub/ypub/zpub.
  * @param {object} params
  * @param {string} params.extPub An extended pub key string
- * @param {object} params.network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js). This is an optional parameter. Use it only to make an additional check and make sure that the extPub format matches this `network`
+ * @param {object} params.network A {@link module:networks.networks network}. This is an optional parameter. Use it only to make an additional check and make sure that the extPub format matches this `network`
  * @returns {string} The purpose. Can be LEGACY, NESTED_SEGWIT or NATIVE_SEGWIT
  */
-export function getExtPubPurpose({ extPub, network }) {
+function getExtPubPurpose({ extPub, network }) {
   checkExtPub({ extPub, network });
   const extPubType = extPub.slice(0, 4);
   return PURPOSES[extPubType];
-}
-
-/**
- * Gives back the account number used in a network.
- *
- * It assumes BIP44, BIP49 and BIP84 account-structures.
- *
- * It returns 0 for the Bitcoin mainnet and 1 for regtest and testnet networks.
- * @param {object} [network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js).
- * @returns {number} 0 for the Bitcoin mainnet and 1 for regtest and testnet
- * networks.
- */
-export function getNetworkCoinType(network = networks.bitcoin) {
-  if (network === networks.bitcoin) {
-    return BITCOIN_COINTYPE;
-  } else if (network === networks.testnet) {
-    return TESTNET_COINTYPE;
-  } else if (network === networks.regtest) {
-    return REGTEST_COINTYPE;
-  } else {
-    throw new Error('Unknown network');
-  }
 }
 
 /**
@@ -231,6 +225,7 @@ export function parseDerivationPath(path) {
   if (
     pathComponents[1] !== `${getNetworkCoinType(networks.bitcoin)}'` &&
     pathComponents[1] !== `${getNetworkCoinType(networks.testnet)}'` &&
+    pathComponents[1] !== `${getNetworkCoinType(networks.signet)}'` &&
     pathComponents[1] !== `${getNetworkCoinType(networks.regtest)}'`
   ) {
     throw new Error('Invalid coin type in path');
@@ -259,11 +254,11 @@ export function parseDerivationPath(path) {
 /**
  * Serializes a derivation path.
  *
- * It assumes BIP44, BIP49 and BIP84 account-structures.
+ * It assumes BIP44, BIP49 and BIP84 schemes.
  *
  * @param {object} params
  * @param {number} params.purpose LEGACY, NESTED_SEGWIT, or NATIVE_SEGWIT.
- * @param {number} params.coinType 0 for Bitcoin mainnet, 1 for regtest or testnet.
+ * @param {number} params.coinType 0 for Bitcoin mainnet, 1 for regtest, signet or testnet.
  * @param {number} params.accountNumber The account number as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
  * @param {boolean} params.isChange Whether this is a change address or not as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
  * @param {number} params.index The addres index within the account as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
@@ -280,9 +275,7 @@ export function serializeDerivationPath({
   //verify purpose, coinType and accountNumber:
   checkPurpose(purpose);
   if (
-    (coinType === TESTNET_COINTYPE ||
-      coinType === REGTEST_COINTYPE ||
-      coinType === BITCOIN_COINTYPE) === false ||
+    Object.values(COINTYPE).includes(coinType) === false ||
     Number.isSafeInteger(accountNumber) === false ||
     accountNumber < 0
   ) {
@@ -316,4 +309,100 @@ export function serializeDerivationPath({
   }
 
   return path;
+}
+
+/**
+ * Get a Bitcoin address from an exteneded pub.
+ *
+ * @param {object} params
+ * @param {string} params.extPub An extended pub key string.
+ * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}.
+ * @param {boolean} params.isChange Whether this is a change address or not as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
+ * @param {number} params.index The addres index within the account as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
+ *
+ * @returns {string} A Bitcoin address
+ */
+export function getExtPubAddress({
+  extPub,
+  isChange = false,
+  index = 0,
+  network = networks.bitcoin
+}) {
+  const purpose = getExtPubPurpose({ extPub, network });
+  let functionCall;
+  if (purpose === LEGACY) {
+    functionCall = getLegacyAddress;
+  } else if (purpose === NESTED_SEGWIT) {
+    functionCall = getNestedSegwitAddress;
+  } else if (purpose === NATIVE_SEGWIT) {
+    functionCall = getNativeSegwitAddress;
+  } else {
+    throw new Error('Invalid purpose!');
+  }
+  return functionCall({ extPub, isChange, index, network });
+}
+function getLegacyAddress({
+  extPub,
+  isChange = false,
+  index = 0,
+  network = networks.bitcoin
+}) {
+  if (extPub.slice(0, 4) !== XPUB && extPub.slice(0, 4) !== TPUB)
+    throw new Error('Not xpub or tpub');
+  return p2pkh({
+    pubkey: deriveExtPub({ extPub, index, isChange, network }),
+    network
+  }).address;
+}
+function getNestedSegwitAddress({
+  extPub,
+  isChange = false,
+  index = 0,
+  network = networks.bitcoin
+}) {
+  if (extPub.slice(0, 4) !== YPUB && extPub.slice(0, 4) !== UPUB)
+    throw new Error('Not ypub or upub');
+  return p2sh({
+    redeem: p2wpkh({
+      pubkey: deriveExtPub({ extPub, index, isChange, network }),
+      network
+    }),
+    network
+  }).address;
+}
+function getNativeSegwitAddress({
+  extPub,
+  isChange = false,
+  index = 0,
+  network = networks.bitcoin
+}) {
+  if (extPub.slice(0, 4) !== ZPUB && extPub.slice(0, 4) !== VPUB)
+    throw new Error('Not zpub or vpub');
+  return p2wpkh({
+    pubkey: deriveExtPub({ extPub, index, isChange, network }),
+    network
+  }).address;
+}
+
+/**
+ * Given an extended pub key it returns the `address` that
+ * corresponds to a derivation `path`.
+ *
+ * @async
+ * @param {object} params
+ * @param {module:HDInterface.getExtPub} params.extPubGetter An **async** function that resolves the extended pub key. Assumes bip44 paths.
+ * @param {string} params.path F.ex.: "84’/0’/0’/0/0", "m/44'/1'/10'/0/0",
+ * "m/49h/1h/8h/1/1"...
+ * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}
+ *
+ * @returns {Promise<string>} A Bitcoin address
+ */
+export async function getDerivationPathAddress({
+  extPubGetter,
+  path,
+  network = networks.bitcoin
+}) {
+  const { purpose, accountNumber, index, isChange } = parseDerivationPath(path);
+  const extPub = await extPubGetter({ purpose, accountNumber, network });
+  return getExtPubAddress({ extPub, index, isChange, network });
 }

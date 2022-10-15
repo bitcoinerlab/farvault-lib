@@ -47,7 +47,8 @@ const INVALID_TRANSACTION_FIXTURES = [];
 //We could mock the response from the device after the first run.¿?
 //
 
-import { payments, networks } from 'bitcoinjs-lib';
+import { payments } from 'bitcoinjs-lib';
+import { networks } from '../src/networks';
 import { LEGACY, NATIVE_SEGWIT, NESTED_SEGWIT } from '../src/constants';
 import { decodeTx } from '../src/decodeTx';
 
@@ -682,7 +683,7 @@ async function main() {
   )}.
 //Please do not edit it. Add tests to the script above instead.
 
-import { networks } from 'bitcoinjs-lib';
+import { networks } from '../../src/networks';
 const network = networks.regtest;
 export const fixtures = {
   network,

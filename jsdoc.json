@@ -5,6 +5,8 @@
     "include": [
       "src/",
       "src/HDInterface",
+      "src/bip44",
+      "src/secp256k1",
       "test",
       "test/fixtures",
       "test/integration"
@@ -13,7 +15,7 @@
     "excludePattern": "(^|\\/|\\\\)_"
   },
   "opts": {
-    "destination": "./docs/",
+    "destination": "../docs/farvault-lib/",
     "template": "node_modules/docdash"
   },
   "docdash": {
@@ -25,8 +27,8 @@
     "removeQuotes": "none",
     "scripts": [],
     "menu": {
-      "Github repo": {
-        "href": "https://github.com/farvault/farvault",
+      "Farvault-lib Github repo": {
+        "href": "https://github.com/farvault/farvault-lib",
         "target": "_blank",
         "class": "menu-item",
         "id": "repository"

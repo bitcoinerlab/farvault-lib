@@ -1,5 +1,6 @@
 import { mnemonicToSeed } from 'bip39';
-import { networks } from 'bitcoinjs-lib';
+import { networks, getNetworkId, getNetworkCoinType } from '../networks';
+
 export async function init(
   mnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
 ) {
@@ -8,12 +9,7 @@ export async function init(
 import { checkNetwork, checkPurpose, checkExtPub } from '../check';
 import memoize from 'lodash.memoize';
 
-import {
-  setExtPubPrefix,
-  getNetworkCoinType,
-  fromSeed,
-  serializeDerivationPath
-} from '../bip32';
+import { setExtPubPrefix, fromSeed, serializeDerivationPath } from '../bip44';
 
 export function getExtPub(
   seed,
@@ -49,7 +45,7 @@ const rootDerivePath = memoize(
   (seed, root, path, network) => root.derivePath(path),
   //The root directly depends from the seed and network:
   (seed, root, path, network) =>
-    seed.toString() + '_' + path + '_' + network.bip32.public.toString()
+    seed.toString() + '_' + path + '_' + getNetworkId(network)
 );
 
 export function createSigners(

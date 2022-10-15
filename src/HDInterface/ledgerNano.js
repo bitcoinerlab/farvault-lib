@@ -4,6 +4,7 @@ import LedgerTransport from '@ledgerhq/hw-transport-webusb';
 import LedgerTransportNodejs from '@ledgerhq/hw-transport-node-hid-noevents';
 import LedgerAppBtc from '@ledgerhq/hw-app-btc';
 import { NATIVE_SEGWIT, NESTED_SEGWIT, LEGACY } from '../constants';
+import { getNetworkId, getNetworkCoinType } from '../networks';
 import memoize from 'lodash.memoize';
 export const WEB_TRANSPORT = 'WEB_TRANSPORT';
 export const NODEJS_TRANSPORT = 'NODEJS_TRANSPORT';
@@ -21,11 +22,10 @@ import {
 import { checkNetwork, checkPurpose, checkExtPub } from '../check';
 import {
   setExtPubPrefix,
-  getNetworkCoinType,
   parseDerivationPath,
   deriveExtPub,
   serializeDerivationPath
-} from '../bip32';
+} from '../bip44';
 
 //https://github.com/LedgerHQ/ledgerjs/issues/122#issuecomment-568265915
 async function getApp(transport) {
@@ -133,17 +133,12 @@ export const getExtPub = memoize(
     '_' +
     accountNumber.toString() +
     '_' +
-    network.bip32.public.toString()
+    getNetworkId(network)
 );
 
 async function getPublicKey(ledgerAppBtc, path, network = networks.bitcoin) {
-  const {
-    purpose,
-    coinType,
-    accountNumber,
-    index,
-    isChange
-  } = parseDerivationPath(path);
+  const { purpose, coinType, accountNumber, index, isChange } =
+    parseDerivationPath(path);
   if (getNetworkCoinType(network) !== coinType) {
     throw new Error('Network mismatch');
   }
@@ -218,7 +213,7 @@ async function getUtxoSequence(ledgerAppBtc, utxo, network) {
  * @param {string} parameters.utxos[].tx The transaction serialized in hex.
  * @param {number} parameters.utxos[].n The vout index of the tx above.
  * @param {string} [parameters.utxos[].witnessScript] The witnessScript serialized in hex in case the utxo can be redeemed with an unlocking script.
- * @param {object} [parameters.network=networks.bitcoin] [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * @param {object} [parameters.network=networks.bitcoin] {@link module:networks.networks A network}
  */
 export async function createSigners(
   ledgerAppBtc,

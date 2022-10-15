@@ -1,9 +1,5 @@
-import {
-  LEGACY,
-  NATIVE_SEGWIT,
-  NESTED_SEGWIT
-} from '../../src/constants';
-import { networks } from 'bitcoinjs-lib';
+import { LEGACY, NATIVE_SEGWIT, NESTED_SEGWIT } from '../../src/constants';
+import { networks } from '../../src/networks';
 export const fixtures = {
   //Integration test:
   mnemonic:

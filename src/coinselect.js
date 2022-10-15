@@ -2,9 +2,10 @@
 
 import bjsCoinselect from 'coinselect';
 import bjsCoinselectSplit from 'coinselect/split';
-import { parseDerivationPath } from './bip32';
+import { parseDerivationPath } from './bip44';
 import { LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT } from './constants';
-import { networks, address as bjsAddress, Transaction } from 'bitcoinjs-lib';
+import { address as bjsAddress, Transaction } from 'bitcoinjs-lib';
+import { networks } from './networks';
 import { checkAddress } from './check';
 
 /**
@@ -37,14 +38,14 @@ import { checkAddress } from './check';
  * @param {string} parameters.utxos[].tx The transaction serialized in hex.
  * @param {number} parameters.utxos[].n The vout index of the tx above.
  * @param {Object[]} parameters.targets List of addresses to send funds.
- * If `targets.length === 1`' , and `targets[0].value` is `undefined`, then
+ * If `targets.length === 1` and `targets[0].value` is `undefined`, then
  * all funds will be sent to `targets[0].address`, while leaving an appropriate
  * amount for the fee.
  * @param {string} parameters.targets[].address The address to send funds.
  * @param {number} parameters.targets[].value Number of satoshis to send the address above.
  * @param {number} parameters.feeRate satoshis per vbyte. Must be `>= 1`. It will be rounded up. It is better to pay an extra 0.x satoshi/byte than be under-measuring and miss some cut off for some miner.
  * @param {function} parameters.changeAddress Async callback function that returns a string with a change address where change will go. Might not be called.
- * @param {Object} parameters.network A [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js). Default is testnet.
+ * @param {Object} parameters.network A {@link module:networks.networks network}. Default is bitcoin.
  * @returns {Promise<Object>} return
  * @returns {Object[]} return.utxos The subset of input utxos selected. Undefined if no solution is found.
  * @returns {Object[]} return.targets The input targets plus (if necessary) a new target for the change address. Undefined if no solution is found.
@@ -71,6 +72,7 @@ export async function coinselect({
     if (
       network !== networks.bitcoin &&
       network !== networks.regtest &&
+      network !== networks.signet &&
       network !== networks.testnet
     )
       throw new Error('Invalid network');
@@ -127,16 +129,6 @@ export async function coinselect({
       csTarget.value = target.value;
     }
     checkAddress(target.address, network);
-    //console.log('TRACE LENGTH', bjsAddress.toOutputScript(target.address, network).length);
-    //Read discussion:
-    //https://github.com/BlueWallet/BlueWallet/issues/4352#issuecomment-1102307443
-    //
-    //if (
-    //  (target.address.startsWith('bc1') && network === networks.bitcoin) ||
-    //  (target.address.startsWith('tb1') && network === networks.testnet) ||
-    //  (target.address.startsWith('bcrt1') && network === networks.regtest)
-    //) {
-    //console.log('TRACE LENGTH', bjsAddress.toOutputScript(target.address, network).length);
 
     csTarget.script = {
       length: bjsAddress.toOutputScript(target.address, network).length

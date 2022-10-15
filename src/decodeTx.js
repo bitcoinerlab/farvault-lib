@@ -1,4 +1,5 @@
-import { Transaction, address, script, networks } from 'bitcoinjs-lib';
+import { Transaction, address, script } from 'bitcoinjs-lib';
+import { networks, getNetworkId } from './networks';
 import memoize from 'lodash.memoize';
 
 //https://github.com/bitcoinjs/bitcoinjs-lib/issues/1606
@@ -37,5 +38,5 @@ export const decodeTx = memoize(
       }))
     };
   },
-  (hex, network = networks.bitcoin) => network.bip32.public.toString() + hex
+  (hex, network = networks.bitcoin) => getNetworkId(network) + hex
 );

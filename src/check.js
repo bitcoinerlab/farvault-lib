@@ -13,14 +13,13 @@ import {
   NATIVE_SEGWIT,
   PUBVERSIONSIZE,
   PUBVERSIONS,
-  BITCOIN_COINTYPE,
-  TESTNET_COINTYPE,
-  REGTEST_COINTYPE
+  PURPOSES
 } from './constants';
 
 //import { P2PKH, P2WPKH, P2SH_P2WPKH } from './accounts';
 
-import { networks, address as bjsAddress } from 'bitcoinjs-lib';
+import { address as bjsAddress } from 'bitcoinjs-lib';
+import { networks, getNetworkCoinType, getNetworkId } from './networks';
 
 import BIP32Factory from 'bip32';
 import * as ecc from './secp256k1';
@@ -38,7 +37,7 @@ import b58 from 'bs58check';
 
 /**
  * Throws an error if the network not valid.
- * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * @param {Object} network A {@link module:networks.networks network}.
  * @param {boolean} [includeRegtest=true] Include regtest in the pool of possible networks. Default is true.
  * @returns {boolean} If the function does not throw, then it always returns true.
  */
@@ -48,12 +47,17 @@ export function checkNetwork(network, includeRegtest = true) {
       typeof network !== 'object' ||
       (network !== networks.bitcoin &&
         network !== networks.testnet &&
-        network !== networks.regtest)
+        network !== networks.regtest &&
+        network !== networks.signet)
     )
-      throw new Error('Network must be mainnet, testnet or regtest');
+      throw new Error('Network must be mainnet, testnet, signet or regtest');
   } else {
-    if (network !== networks.bitcoin && network !== networks.testnet)
-      throw new Error('Network must be mainnet or testnet');
+    if (
+      network !== networks.bitcoin &&
+      network !== networks.testnet &&
+      network !== networks.signet
+    )
+      throw new Error('Network must be mainnet, signet or testnet');
   }
   return true;
 }
@@ -80,18 +84,18 @@ export function checkPurpose(purpose) {
  * * Makes sure it can be correctly decoded (using npm's bip32.fromBase58).
  * * Makes sure it has depth: 3 (conforms to BIP44, BIP49 & BIP84).
  * * It checks whether its coin type meets one of the supported networks:
- * Bitcoin mainnet, testnet or regtest.
+ * Bitcoin mainnet, testnet, signet or regtest.
  * * Optionally pass an accountNumber to check it's the one encoded in the extPub.
  * * Optionally pass a coinType (0 Bitcoin, 1 Testnet &  Regtest, ...) and checks
  * whether it belongs to the network (if passed) and it matches the prefix.
  *
  * @param {object} params
- * @param {string} params.extPub serialized extended pub
+ * @param {string} params.extPub serialized extended pub.
  * @param {number} params.coinType 44, 49 or 84 depending on the BIP used.
  * Optional if you don't want to check it.
  * @param {number} params.accountNumber Integer >= 0 corresponding to the account
  * number serialized in the extPub. Optional if you don't want to check it.
- * @param {Object} params.network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * @param {Object} params.network A {@link module:networks.networks network}.
  */
 export function checkExtPub({ extPub, coinType, accountNumber, network }) {
   if (
@@ -112,19 +116,12 @@ export function checkExtPub({ extPub, coinType, accountNumber, network }) {
 
   checkNetwork(network);
 
-  let _coinType;
-  if (network === networks.bitcoin) {
-    _coinType = BITCOIN_COINTYPE;
-  } else if (network === networks.testnet) {
-    _coinType = TESTNET_COINTYPE;
-  } else if (network === networks.regtest) {
-    _coinType = REGTEST_COINTYPE;
-  } else {
-    throw new Error(
-      'Invalid extPub. This wallet assumes Bitcoin mainnet, testnet or regtest only!'
-    );
-  }
-  if (!Object.values(EXTENDEDPUBTYPES[_coinType]).includes(extPubType))
+  let _coinType = getNetworkCoinType(network);
+  const networkId = getNetworkId(network);
+  //    throw new Error(
+  //      'Invalid extPub. This wallet assumes Bitcoin mainnet, testnet or regtest only!'
+  //    );
+  if (!Object.values(EXTENDEDPUBTYPES[networkId]).includes(extPubType))
     throw new Error(
       'Invalid extPub. The prefix of the extPub does not match with the network!' +
         ':' +
@@ -143,7 +140,7 @@ export function checkExtPub({ extPub, coinType, accountNumber, network }) {
   data = data.slice(4);
   data = Buffer.concat([
     Buffer.from(
-      PUBVERSIONS[coinType][LEGACY].toString(16).padStart(PUBVERSIONSIZE, 0),
+      PUBVERSIONS[networkId][LEGACY].toString(16).padStart(PUBVERSIONSIZE, 0),
       'hex'
     ),
     data
@@ -169,8 +166,8 @@ export function checkExtPub({ extPub, coinType, accountNumber, network }) {
  * Throws an error if the address or the network is not valid.
  *
  * Based on: [https://github.com/bitcoinjs/bitcoinjs-lib/issues/890](https://github.com/bitcoinjs/bitcoinjs-lib/issues/890)
- * @param {string} address Bitcoin address
- * @param {Object} network [bitcoinjs-lib network object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/networks.js)
+ * @param {string} address Bitcoin address.
+ * @param {Object} network A {@link module:networks.networks network}.
  * @returns {boolean} If the function does not throw, then it always returns true.
  */
 export function checkAddress(address, network) {
