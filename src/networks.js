@@ -42,13 +42,13 @@ export const getNetworkId = network => {
 };
 
 /**
- * Gives back the account number used in a network.
+ * Gives back the coin type used in a network.
  *
  * It assumes BIP44, BIP49 and BIP84 account-structures.
  *
  * It returns 0 for the Bitcoin mainnet and 1 for regtest and testnet networks.
  * @param {object} [network=networks.bitcoin] A {@link module:networks.networks network}.
- * @returns {number} 0 for the Bitcoin mainnet and 1 for regtest and testnet
+ * @returns {number} 0 for the Bitcoin mainnet and 1 for regtest, signet and testnet
  * networks.
  */
 export function getNetworkCoinType(network = networks.bitcoin) {
