@@ -1,11 +1,13 @@
 /**
- * All the methods in this module assume BIP32 HD address derivation according
- * to the BIP44 hierarchy.
+ * All the methods in this module assume
+ * {@link https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#Path_levels BIP32}
+ * HD address derivation and
+ * {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki#Path_levels BIP44 path levels}.
  *
- * In addition, they only assumes as valid purposes:
- * * Legacy (BIP44).
- * * Nested segwit (BIP49).
- * * Native segwit (BIP84).
+ * These are the only `purposes` supported by this module:
+ * * Legacy ({@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}).
+ * * Nested segwit ({@link https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki BIP49}).
+ * * Native segwit ({@link https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki BIP84}).
  *
  * @module bip44
  */
@@ -51,43 +53,58 @@ export function fromSeed(seed, network = networks.bitcoin) {
 
 /**
  * Converts and returns an extended pub to use a new `purpose` as defined in
- * BIP44. The `purpose` specifies whether the extended pub corresponds to a
+ * {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
+ * The `purpose` specifies whether the extended pub corresponds to a
  * legacy, nested or native segwit wallet.
  *
- * Use this function as an interface to any BIP32 (BIP44) library that
- * assumes that the purpose corresponds always to a legacy wallet even if the
- * wallet is being used to represent segwit addresses.
+ * Use this function as an interface to any
+ * {@link https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki BIP32}
+ * library that assumes the `purpose` is always that of a legacy wallet, even if the
+ * wallet is used to represent segwit addresses.
  *
  * In other words, use this tool to convert extended pubs that start with "xpub"
  * or "tpub" prefixes to: "ypub", "zpub", or "upub" and "vpub", respectively.
  *
- * Motivation: initially, BIP32 assumed that an extended pub would always start
+ * Converting the prefix is not as easy as changing the first 4 characters.
+ * Use this feature to manage conversions correctly.
+ *
+ * Motivation: initially,
+ * {@link https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki BIP32}
+ * assumed that an extended pub would always start
  * with an "xpub" or "tpub" prefix for mainnet and test networks respectively.
  * This is achieved by serializing some hardcoded `XPUBVERSION` and
  * `TPUBVERSION` bytes that were choosen so that the serialization would produce
  * "xpub" or "tpub" as an artifact.
  *
- * Then BIP49 and BIP84 appeared and proposed to add different version bytes to
+ * Then {@link https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki BIP49}
+ * and
+ * {@link https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki BIP84}
+ * appeared and proposed to add different version bytes to
  * generate ypub, zpub, upub and vpub prefixes. ypub/upub were used to specify
  * nested segwit wallets and vpub/zpub to specify native segwit.
  *
- * Some libs did not adopt these proposals.
+ * Some BIP32 libs do not allow these new prefixes since BIP32 does only define
+ * xpub and tpub.
+ *
  * This is a handy tool to be able to interact with these libs.
  *
- * For example Ledger's javascript libraries expect to be passed an
- * xpub even when dealing with native Segwit wallets.
+ * For example Ledger's javascript libraries returns an
+ * {@link https://github.com/LedgerHQ/ledger-live/tree/develop/libs/ledgerjs/packages/hw-app-btc#getwalletxpub xpub even when requesting Segwit accounts}.
  *
- * Also bitcoinjs-lib/bip32 npm package always assume xpub and tpub too.
+ * Also {@link https://github.com/bitcoinjs/bip32 bitcoinjs-lib/bip32} always
+ * assumes xpub or tpub.
  *
- * Note: Internally, FarVault works assuming always different BIP44, BIP49 and
- * BIP84 prefixes.
+ * Note: Internally, FarVault always uses different prefixes for
+ * {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44},
+ * {@link https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki BIP49}
+ * and {@link https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki BIP84}.
  *
  * @param {object} params
- * @param {string} params.extPub An extended pub
- * @param {number} params.purpose The purpose we want to transform to: LEGACY,
- * NATIVE_SEGWIT or NESTED_SEGWIT
- * @param {object} params.network [a network object]({@link networks#networks}).
- * @returns {string} extPub An extended pub converted to `purpose`
+ * @param {string} params.extPub An extended pub.
+ * @param {number} params.purpose The purpose we want to transform to: `LEGACY`,
+ * `NATIVE_SEGWIT` or `NESTED_SEGWIT`.
+ * @param {object} params.network A {@link module:networks.networks network}.
+ * @returns {string} extPub An extended pub converted to `purpose`.
  */
 export function setExtPubPrefix({ extPub, purpose, network }) {
   checkNetwork(network);
@@ -109,17 +126,19 @@ export function setExtPubPrefix({ extPub, purpose, network }) {
 }
 
 /**
- * Derives an extended pub key for a particular index and isChange option.
- * See BIP44 to understand the isChange and index parameters: {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki}.
+ * Derives an extended pub key for a particular `index` and `isChange`.
  *
- * Returns a pubkey (of type Buffer)
+ * See {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}
+ * to learn about `isChange` and `index` parameters.
+ *
+ * Returns a pubkey (of type `Buffer`).
  *
  * @param {object} params
  * @param {string} params.extPub An extended pub key.
  * @param {number} params.index The index (an integer >= 0).
  * @param {boolean} params.isChange Whether it is a change address.
  * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}.
- * @returns {Buffer} a pubkey
+ * @returns {Buffer} A pubkey.
  */
 export function deriveExtPub({
   extPub,
@@ -138,15 +157,17 @@ export function deriveExtPub({
 }
 
 /**
- * Takes an extended pub key and extracts its account number
+ * Takes an extended pub key and extracts its account number.
  *
- * It assumes BIP44, BIP49 and BIP84 account-structures.
+ * It assumes {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44},
+ * {@link https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki BIP49}
+ * or {@link https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki BIP84}
+ * derivation schemes.
  *
- * See BIP44 to understand how to extract it: {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki}.
  * @param {object} params
  * @param {string} params.extPub An extended pub key.
  * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}.
- * @returns {number} The account number extracted
+ * @returns {number} The extracted account number.
  */
 function getExtPubAccountNumber({ extPub, network = networks.bitcoin }) {
   checkExtPub({ extPub, network });
@@ -164,11 +185,15 @@ function getExtPubAccountNumber({ extPub, network = networks.bitcoin }) {
 }
 
 /** Extracts the purpose from an extended pub.
- * It assumes that the extended pub will have xpub, ypub, zpub, tpub, upub vpub
- * prefixes as defined in BIP44, BIP49 and BIP84.
  *
- * Note that the network is not needed to extract the purpose. It's optional.
- * Pass it if you want to make an additional check and make sure that the prefix
+ * It assumes that the extended pub will have xpub, ypub, zpub, tpub, upub vpub
+ * prefixes as defined in
+ * {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44},
+ * {@link https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki BIP49}
+ * and {@link https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki BIP84}.
+ *
+ * Note that the network is not needed to extract the `purpose`. It's an optional
+ * parameter. Pass it if you want to make an additional check and make sure that the prefix
  * matches with the network. For example regtest, signet or testnet networks
  * must have prefix tpub/upub/ypub while bitcoin must have: xpub/ypub/zpub.
  * @param {object} params
@@ -186,12 +211,16 @@ function getExtPubPurpose({ extPub, network }) {
  * Takes a string representation of a derivation path and returns the elements
  * that form it.
  *
- * It assumes BIP44, BIP49 and BIP84 account-structures.
+ * It assumes {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44},
+ * {@link https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki BIP49}
+ * or {@link https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki BIP84}
+ * derivation schemes.
  *
  * @param {string} path F.ex.: "84’/0’/0’/0/0" or "m/44'/1H/1h/0/0").
  * Note that "m/" is optional and h, H or ' can be used indistinctably.
  * @returns {object} Returns the `path` elements: `{ purpose: number, coinType: number, accountNumber:number, index:number, isChange:boolean }`.
- * See {@link module:bip32.serializeDerivationPath serializeDerivationPath} for further description of the types of the returned object elements.
+ *
+ * See {@link module:bip44.serializeDerivationPath serializeDerivationPath} for further description of the types of the returned object elements.
  */
 export function parseDerivationPath(path) {
   //No need to memoize it
@@ -254,16 +283,19 @@ export function parseDerivationPath(path) {
 /**
  * Serializes a derivation path.
  *
- * It assumes BIP44, BIP49 and BIP84 schemes.
+ * It assumes {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44},
+ * {@link https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki BIP49}
+ * or {@link https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki BIP84}
+ * derivation schemes.
  *
  * @param {object} params
- * @param {number} params.purpose LEGACY, NESTED_SEGWIT, or NATIVE_SEGWIT.
+ * @param {number} params.purpose `LEGACY`, `NESTED_SEGWIT` or `NATIVE_SEGWIT`.
  * @param {number} params.coinType 0 for Bitcoin mainnet, 1 for regtest, signet or testnet.
  * @param {number} params.accountNumber The account number as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
  * @param {boolean} params.isChange Whether this is a change address or not as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
  * @param {number} params.index The addres index within the account as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
  *
- * @returns {string} The serialized derivation path
+ * @returns {string} The serialized derivation path.
  */
 export function serializeDerivationPath({
   purpose,
@@ -320,7 +352,7 @@ export function serializeDerivationPath({
  * @param {boolean} params.isChange Whether this is a change address or not as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
  * @param {number} params.index The addres index within the account as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
  *
- * @returns {string} A Bitcoin address
+ * @returns {string} A Bitcoin address.
  */
 export function getExtPubAddress({
   extPub,
@@ -395,7 +427,7 @@ function getNativeSegwitAddress({
  * "m/49h/1h/8h/1/1"...
  * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}
  *
- * @returns {Promise<string>} A Bitcoin address
+ * @returns {Promise<string>} A Bitcoin address.
  */
 export async function getDerivationPathAddress({
   extPubGetter,
