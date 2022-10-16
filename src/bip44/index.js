@@ -54,8 +54,9 @@ export function fromSeed(seed, network = networks.bitcoin) {
 /**
  * Converts and returns an extended pub to use a new `purpose` as defined in
  * {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
+ *
  * The `purpose` specifies whether the extended pub corresponds to a
- * legacy, nested or native segwit wallet.
+ * legacy, nested or native segwit wallet specification.
  *
  * Use this function as an interface to any
  * {@link https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki BIP32}
@@ -64,9 +65,10 @@ export function fromSeed(seed, network = networks.bitcoin) {
  *
  * In other words, use this tool to convert extended pubs that start with "xpub"
  * or "tpub" prefixes to: "ypub", "zpub", or "upub" and "vpub", respectively.
+ * And vice-versa.
  *
- * Converting the prefix is not as easy as changing the first 4 characters.
- * Use this feature to manage conversions correctly.
+ * Note that converting the prefix is not as easy as changing the first 4 characters.
+ * Use this function to manage conversions correctly.
  *
  * Motivation: initially,
  * {@link https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki BIP32}
@@ -88,11 +90,11 @@ export function fromSeed(seed, network = networks.bitcoin) {
  *
  * This is a handy tool to be able to interact with these libs.
  *
- * For example Ledger's javascript libraries returns an
- * {@link https://github.com/LedgerHQ/ledger-live/tree/develop/libs/ledgerjs/packages/hw-app-btc#getwalletxpub xpub even when requesting Segwit accounts}.
+ * For example Ledger's javascript library returns an
+ * {@link https://github.com/LedgerHQ/ledger-live/tree/develop/libs/ledgerjs/packages/hw-app-btc#getwalletxpub "xpub" prefix even when requesting a Segwit account}.
  *
- * Also {@link https://github.com/bitcoinjs/bip32 bitcoinjs-lib/bip32} always
- * assumes xpub or tpub.
+ * Also {@link https://github.com/bitcoinjs/bip32 bitcoinjs-lib/bip32} 
+ * assumes only xpub or tpub prefixes.
  *
  * Note: Internally, FarVault always uses different prefixes for
  * {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44},

@@ -39,7 +39,7 @@ import { checkPurpose, checkNetwork } from '../check';
  * This means it orders all derivation paths by `coinType` in
  * ascending order (Bitcoin=0, Testnet=1), but if some have the same `coinType`
  * then it sorts them by `purpose` in ascending order (LEGACY=44,
- * NESTED_SEGWIT=49, NATIVE_SEGWIT=849), but if some have the same `purpose` it
+ * NESTED_SEGWIT=49, NATIVE_SEGWIT=84), but if some have the same `purpose` it
  * sorts them by `isChange` order (isChange=false, isChange=true), but if some
  * have the same `isChange` it sorts them by `index`.
  *
