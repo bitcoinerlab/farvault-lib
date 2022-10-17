@@ -251,8 +251,8 @@ async function createFixture({
   const tx = await createTransaction({
     utxos,
     targets,
-    createSigners: HDInterface.createSigners,
-    getPublicKey: HDInterface.getPublicKey,
+    createSigners: HDInterface.createSigners.bind(HDInterface),
+    getPublicKey: HDInterface.getPublicKey.bind(HDInterface),
     network
   });
   await regtestUtils.mine(prevBlocksToMine);

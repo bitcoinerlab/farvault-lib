@@ -87,7 +87,7 @@ export async function fundRegtest({
     });
     if (!paths[path]) paths.push(path);
     const address = await getDerivationPathAddress({
-      extPubGetter: HDInterface.getExtPub,
+      extPubGetter: HDInterface.getExtPub.bind(HDInterface),
       path,
       network
     });

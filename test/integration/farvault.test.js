@@ -83,7 +83,7 @@ describe('FarVault full pipe', () => {
         await new Promise(r => setTimeout(r, ESPLORA_CATCH_UP_TIME));
 
         const discovery = new Discovery({
-          extPubGetter: hotHDInterface.getExtPub,
+          extPubGetter: hotHDInterface.getExtPub.bind(hotHDInterface),
           utxoFetcher: address => esploraFetchUtxos(address),
           addressFetcher: address => esploraFetchAddress(address),
           forceFetchChange: true
@@ -114,7 +114,7 @@ describe('FarVault full pipe', () => {
         });
         expect(safePath).toEqual("84'/1'/0'/0/0");
         const safeAddress = await getDerivationPathAddress({
-          extPubGetter: safeHDInterface.getExtPub,
+          extPubGetter: safeHDInterface.getExtPub.bind(safeHDInterface),
           path: safePath,
           network
         });
@@ -197,7 +197,7 @@ describe('FarVault full pipe', () => {
             });
             prereservedPaths.push(path);
             return await getDerivationPathAddress({
-              extPubGetter: hotHDInterface.getExtPub,
+              extPubGetter: hotHDInterface.getExtPub.bind(hotHDInterface),
               path,
               network
             });
@@ -220,8 +220,8 @@ describe('FarVault full pipe', () => {
         const guardTx = await createTransaction({
           utxos: fundsUtxos,
           targets: guardTargets,
-          getPublicKey: hotHDInterface.getPublicKey,
-          createSigners: hotHDInterface.createSigners,
+          getPublicKey: hotHDInterface.getPublicKey.bind(hotHDInterface),
+          createSigners: hotHDInterface.createSigners.bind(hotHDInterface),
           network
         });
         const guardTxid = decodeTx(guardTx, network).txid;
@@ -254,8 +254,8 @@ describe('FarVault full pipe', () => {
             },
             network
           }).address,
-          getPublicKey: safeHDInterface.getPublicKey,
-          createSigners: safeHDInterface.createSigners,
+          getPublicKey: safeHDInterface.getPublicKey.bind(safeHDInterface),
+          createSigners: safeHDInterface.createSigners.bind(safeHDInterface),
           feeRateSamplingParams: { samples: MULTIFEE_SAMPLES },
           network
         });
@@ -265,7 +265,7 @@ describe('FarVault full pipe', () => {
 
         const hotAddress = await getDerivationPathAddress({
           //unlock will use hotHDInterface. cancel will use rushedHDInterface
-          extPubGetter: hotHDInterface.getExtPub,
+          extPubGetter: hotHDInterface.getExtPub.bind(hotHDInterface),
           //unlock will use hotHDInterface. cancel will use coldDerivationPath
           path: hotPath,
           network
@@ -289,8 +289,8 @@ describe('FarVault full pipe', () => {
               }
             ],
             address: hotAddress,
-            getPublicKey: maturedHDInterface.getPublicKey,
-            createSigners: maturedHDInterface.createSigners,
+            getPublicKey: maturedHDInterface.getPublicKey.bind(maturedHDInterface),
+            createSigners: maturedHDInterface.createSigners.bind(maturedHDInterface),
             feeRateSamplingParams: { samples: MULTIFEE_SAMPLES },
             network
           });
@@ -304,8 +304,8 @@ describe('FarVault full pipe', () => {
               }
             ],
             address: coldAddress,
-            getPublicKey: rushedHDInterface.getPublicKey,
-            createSigners: rushedHDInterface.createSigners,
+            getPublicKey: rushedHDInterface.getPublicKey.bind(rushedHDInterface),
+            createSigners: rushedHDInterface.createSigners.bind(rushedHDInterface),
             feeRateSamplingParams: { samples: MULTIFEE_SAMPLES },
             network
           });

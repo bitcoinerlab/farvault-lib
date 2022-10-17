@@ -1,5 +1,3 @@
-/** @module HDInterface/ledgerNano */
-
 import LedgerTransport from '@ledgerhq/hw-transport-webusb';
 import LedgerTransportNodejs from '@ledgerhq/hw-transport-node-hid-noevents';
 import LedgerAppBtc from '@ledgerhq/hw-app-btc';
@@ -41,62 +39,77 @@ async function getApp(transport) {
   return { name, version, flags };
 }
 
-export async function init(transport = WEB_TRANSPORT) {
-  if (transport !== WEB_TRANSPORT && transport !== NODEJS_TRANSPORT) {
-    throw new Error('Invalid transport');
-  }
-  let ledgerTransport;
-  try {
-    ledgerTransport =
-      transport === WEB_TRANSPORT
-        ? await LedgerTransport.create()
-        : await LedgerTransportNodejs.create();
-  } catch (error) {
-    if (error.id === 'NoDeviceFound') {
-      throw new Error(
-        'You must be plug in the LedgerNano Device into an USB port and enter the PIN code.'
-      );
+import { HDInterface } from './HDInterface';
+export class LedgerHDInterface extends HDInterface {
+  #transport;
+  #ledgerTransport;
+  #ledgerAppBtc;
+  #ledgerAppBtc_instanceId;
+  #ledgerAppBtc_name;
+  #ledgerAppBtc_version;
+  constructor({ transport }) {
+    super();
+    if (transport !== WEB_TRANSPORT && transport !== NODEJS_TRANSPORT) {
+      throw new Error('Invalid transport');
     } else {
-      throw new Error(error);
+      this.#transport = transport;
     }
-  }
-  const { name, version, flags } = await getApp(ledgerTransport);
-  if (name !== 'Bitcoin' && name !== 'Bitcoin Test') {
-    throw new Error(
-      name === 'BOLOS'
-        ? 'You have correclty plugged in the Ledger Nano device but you must open the Bitcoin App. Please open it and try again.'
-        : 'You have correclty plugged in the Ledger Nano device but you must open the Bitcoin App. Please, close the ' +
-          name +
-          ' App, open Bitcoin and try again.'
+
+    //Overwrite own method to allow memoization
+    this.getExtPub = memoize(
+      this.getExtPub,
+      //The memoize resolver: how to get a key from the params ->
+      ({ purpose, accountNumber, network = networks.bitcoin }) =>
+        this.#ledgerAppBtc_instanceId.toString() +
+        '_' +
+        purpose.toString() +
+        '_' +
+        accountNumber.toString() +
+        '_' +
+        getNetworkId(network)
     );
   }
-  const ledgerAppBtc = new LedgerAppBtc(ledgerTransport);
-  ledgerAppBtc.farvaultInternalInformation = {
-    instanceId: Date.now(),
-    name,
-    version
-  };
-  return { ledgerTransport, ledgerAppBtc };
-}
 
-export async function close(ledgerTransport) {
-  await ledgerTransport.close();
-}
+  async init() {
+    try {
+      this.#ledgerTransport =
+        this.#transport === WEB_TRANSPORT
+          ? await LedgerTransport.create()
+          : await LedgerTransportNodejs.create();
+    } catch (error) {
+      if (error.id === 'NoDeviceFound') {
+        throw new Error(
+          'You must be plug in the LedgerNano Device into an USB port and enter the PIN code.'
+        );
+      } else {
+        throw new Error(error);
+      }
+    }
+    const { name, version, flags } = await getApp(this.#ledgerTransport);
+    if (name !== 'Bitcoin' && name !== 'Bitcoin Test') {
+      throw new Error(
+        name === 'BOLOS'
+          ? 'You have correclty plugged in the Ledger Nano device but you must open the Bitcoin App. Please open it and try again.'
+          : 'You have correclty plugged in the Ledger Nano device but you must open the Bitcoin App. Please, close the ' +
+            name +
+            ' App, open Bitcoin and try again.'
+      );
+    }
+    this.#ledgerAppBtc = new LedgerAppBtc(this.#ledgerTransport);
+    this.#ledgerAppBtc_instanceId = Date.now();
+    this.#ledgerAppBtc_name = name;
+    this.#ledgerAppBtc_version = version;
+  }
 
-export const getExtPub = memoize(
-  async function (
-    ledgerAppBtc,
-    { purpose, accountNumber, network = networks.bitcoin }
-  ) {
+  async getExtPub({ purpose, accountNumber, network = networks.bitcoin }) {
     checkPurpose(purpose);
     checkNetwork(network);
     if (!Number.isInteger(accountNumber) || accountNumber < 0)
       throw new Error('Invalid accountNumber');
     if (
-      (network === networks.bitcoin &&
-        ledgerAppBtc.farvaultInternalInformation.name !== 'Bitcoin') ||
+      (network === networks.bitcoin && this.#ledgerAppBtc_name !== 'Bitcoin') ||
       ((network === networks.regtest || network === networks.testnet) &&
-        ledgerAppBtc.farvaultInternalInformation.name !== 'Bitcoin Test')
+        this.#ledgerAppBtc_name !== 'Bitcoin Test')
     ) {
       throw new Error(
         "There is a mismatch between Ledger's Nano App and the network requested."
@@ -104,7 +117,7 @@ export const getExtPub = memoize(
     }
 
     const extPub = setExtPubPrefix({
-      extPub: await ledgerAppBtc.getWalletXpub({
+      extPub: await this.#ledgerAppBtc.getWalletXpub({
         path: serializeDerivationPath({
           purpose,
           coinType: getNetworkCoinType(network),
@@ -124,225 +137,206 @@ export const getExtPub = memoize(
     });
     checkExtPub({ extPub, accountNumber, network });
     return extPub;
-  },
-  //The memoize resolver: how to get a key from the params ->
-  (ledgerAppBtc, { purpose, accountNumber, network = networks.bitcoin }) =>
-    ledgerAppBtc.farvaultInternalInformation.instanceId.toString() +
-    '_' +
-    purpose.toString() +
-    '_' +
-    accountNumber.toString() +
-    '_' +
-    getNetworkId(network)
-);
-
-async function getPublicKey(ledgerAppBtc, path, network = networks.bitcoin) {
-  const { purpose, coinType, accountNumber, index, isChange } =
-    parseDerivationPath(path);
-  if (getNetworkCoinType(network) !== coinType) {
-    throw new Error('Network mismatch');
   }
-  const extPub = await getExtPub(ledgerAppBtc, {
-    purpose,
-    accountNumber,
-    network
-  });
-  return deriveExtPub({ extPub, index, isChange, network });
-}
 
-/** Tries to obtain the lockTime from an utxo
- *
- * If the utxo has a witnessScript or redeemScript, then it parses the script
- * and checks if this is a script we know how to spend (a relativeTimeLockScript
- * for now)
- *
- * If this is a script that we know how to spend then it returns the appropriate
- * sequence.
- *
- * Otherwise it returns `undefined`.
- *
- * @param {object} ledgerAppBtc A [`'@ledgerhq/hw-app-btc'`](https://github.com/LedgerHQ/ledgerjs/tree/master/packages/hw-app-btc#btc) object
- * @param {object} utxo An utxo like this: `{path, witnessScript}`
- * @returns {number} A bip68 encoded sequence or `undefined`
- *
- */
-async function getUtxoSequence(ledgerAppBtc, utxo, network) {
-  let sequence = undefined;
-  let script = undefined;
-  if (typeof utxo.witnessScript === 'string') {
-    script = utxo.witnessScript;
-  }
-  if (typeof utxo.redeemScript === 'string') {
+  /** Tries to obtain the lockTime from an utxo
+   *
+   * If the utxo has a witnessScript or redeemScript, then it parses the script
+   * and checks if this is a script we know how to spend (a relativeTimeLockScript
+   * for now)
+   *
+   * If this is a script that we know how to spend then it returns the appropriate
+   * sequence.
+   *
+   * Otherwise it returns `undefined`.
+   *
+   * @param {object} utxo An utxo like this: `{path, witnessScript}`
+   * @returns {number} A bip68 encoded sequence or `undefined`
+   *
+   */
+  async #getUtxoSequence(utxo, network) {
+    let sequence = undefined;
+    let script = undefined;
     if (typeof utxo.witnessScript === 'string') {
+      script = utxo.witnessScript;
+    }
+    if (typeof utxo.redeemScript === 'string') {
+      if (typeof utxo.witnessScript === 'string') {
+        throw new Error(
+          'Cannot have redeemScript and witnessScript at the same time'
+        );
+      }
+      script = utxo.redeemScript;
+    }
+    if (typeof script !== 'undefined') {
+      const pubkey = await this.getPublicKey(utxo.path, network);
+      const unlockedScript = unlockScript({ script, pubkey });
+      if (unlockedScript === false) {
+        throw new Error('It is impossible to unlock this script');
+      }
+      sequence = unlockedScript.sequence;
+    }
+    return sequence;
+  }
+
+  /**
+   * Pass all the utxos that will be signed. The psbt may have more utxos.
+   * Also pass the psbt (still not finalized and unlocking scripts may have
+   * not been set yet. Just the basic psbt that can be signed.
+   *
+   * Read some discussion about the motivation behind this function [here](https://github.com/bitcoinjs/bitcoinjs-lib/issues/1517#issuecomment-1064914601).
+   *
+   * Utxos must include:
+   * * utxo.witnessScript for P2WSH pr P2SH-P2WSH
+   * * utxo.redeemScript for P2SH.
+   *
+   * The sequence is obtained from the locking script in witnessScript and redeemScript
+   * by parsing the script and comparing it with the known scripts that this
+   * wallet software can spend.
+   *
+   * @param {object} ledgerAppBtc A [`'@ledgerhq/hw-app-btc'`](https://github.com/LedgerHQ/ledgerjs/tree/master/packages/hw-app-btc#btc) object
+   * @param {objects} parameters
+   * @param {object} parameters.psbt [bitcoinjs-lib Psbt object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/psbt.js)
+   * @param {string} parameters.utxos[].path Derivation path. F.ex.: `44'/1'/1'/0/0`.
+   * @param {string} parameters.utxos[].tx The transaction serialized in hex.
+   * @param {number} parameters.utxos[].n The vout index of the tx above.
+   * @param {string} [parameters.utxos[].witnessScript] The witnessScript serialized in hex in case the utxo can be redeemed with an unlocking script.
+   * @param {object} [parameters.network=networks.bitcoin] {@link module:networks.networks A network}
+   */
+  async createSigners({ psbt, utxos, network = networks.bitcoin }) {
+    checkNetwork(network);
+    if (
+      (network === networks.bitcoin && this.#ledgerAppBtc_name !== 'Bitcoin') ||
+      ((network === networks.regtest || network === networks.testnet) &&
+        this.#ledgerAppBtc_name !== 'Bitcoin Test')
+    ) {
       throw new Error(
-        'Cannot have redeemScript and witnessScript at the same time'
+        "There is a mismatch between Ledger's Nano App and the network requested."
       );
     }
-    script = utxo.redeemScript;
-  }
-  if (typeof script !== 'undefined') {
-    const pubkey = await getPublicKey(ledgerAppBtc, utxo.path, network);
-    const unlockedScript = unlockScript({ script, pubkey });
-    if (unlockedScript === false) {
-      throw new Error('It is impossible to unlock this script');
-    }
-    sequence = unlockedScript.sequence;
-  }
-  return sequence;
-}
+    const tx = psbt.__CACHE.__TX; //It's a private param. May change in future.
 
-/**
- * Pass all the utxos that will be signed. The psbt may have more utxos.
- * Also pass the psbt (still not finalized and unlocking scripts may have
- * not been set yet. Just the basic psbt that can be signed.
- *
- * Read some discussion about the motivation behind this function [here](https://github.com/bitcoinjs/bitcoinjs-lib/issues/1517#issuecomment-1064914601).
- *
- * Utxos must include:
- * * utxo.witnessScript for P2WSH pr P2SH-P2WSH
- * * utxo.redeemScript for P2SH.
- *
- * The sequence is obtained from the locking script in witnessScript and redeemScript
- * by parsing the script and comparing it with the known scripts that this
- * wallet software can spend.
- *
- * @param {object} ledgerAppBtc A [`'@ledgerhq/hw-app-btc'`](https://github.com/LedgerHQ/ledgerjs/tree/master/packages/hw-app-btc#btc) object
- * @param {objects} parameters
- * @param {object} parameters.psbt [bitcoinjs-lib Psbt object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/psbt.js)
- * @param {string} parameters.utxos[].path Derivation path. F.ex.: `44'/1'/1'/0/0`.
- * @param {string} parameters.utxos[].tx The transaction serialized in hex.
- * @param {number} parameters.utxos[].n The vout index of the tx above.
- * @param {string} [parameters.utxos[].witnessScript] The witnessScript serialized in hex in case the utxo can be redeemed with an unlocking script.
- * @param {object} [parameters.network=networks.bitcoin] {@link module:networks.networks A network}
- */
-export async function createSigners(
-  ledgerAppBtc,
-  { psbt, utxos, network = networks.bitcoin }
-) {
-  checkNetwork(network);
-  if (
-    (network === networks.bitcoin &&
-      ledgerAppBtc.farvaultInternalInformation.name !== 'Bitcoin') ||
-    ((network === networks.regtest || network === networks.testnet) &&
-      ledgerAppBtc.farvaultInternalInformation.name !== 'Bitcoin Test')
-  ) {
-    throw new Error(
-      "There is a mismatch between Ledger's Nano App and the network requested."
-    );
-  }
-  const tx = psbt.__CACHE.__TX; //It's a private param. May change in future.
+    //See if any of the inputs is segwit. If an input is segwit then the tx
+    //is also segwit
+    const ledgerInputs = [];
 
-  //See if any of the inputs is segwit. If an input is segwit then the tx
-  //is also segwit
-  const ledgerInputs = [];
+    const segwitInputTypes = [];
 
-  const segwitInputTypes = [];
-
-  for (const utxo of utxos) {
-    if (typeof utxo.path === 'undefined') {
-      throw new Error('Must pass a path for signing an input');
-    }
-    if (utxo.witnessScript && utxo.redeemScript) {
-      throw new Error(
-        'Either pass a single utxo.path for P2PKH, P2SH-P2WPKH, P2WPKH. \
+    for (const utxo of utxos) {
+      if (typeof utxo.path === 'undefined') {
+        throw new Error('Must pass a path for signing an input');
+      }
+      if (utxo.witnessScript && utxo.redeemScript) {
+        throw new Error(
+          'Either pass a single utxo.path for P2PKH, P2SH-P2WPKH, P2WPKH. \
         Or utxo.path + utxo.witnessScript for P2WSH/P2SH-P2WSH. \
         Or utxo.path +  utxo.redeemScript for Legacy P2SH.'
+        );
+      }
+      const purpose =
+        !utxo.witnessScript &&
+        !utxo.redeemScript &&
+        parseDerivationPath(utxo.path).purpose;
+
+      const sequence = await this.#getUtxoSequence(this.#ledgerAppBtc, utxo, network);
+      let redeemScript;
+      if (purpose === NATIVE_SEGWIT || purpose === NESTED_SEGWIT) {
+        //The redeemScript for NESTED_SEGWIT and NATIVE_SEGWIT must be p2pkh
+        //for some reason?!?!?!?
+        //This has been thoroughly tested
+        const pubkey = await this.getPublicKey(utxo.path, network);
+        redeemScript = payments
+          .p2pkh({ pubkey, network })
+          .output.toString('hex');
+        segwitInputTypes.push(true);
+      } else if (purpose === LEGACY) {
+        redeemScript = undefined;
+        segwitInputTypes.push(false);
+      }
+      //Legacy P2SH (not P2SH-P2WSH)
+      else if (utxo.redeemScript) {
+        redeemScript = utxo.redeemScript;
+        segwitInputTypes.push(false);
+      }
+      //P2WSH or P2SH-P2WSH
+      else if (utxo.witnessScript) {
+        //Yeah, the redeemScript = witnessScript even for P2SH-P2WSH...
+        //This has been thoroughly tested
+        redeemScript = utxo.witnessScript;
+        segwitInputTypes.push(true);
+      } else {
+        throw new Error('redeemScript not implemented for this purpose');
+      }
+
+      ledgerInputs.push([
+        this.#ledgerAppBtc.splitTransaction(
+          utxo.tx,
+          Transaction.fromHex(utxo.tx).hasWitnesses()
+        ),
+        utxo.n,
+        ...(redeemScript ? [redeemScript] : []),
+        ...(sequence ? [sequence] : [])
+      ]);
+    }
+    const ledgerDerivationPaths = utxos.map(utxo => utxo.path);
+
+    const getLedgerTxSignatures = async isSegwit => {
+      const ledgerTx = this.#ledgerAppBtc.splitTransaction(
+        tx.toHex(),
+        isSegwit
+      );
+      const ledgerOutputScriptHex = this.#ledgerAppBtc
+        .serializeTransactionOutputs(ledgerTx)
+        .toString('hex');
+
+      const ledgerTxSignatures = await this.#ledgerAppBtc.signP2SHTransaction({
+        inputs: ledgerInputs,
+        associatedKeysets: ledgerDerivationPaths,
+        outputScriptHex: ledgerOutputScriptHex,
+        segwit: isSegwit,
+        transactionVersion: psbt.version
+      });
+      return ledgerTxSignatures;
+    };
+    let ledgerTxSignaturesSegwit, ledgerTxSignaturesLegacy;
+    //If one of the inputs was segwit we request the ledger device to sign a
+    //segwit tx as if all the utxos were segwit. This is a limitation with
+    //signP2SHTransaction. It forces to sign assuming everything is segwit/not seg.
+    //Later we will pair the correct signature with the correct utxo
+    if (segwitInputTypes.includes(true))
+      ledgerTxSignaturesSegwit = await getLedgerTxSignatures(true);
+    //If one of the inputs was NOT segwit we request the ledger device to sign a
+    //segwit tx as if all the utxos were NOT segwit.
+    if (segwitInputTypes.includes(false))
+      ledgerTxSignaturesLegacy = await getLedgerTxSignatures(false);
+
+    //This is were we match legacySignatures with legacy utxos and segwitSignatures
+    //with segwit utxos:
+    const ledgerTxSignatures = [];
+    for (let index = 0; index < utxos.length; index++) {
+      ledgerTxSignatures.push(
+        segwitInputTypes[index]
+          ? ledgerTxSignaturesSegwit[index]
+          : ledgerTxSignaturesLegacy[index]
       );
     }
-    const purpose =
-      !utxo.witnessScript &&
-      !utxo.redeemScript &&
-      parseDerivationPath(utxo.path).purpose;
 
-    const sequence = await getUtxoSequence(ledgerAppBtc, utxo, network);
-    let redeemScript;
-    if (purpose === NATIVE_SEGWIT || purpose === NESTED_SEGWIT) {
-      //The redeemScript for NESTED_SEGWIT and NATIVE_SEGWIT must be p2pkh
-      //for some reason?!?!?!?
-      //This has been thoroughly tested
-      const pubkey = await getPublicKey(ledgerAppBtc, utxo.path, network);
-      redeemScript = payments.p2pkh({ pubkey, network }).output.toString('hex');
-      segwitInputTypes.push(true);
-    } else if (purpose === LEGACY) {
-      redeemScript = undefined;
-      segwitInputTypes.push(false);
+    const signers = [];
+    for (let index = 0; index < utxos.length; index++) {
+      const ledgerSignature = ledgerTxSignatures[index];
+      const encodedSignature = segwitInputTypes[index]
+        ? Buffer.from(ledgerSignature, 'hex')
+        : Buffer.concat([
+            Buffer.from(ledgerSignature, 'hex'),
+            Buffer.from('01', 'hex') // SIGHASH_ALL
+          ]);
+      const decoded = script.signature.decode(encodedSignature);
+      signers.push(hash => decoded.signature);
     }
-    //Legacy P2SH (not P2SH-P2WSH)
-    else if (utxo.redeemScript) {
-      redeemScript = utxo.redeemScript;
-      segwitInputTypes.push(false);
-    }
-    //P2WSH or P2SH-P2WSH
-    else if (utxo.witnessScript) {
-      //Yeah, the redeemScript = witnessScript even for P2SH-P2WSH...
-      //This has been thoroughly tested
-      redeemScript = utxo.witnessScript;
-      segwitInputTypes.push(true);
-    } else {
-      throw new Error('redeemScript not implemented for this purpose');
-    }
-
-    ledgerInputs.push([
-      ledgerAppBtc.splitTransaction(
-        utxo.tx,
-        Transaction.fromHex(utxo.tx).hasWitnesses()
-      ),
-      utxo.n,
-      ...(redeemScript ? [redeemScript] : []),
-      ...(sequence ? [sequence] : [])
-    ]);
-  }
-  const ledgerDerivationPaths = utxos.map(utxo => utxo.path);
-
-  const getLedgerTxSignatures = async isSegwit => {
-    const ledgerTx = ledgerAppBtc.splitTransaction(tx.toHex(), isSegwit);
-    const ledgerOutputScriptHex = ledgerAppBtc
-      .serializeTransactionOutputs(ledgerTx)
-      .toString('hex');
-
-    const ledgerTxSignatures = await ledgerAppBtc.signP2SHTransaction({
-      inputs: ledgerInputs,
-      associatedKeysets: ledgerDerivationPaths,
-      outputScriptHex: ledgerOutputScriptHex,
-      segwit: isSegwit,
-      transactionVersion: psbt.version
-    });
-    return ledgerTxSignatures;
-  };
-  let ledgerTxSignaturesSegwit, ledgerTxSignaturesLegacy;
-  //If one of the inputs was segwit we request the ledger device to sign a
-  //segwit tx as if all the utxos were segwit. This is a limitation with
-  //signP2SHTransaction. It forces to sign assuming everything is segwit/not seg.
-  //Later we will pair the correct signature with the correct utxo
-  if (segwitInputTypes.includes(true))
-    ledgerTxSignaturesSegwit = await getLedgerTxSignatures(true);
-  //If one of the inputs was NOT segwit we request the ledger device to sign a
-  //segwit tx as if all the utxos were NOT segwit.
-  if (segwitInputTypes.includes(false))
-    ledgerTxSignaturesLegacy = await getLedgerTxSignatures(false);
-
-  //This is were we match legacySignatures with legacy utxos and segwitSignatures
-  //with segwit utxos:
-  const ledgerTxSignatures = [];
-  for (let index = 0; index < utxos.length; index++) {
-    ledgerTxSignatures.push(
-      segwitInputTypes[index]
-        ? ledgerTxSignaturesSegwit[index]
-        : ledgerTxSignaturesLegacy[index]
-    );
+    return signers;
   }
 
-  const signers = [];
-  for (let index = 0; index < utxos.length; index++) {
-    const ledgerSignature = ledgerTxSignatures[index];
-    const encodedSignature = segwitInputTypes[index]
-      ? Buffer.from(ledgerSignature, 'hex')
-      : Buffer.concat([
-          Buffer.from(ledgerSignature, 'hex'),
-          Buffer.from('01', 'hex') // SIGHASH_ALL
-        ]);
-    const decoded = script.signature.decode(encodedSignature);
-    signers.push(hash => decoded.signature);
+  async close() {
+    await this.#ledgerTransport.close();
   }
-  return signers;
 }

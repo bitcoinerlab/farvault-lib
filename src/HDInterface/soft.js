@@ -1,44 +1,10 @@
 import { mnemonicToSeed } from 'bip39';
 import { networks, getNetworkId, getNetworkCoinType } from '../networks';
 
-export async function init(
-  mnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
-) {
-  return await mnemonicToSeed(mnemonic);
-}
 import { checkNetwork, checkPurpose, checkExtPub } from '../check';
 import memoize from 'lodash.memoize';
 
 import { setExtPubPrefix, fromSeed, serializeDerivationPath } from '../bip44';
-
-export function getExtPub(
-  seed,
-  { purpose, accountNumber, network = networks.bitcoin }
-) {
-  //No need to memoize
-  checkPurpose(purpose);
-  checkNetwork(network);
-  if (!Number.isInteger(accountNumber) || accountNumber < 0)
-    throw new Error('Invalid accountNumber');
-
-  const root = fromSeed(seed, network);
-  const extPub = setExtPubPrefix({
-    extPub: root
-      .derivePath(
-        serializeDerivationPath({
-          purpose,
-          coinType: getNetworkCoinType(network),
-          accountNumber
-        })
-      )
-      .neutered()
-      .toBase58(),
-    purpose,
-    network
-  });
-  checkExtPub({ extPub, accountNumber, network });
-  return extPub;
-}
 
 //Create the cache-key for memoize with the seed:
 const rootDerivePath = memoize(
@@ -48,16 +14,54 @@ const rootDerivePath = memoize(
     seed.toString() + '_' + path + '_' + getNetworkId(network)
 );
 
-export function createSigners(
-  seed,
-  { psbt, utxos, network = networks.bitcoin }
-) {
-  const root = fromSeed(seed, network);
-  return utxos.map(utxo => $hash => {
-    const signature = rootDerivePath(seed, root, utxo.path, network).sign(
-      $hash
-    );
-    //console.log({signature: signature.toString('hex')});
-    return signature;
-  });
+import { HDInterface } from './HDInterface';
+export class SoftHDInterface extends HDInterface {
+  #mnemonic;
+  #seed;
+  constructor({ mnemonic }) {
+    super();
+    if (typeof mnemonic === 'undefined') {
+      console.log('WARNING: Using default mnemonic.');
+      this.#mnemonic =
+        'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+    } else this.#mnemonic = mnemonic;
+  }
+  async init() {
+    this.#seed = await mnemonicToSeed(this.#mnemonic);
+  }
+  createSigners({ psbt, utxos, network = networks.bitcoin }) {
+    const root = fromSeed(this.#seed, network);
+    return utxos.map(utxo => $hash => {
+      const signature = rootDerivePath(this.#seed, root, utxo.path, network).sign(
+        $hash
+      );
+      //console.log({signature: signature.toString('hex')});
+      return signature;
+    });
+  }
+  getExtPub({ purpose, accountNumber, network = networks.bitcoin }) {
+    //No need to memoize
+    checkPurpose(purpose);
+    checkNetwork(network);
+    if (!Number.isInteger(accountNumber) || accountNumber < 0)
+      throw new Error('Invalid accountNumber');
+
+    const root = fromSeed(this.#seed, network);
+    const extPub = setExtPubPrefix({
+      extPub: root
+        .derivePath(
+          serializeDerivationPath({
+            purpose,
+            coinType: getNetworkCoinType(network),
+            accountNumber
+          })
+        )
+        .neutered()
+        .toBase58(),
+      purpose,
+      network
+    });
+    checkExtPub({ extPub, accountNumber, network });
+    return extPub;
+  }
 }

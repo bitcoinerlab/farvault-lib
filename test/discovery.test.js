@@ -51,7 +51,7 @@ for (const valid of fixtures.discovery.valid) {
     let discovery;
     beforeAll(async () => {
       discovery = new Discovery({
-        extPubGetter: HDInterface.getExtPub,
+        extPubGetter: HDInterface.getExtPub.bind(HDInterface),
         addressFetcher: address => esploraFetchAddress(address),
         utxoFetcher: address => esploraFetchUtxos(address),
         network,
@@ -147,7 +147,7 @@ for (const valid of fixtures.discovery.valid) {
       'fetchUtxos and getUtxos on each account',
       async () => {
         const test_discovery = new Discovery({
-          extPubGetter: HDInterface.getExtPub,
+          extPubGetter: HDInterface.getExtPub.bind(HDInterface),
           addressFetcher: address => esploraFetchAddress(address),
           utxoFetcher: address => esploraFetchUtxos(address),
           network,
