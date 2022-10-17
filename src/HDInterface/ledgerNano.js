@@ -47,6 +47,7 @@ export class LedgerHDInterface extends HDInterface {
   #ledgerAppBtc_instanceId;
   #ledgerAppBtc_name;
   #ledgerAppBtc_version;
+  #ledgerAppBtc_flags;
   constructor({ transport }) {
     super();
     if (transport !== WEB_TRANSPORT && transport !== NODEJS_TRANSPORT) {
@@ -99,6 +100,7 @@ export class LedgerHDInterface extends HDInterface {
     this.#ledgerAppBtc_instanceId = Date.now();
     this.#ledgerAppBtc_name = name;
     this.#ledgerAppBtc_version = version;
+    this.#ledgerAppBtc_flags = flags;
   }
 
   async getExtPub({ purpose, accountNumber, network = networks.bitcoin }) {
@@ -238,7 +240,7 @@ export class LedgerHDInterface extends HDInterface {
         !utxo.redeemScript &&
         parseDerivationPath(utxo.path).purpose;
 
-      const sequence = await this.#getUtxoSequence(this.#ledgerAppBtc, utxo, network);
+      const sequence = await this.#getUtxoSequence(utxo, network);
       let redeemScript;
       if (purpose === NATIVE_SEGWIT || purpose === NESTED_SEGWIT) {
         //The redeemScript for NESTED_SEGWIT and NATIVE_SEGWIT must be p2pkh
