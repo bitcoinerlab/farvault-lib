@@ -1,11 +1,7 @@
 import { fixtures } from './fixtures/transactions';
 const { network, mnemonic } = fixtures;
-import {
-  initHDInterface,
-  LEDGER_NANO_INTERFACE,
-  SOFT_HD_INTERFACE,
-  NODEJS_TRANSPORT
-} from '../src/HDInterface';
+import { SoftHDInterface } from '../src/HDInterface/soft';
+import { LedgerHDInterface, NODEJS_TRANSPORT } from '../src/HDInterface/ledger';
 
 import {
   createTransaction,
@@ -16,28 +12,25 @@ import { decodeTx } from '../src/decodeTx';
 
 let ledgerHDInterface, softHDInterface;
 beforeAll(async () => {
-  if (process.env.__LEDGER_NANO_DETECTED__ === 'true') {
-    ledgerHDInterface = await initHDInterface(LEDGER_NANO_INTERFACE, {
-      transport: NODEJS_TRANSPORT,
-      mnemonic
-    });
+  if (process.env.__LEDGER_DETECTED__ === 'true') {
+    ledgerHDInterface = new LedgerHDInterface({ transport: NODEJS_TRANSPORT });
+    await ledgerHDInterface.init();
   }
-  softHDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
-    mnemonic
-  });
+  softHDInterface = new SoftHDInterface({ mnemonic });
+  await softHDInterface.init();
 }, 100 * 1000 /*increase the default timeout time*/);
 afterAll(async () => {
-  if (process.env.__LEDGER_NANO_DETECTED__ === 'true') {
+  if (process.env.__LEDGER_DETECTED__ === 'true') {
     await ledgerHDInterface.close();
   }
-  softHDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
-    mnemonic
-  });
+  softHDInterface = new SoftHDInterface({ mnemonic });
+  await softHDInterface.init();
 });
-
-for (const type of process.env.__LEDGER_NANO_DETECTED__ === 'true' //Note process.env stringifies stuff
-  ? [LEDGER_NANO_INTERFACE, SOFT_HD_INTERFACE]
-  : [SOFT_HD_INTERFACE]) {
+const LEDGER_INTERFACE = 'LEDGER_INTERFACE';
+const SOFT_INTERFACE = 'SOFT_INTERFACE';
+for (const type of process.env.__LEDGER_DETECTED__ === 'true' //Note process.env stringifies stuff
+  ? [LEDGER_INTERFACE, SOFT_INTERFACE]
+  : [SOFT_INTERFACE]) {
   describe(`Transactions on ${type}`, () => {
     for (const { description, utxos, targets, tx } of fixtures.createTransaction
       .valid) {
@@ -45,9 +38,7 @@ for (const type of process.env.__LEDGER_NANO_DETECTED__ === 'true' //Note proces
         description,
         async () => {
           const HDInterface =
-            type === LEDGER_NANO_INTERFACE
-              ? ledgerHDInterface
-              : softHDInterface;
+            type === LEDGER_INTERFACE ? ledgerHDInterface : softHDInterface;
           const _tx = await createTransaction({
             utxos,
             targets,
@@ -72,9 +63,7 @@ for (const type of process.env.__LEDGER_NANO_DETECTED__ === 'true' //Note proces
         'Inject bad signature to: ' + description,
         async () => {
           const HDInterface =
-            type === LEDGER_NANO_INTERFACE
-              ? ledgerHDInterface
-              : softHDInterface;
+            type === LEDGER_INTERFACE ? ledgerHDInterface : softHDInterface;
           const createInvalidSigners = async ({ psbt, utxos, network }) => {
             const signers = await HDInterface.createSigners({
               psbt,
@@ -106,9 +95,7 @@ for (const type of process.env.__LEDGER_NANO_DETECTED__ === 'true' //Note proces
         'Inject bad pubkey to: ' + description,
         async () => {
           const HDInterface =
-            type === LEDGER_NANO_INTERFACE
-              ? ledgerHDInterface
-              : softHDInterface;
+            type === LEDGER_INTERFACE ? ledgerHDInterface : softHDInterface;
           const getInvalidPublicKey = (path, network) => {
             return Buffer.from(
               '02783c942ac07f03a4c378ff6bd2cf8c99efc18bd1ae3cd37e6cd1ceca518bae2b',
@@ -141,9 +128,7 @@ for (const type of process.env.__LEDGER_NANO_DETECTED__ === 'true' //Note proces
         description,
         async () => {
           const HDInterface =
-            type === LEDGER_NANO_INTERFACE
-              ? ledgerHDInterface
-              : softHDInterface;
+            type === LEDGER_INTERFACE ? ledgerHDInterface : softHDInterface;
           await expect(
             createTransaction({
               utxos,
@@ -160,7 +145,7 @@ for (const type of process.env.__LEDGER_NANO_DETECTED__ === 'true' //Note proces
   });
 
   //Only test it using soft device. Otherwise this would be hell on a ledget nano
-  if (type === SOFT_HD_INTERFACE)
+  if (type === SOFT_INTERFACE)
     describe(`Multifee transactions with invalid HDInterface data on ${type}`, () => {
       //Just do it once for valid[0]
       if (fixtures.createTransaction.valid.length > 0) {

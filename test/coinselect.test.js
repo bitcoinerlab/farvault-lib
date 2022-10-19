@@ -2,7 +2,7 @@ import { coinselect } from '../src/coinselect';
 import { decodeTx } from '../src/decodeTx';
 import { parseDerivationPath } from '../src/bip44';
 import { LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT } from '../src/constants';
-import { initHDInterface, SOFT_HD_INTERFACE } from '../src/HDInterface';
+import { SoftHDInterface } from '../src/HDInterface/soft';
 import { fixtures } from './fixtures/coinselect';
 import { Psbt, payments } from 'bitcoinjs-lib';
 
@@ -52,9 +52,8 @@ describe('Coinselect', () => {
           );
         }
 
-        const HDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
-          mnemonic: fixture.mnemonic
-        });
+        const HDInterface = new SoftHDInterface({ mnemonic: fixture.mnemonic });
+        await HDInterface.init();
         const psbt = new Psbt({ network });
 
         for (const utxo of utxos) {

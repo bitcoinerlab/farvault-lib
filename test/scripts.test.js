@@ -7,8 +7,6 @@ import {
 } from '../src/scripts';
 const { numberEncodeAsm, scriptNumberDecode } = exportedForTesting;
 
-import { initHDInterface, SOFT_HD_INTERFACE } from '../src/HDInterface';
-
 import { fixtures } from './fixtures/scripts';
 
 describe('createRelativeTimeLockScript', () => {

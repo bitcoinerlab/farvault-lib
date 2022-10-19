@@ -27,7 +27,7 @@ import {
 import { createRelativeTimeLockScript } from '../../src/scripts';
 import { decodeTx } from '../../src/decodeTx';
 
-import { initHDInterface, SOFT_HD_INTERFACE } from '../../src/HDInterface';
+import { SoftHDInterface } from '../../src/HDInterface/soft';
 import { getDerivationPathAddress } from '../../src/bip44';
 import { Discovery } from '../../src/discovery';
 import { getNextDerivationPath } from '../../src/bip44/chain';
@@ -104,9 +104,10 @@ describe('FarVault full pipe', () => {
 
         //Create the safeAddress that will keep the funds safe.
         //We must not save this mnemonic below.
-        const safeHDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
+        const safeHDInterface = new SoftHDInterface({
           mnemonic: generateMnemonic(256)
         });
+        await safeHDInterface.init();
         const safePath = getNextDerivationPath({
           isChange: false,
           usedPaths: [],
@@ -119,9 +120,10 @@ describe('FarVault full pipe', () => {
           network
         });
 
-        const rushedHDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
+        const rushedHDInterface = new SoftHDInterface({
           mnemonic: generateMnemonic(256)
         });
+        await rushedHDInterface.init();
         const rushedPath = getNextDerivationPath({
           isChange: false,
           usedPaths: [],
@@ -133,9 +135,10 @@ describe('FarVault full pipe', () => {
           network
         );
 
-        const maturedHDInterface = await initHDInterface(SOFT_HD_INTERFACE, {
+        const maturedHDInterface = new SoftHDInterface({
           mnemonic: generateMnemonic(256)
         });
+        await maturedHDInterface.init();
         const maturedPath = getNextDerivationPath({
           isChange: false,
           usedPaths: [],
@@ -289,8 +292,10 @@ describe('FarVault full pipe', () => {
               }
             ],
             address: hotAddress,
-            getPublicKey: maturedHDInterface.getPublicKey.bind(maturedHDInterface),
-            createSigners: maturedHDInterface.createSigners.bind(maturedHDInterface),
+            getPublicKey:
+              maturedHDInterface.getPublicKey.bind(maturedHDInterface),
+            createSigners:
+              maturedHDInterface.createSigners.bind(maturedHDInterface),
             feeRateSamplingParams: { samples: MULTIFEE_SAMPLES },
             network
           });
@@ -304,8 +309,10 @@ describe('FarVault full pipe', () => {
               }
             ],
             address: coldAddress,
-            getPublicKey: rushedHDInterface.getPublicKey.bind(rushedHDInterface),
-            createSigners: rushedHDInterface.createSigners.bind(rushedHDInterface),
+            getPublicKey:
+              rushedHDInterface.getPublicKey.bind(rushedHDInterface),
+            createSigners:
+              rushedHDInterface.createSigners.bind(rushedHDInterface),
             feeRateSamplingParams: { samples: MULTIFEE_SAMPLES },
             network
           });

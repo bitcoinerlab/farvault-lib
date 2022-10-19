@@ -1,9 +1,5 @@
 import { startTestingEnvironment } from './tools';
-import {
-  initHDInterface,
-  LEDGER_NANO_INTERFACE,
-  NODEJS_TRANSPORT
-} from '../src/HDInterface';
+import { NODEJS_TRANSPORT, LedgerHDInterface } from '../src/HDInterface/ledger';
 module.exports = async function (globalConfig, projectConfig) {
   const start =
     globalConfig.testPathPattern === '' ||
@@ -18,14 +14,13 @@ module.exports = async function (globalConfig, projectConfig) {
       ? true
       : false;
 
-  process.env.__LEDGER_NANO_DETECTED__ = true;
+  process.env.__LEDGER_DETECTED__ = true;
   try {
-    const HDInterface = await initHDInterface(LEDGER_NANO_INTERFACE, {
-      transport: NODEJS_TRANSPORT
-    });
+    const HDInterface = new LedgerHDInterface({ transport: NODEJS_TRANSPORT });
+    await HDInterface.init();
     await HDInterface.close();
   } catch (err) {
-    process.env.__LEDGER_NANO_DETECTED__ = false;
+    process.env.__LEDGER_DETECTED__ = false;
   }
 
   globalThis.__TESTING_ENVIRONMENT__ = start

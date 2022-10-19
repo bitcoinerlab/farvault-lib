@@ -1,27 +1,20 @@
+import { HDInterface } from './HDInterface';
 import LedgerTransport from '@ledgerhq/hw-transport-webusb';
 import LedgerTransportNodejs from '@ledgerhq/hw-transport-node-hid-noevents';
 import LedgerAppBtc from '@ledgerhq/hw-app-btc';
 import { NATIVE_SEGWIT, NESTED_SEGWIT, LEGACY } from '../constants';
-import { getNetworkId, getNetworkCoinType } from '../networks';
+import { getNetworkId, getNetworkCoinType, networks } from '../networks';
 import memoize from 'lodash.memoize';
 export const WEB_TRANSPORT = 'WEB_TRANSPORT';
 export const NODEJS_TRANSPORT = 'NODEJS_TRANSPORT';
 import { unlockScript } from '../scripts';
 
-import {
-  //  crypto,
-  Transaction,
-  payments,
-  script,
-  address,
-  networks
-} from 'bitcoinjs-lib';
+import { Transaction, payments, script } from 'bitcoinjs-lib';
 
 import { checkNetwork, checkPurpose, checkExtPub } from '../check';
 import {
   setExtPubPrefix,
   parseDerivationPath,
-  deriveExtPub,
   serializeDerivationPath
 } from '../bip44';
 
@@ -39,7 +32,12 @@ async function getApp(transport) {
   return { name, version, flags };
 }
 
-import { HDInterface } from './HDInterface';
+/**
+ * Implements an interface to a Ledger device.
+ *
+ * It is derived from {@link HDInterface} and it implements all the methods
+ * described there.
+ */
 export class LedgerHDInterface extends HDInterface {
   #transport;
   #ledgerTransport;
@@ -48,6 +46,15 @@ export class LedgerHDInterface extends HDInterface {
   #ledgerAppBtc_name;
   #ledgerAppBtc_version;
   #ledgerAppBtc_flags;
+
+  /**
+   * Constructor
+   *
+   * @param {object} params
+   * @param {string} params.transport Either `NODEJS_TRANSPORT` for use on
+   * the command line or `WEB_TRANSPORT` for use in a browser-based
+   * implementation.
+   */
   constructor({ transport }) {
     super();
     if (transport !== WEB_TRANSPORT && transport !== NODEJS_TRANSPORT) {
@@ -71,6 +78,9 @@ export class LedgerHDInterface extends HDInterface {
     );
   }
 
+  /**
+   * Implements {@link HDInterface#init}.
+   */
   async init() {
     try {
       this.#ledgerTransport =
@@ -80,7 +90,7 @@ export class LedgerHDInterface extends HDInterface {
     } catch (error) {
       if (error.id === 'NoDeviceFound') {
         throw new Error(
-          'You must be plug in the LedgerNano Device into an USB port and enter the PIN code.'
+          'You must be plug in the Ledger Device into an USB port and enter the PIN code.'
         );
       } else {
         throw new Error(error);
@@ -90,8 +100,8 @@ export class LedgerHDInterface extends HDInterface {
     if (name !== 'Bitcoin' && name !== 'Bitcoin Test') {
       throw new Error(
         name === 'BOLOS'
-          ? 'You have correclty plugged in the Ledger Nano device but you must open the Bitcoin App. Please open it and try again.'
-          : 'You have correclty plugged in the Ledger Nano device but you must open the Bitcoin App. Please, close the ' +
+          ? 'You have correclty plugged in the Ledger device but you must open the Bitcoin App. Please open it and try again.'
+          : 'You have correclty plugged in the Ledger device but you must open the Bitcoin App. Please, close the ' +
             name +
             ' App, open Bitcoin and try again.'
       );
@@ -103,6 +113,9 @@ export class LedgerHDInterface extends HDInterface {
     this.#ledgerAppBtc_flags = flags;
   }
 
+  /**
+   * Implements {@link HDInterface#getExtPub}.
+   */
   async getExtPub({ purpose, accountNumber, network = networks.bitcoin }) {
     checkPurpose(purpose);
     checkNetwork(network);
@@ -114,7 +127,7 @@ export class LedgerHDInterface extends HDInterface {
         this.#ledgerAppBtc_name !== 'Bitcoin Test')
     ) {
       throw new Error(
-        "There is a mismatch between Ledger's Nano App and the network requested."
+        "There is a mismatch between Ledger's App and the network requested."
       );
     }
 
@@ -182,28 +195,7 @@ export class LedgerHDInterface extends HDInterface {
   }
 
   /**
-   * Pass all the utxos that will be signed. The psbt may have more utxos.
-   * Also pass the psbt (still not finalized and unlocking scripts may have
-   * not been set yet. Just the basic psbt that can be signed.
-   *
-   * Read some discussion about the motivation behind this function [here](https://github.com/bitcoinjs/bitcoinjs-lib/issues/1517#issuecomment-1064914601).
-   *
-   * Utxos must include:
-   * * utxo.witnessScript for P2WSH pr P2SH-P2WSH
-   * * utxo.redeemScript for P2SH.
-   *
-   * The sequence is obtained from the locking script in witnessScript and redeemScript
-   * by parsing the script and comparing it with the known scripts that this
-   * wallet software can spend.
-   *
-   * @param {object} ledgerAppBtc A [`'@ledgerhq/hw-app-btc'`](https://github.com/LedgerHQ/ledgerjs/tree/master/packages/hw-app-btc#btc) object
-   * @param {objects} parameters
-   * @param {object} parameters.psbt [bitcoinjs-lib Psbt object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/psbt.js)
-   * @param {string} parameters.utxos[].path Derivation path. F.ex.: `44'/1'/1'/0/0`.
-   * @param {string} parameters.utxos[].tx The transaction serialized in hex.
-   * @param {number} parameters.utxos[].n The vout index of the tx above.
-   * @param {string} [parameters.utxos[].witnessScript] The witnessScript serialized in hex in case the utxo can be redeemed with an unlocking script.
-   * @param {object} [parameters.network=networks.bitcoin] {@link module:networks.networks A network}
+   * Implements {@link HDInterface#createSigners}.
    */
   async createSigners({ psbt, utxos, network = networks.bitcoin }) {
     checkNetwork(network);
@@ -213,7 +205,7 @@ export class LedgerHDInterface extends HDInterface {
         this.#ledgerAppBtc_name !== 'Bitcoin Test')
     ) {
       throw new Error(
-        "There is a mismatch between Ledger's Nano App and the network requested."
+        "There is a mismatch between Ledger's App and the network requested."
       );
     }
     const tx = psbt.__CACHE.__TX; //It's a private param. May change in future.
@@ -338,6 +330,9 @@ export class LedgerHDInterface extends HDInterface {
     return signers;
   }
 
+  /**
+   * Implements {@link HDInterface#close}.
+   */
   async close() {
     await this.#ledgerTransport.close();
   }

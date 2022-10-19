@@ -2,11 +2,7 @@
 
 import fs from 'fs';
 const TESTING_SERVERS_COOKIE = '/tmp/farvault_testing_environment_started';
-import {
-  initHDInterface,
-  SOFT_HD_INTERFACE,
-  NODEJS_TRANSPORT
-} from '../src/HDInterface';
+import { SoftHDInterface } from '../src/HDInterface/soft';
 import {
   serializeDerivationPath,
   getDerivationPathAddress
@@ -46,7 +42,6 @@ import { COINTYPE, REGTEST } from '../src/constants';
   }`
  */
 export async function fundRegtest({
-  type = SOFT_HD_INTERFACE,
   mnemonic,
   fundingDescriptors,
   network = networks.regtest
@@ -54,10 +49,8 @@ export async function fundRegtest({
   if (network !== networks.regtest) {
     throw new Error('Tests are only run on a regtest chain');
   }
-  const HDInterface = await initHDInterface(type, {
-    mnemonic,
-    transport: NODEJS_TRANSPORT
-  });
+  const HDInterface = new SoftHDInterface({ mnemonic });
+  await HDInterface.init();
   const extPubs = [];
   const paths = [];
   const utxos = [];
