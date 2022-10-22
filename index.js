@@ -1,4 +1,3 @@
-//Do not export serialization since this is only web-based
 import * as dataFetchers from './src/dataFetchers';
 import * as transactions from './src/transactions';
 import * as scripts from './src/scripts';
@@ -9,9 +8,8 @@ import { LedgerHDInterface } from './src/HDInterface/ledger';
 import * as coinselect from './src/coinselect';
 import * as fees from './src/fees';
 import * as bip44 from './src/bip44';
-//import * as serialization from './src/serialization';
 import * as constants from './src/constants';
-import {networks} from './src/networks';
+import { networks } from './src/networks';
 const HDInterface = { SoftHDInterface, LedgerHDInterface };
 export {
   dataFetchers,
@@ -23,7 +21,6 @@ export {
   coinselect,
   fees,
   bip44,
-  //serialization,
   constants,
   networks
 };
