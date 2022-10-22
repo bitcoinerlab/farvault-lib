@@ -46,7 +46,22 @@ if (typeof ecc === 'object' && typeof ecc.then === 'function') {
   bjsBip32 = BIP32Factory(ecc);
 }
 
-//This is a bip32 pure method (not bip44)
+/**
+ * Takes a seed and returns an instance of a
+ * {@link https://github.com/bitcoinjs/bip32 bitcoinjs-lib BIP32} class
+ * represening a node.
+ *
+ * Use the returned instance to (among other things):
+ * derive paths (get other nodes), sign hashes, get public or private keys, ...
+ *
+ * The seed could have been created from bip39 (using {@link https://github.com/bitcoinjs/bip39/ mnemonicToSeed}) or not.
+ * We don't care at this point where it comes from.
+ *
+ * This is in fact a bip32 pure method (not bip44).
+ * @param {Buffer} seed
+ * @param {object} network A {@link module:networks.networks network}.
+ * @returns {object} An instance of a {@link https://github.com/bitcoinjs/bip32 bitcoinjs-lib BIP32} class for the root node.
+ */
 export function fromSeed(seed, network = networks.bitcoin) {
   return bjsBip32.fromSeed(seed, network);
 }
@@ -93,7 +108,7 @@ export function fromSeed(seed, network = networks.bitcoin) {
  * For example Ledger's javascript library returns an
  * {@link https://github.com/LedgerHQ/ledger-live/tree/develop/libs/ledgerjs/packages/hw-app-btc#getwalletxpub "xpub" prefix even when requesting a Segwit account}.
  *
- * Also {@link https://github.com/bitcoinjs/bip32 bitcoinjs-lib/bip32} 
+ * Also {@link https://github.com/bitcoinjs/bip32 bitcoinjs-lib/bip32}
  * assumes only xpub or tpub prefixes.
  *
  * Note: Internally, FarVault always uses different prefixes for

@@ -6,14 +6,14 @@ import { networks, getNetworkId, getNetworkCoinType } from '../networks';
 /**
  * Base Class implementing an interface to a HD wallet.
  *
- * This is an interface for developers adding more signing HD devices to
- * farvault-lib.
- *
- * As a dev, you are probably trying to use {@link SoftHDInterface}
+ * As a farvault-lib user, you are probably trying to use {@link SoftHDInterface}
  * (for a software based HD signing device) or {@link LedgerHDInterface} for a
  * Ledger Nano HD device.
  *
- * Derived classes must implement the methods described here which are not
+ * This is the base HD interface for farvault-lib. Devs adding more signing HD
+ * devices to farvault-lib must extend this class.
+ *
+ * Derived classes must implement the emtpy methods defined here which are not
  * implemented.
  *
  * Constructor parameters may differ in derived classes. The rest of the methods

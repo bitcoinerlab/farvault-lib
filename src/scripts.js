@@ -249,8 +249,9 @@ export function createRelativeTimeLockScript({
  * @param {string} parameters.script The locking script in hex
  * @param {Buffer} parameters.pubkey The public key that unlocks this script
  *
- * @returns {object|boolean} `false` if if cannot be parsed or
- * `{sequence, createUnlockingScripts}`
+ * @returns {object|boolean} `false` if the `script` cannot be parsed.
+ * If the `script` can be parsed, then this method returns 
+ * `{sequence, createUnlockingScripts}`,
  * where `sequence` is a `number` containing the bip68 encoded lock time and
  * `createUnlockingScript` is a callback function that you can pass a signature
  * and it will return the unlockingScript.
