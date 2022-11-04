@@ -46,25 +46,25 @@ describe('data check', () => {
 
   test('checkFeeEstimates', () => {
     expect(() => checkFeeEstimates('hello world')).toThrow(
-      'Invalid esplora fee estimates!'
+      'Invalid fee estimates!'
     );
     expect(() => checkFeeEstimates({ hello: 'world' })).toThrow(
-      'Invalid esplora fee estimates!'
+      'Invalid fee estimates!'
     );
     expect(() => checkFeeEstimates({ a: 123 })).toThrow(
-      'Invalid esplora fee estimates!'
+      'Invalid fee estimates!'
     );
     expect(() => checkFeeEstimates({ 12: 'a' })).toThrow(
-      'Invalid esplora fee estimates!'
+      'Invalid fee estimates!'
     );
     expect(() => checkFeeEstimates({ 12: 'a' })).toThrow(
-      'Invalid esplora fee estimates!'
+      'Invalid fee estimates!'
     );
     expect(() => checkFeeEstimates({ 12: 0 })).not.toThrow(
-      'Invalid esplora fee estimates!'
+      'Invalid fee estimates!'
     );
     expect(() => checkFeeEstimates({ 12: -1 })).toThrow(
-      'Invalid esplora fee estimates!'
+      'Invalid fee estimates!'
     );
     expect(
       checkFeeEstimates({

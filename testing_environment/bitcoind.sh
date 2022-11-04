@@ -15,6 +15,16 @@ mkdir -p /tmp/regtest1/bitcoind
 #bitcoind \
 #/Applications/Bitcoin\ Core\ 22.app/Contents/MacOS/Bitcoin-Qt \
 
+#-rpcworkqueue=32 for more throughput
+#See: https://github.com/bitcoinjs/regtest-server
+#Set -rpcthreads=100 if you plan to runs concurrent tests
+
+#user: farvault_user, password: farvault_passwd
+#rpcauth obtained using https://github.com/bitcoin/bitcoin/blob/master/share/rpcauth/rpcauth.py
+#or tools like this one: https://jlopp.github.io/bitcoin-core-rpc-auth-generator/
+#Note that you must scape the $ symbol -> https://github.com/bitcoin/bitcoin/issues/20057
+#-rpcauth=farvault_user:cda868f098032b9309dfa30f07e3c941\$6d50e3dd8eecc0dd311f6b2492df5937301ce7a319fb4696c890b91a289b692c
+
 /Applications/Bitcoin\ Core\ 22.app/Contents/MacOS/Bitcoin-Qt \
   -datadir=/tmp/regtest1/bitcoind \
   -regtest \
@@ -22,4 +32,6 @@ mkdir -p /tmp/regtest1/bitcoind
   -txindex \
   -fallbackfee=0.0002 \
   -zmqpubhashtx=tcp://127.0.0.1:30001 \
-  -zmqpubhashblock=tcp://127.0.0.1:30001
+  -zmqpubhashblock=tcp://127.0.0.1:30001 \
+  -rpcworkqueue=32
+

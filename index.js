@@ -1,4 +1,4 @@
-import * as dataFetchers from './src/dataFetchers';
+import * as explorer from './src/explorer';
 import * as transactions from './src/transactions';
 import * as scripts from './src/scripts';
 import * as discovery from './src/discovery';
@@ -12,7 +12,7 @@ import * as constants from './src/constants';
 import { networks } from './src/networks';
 const HDInterface = { SoftHDInterface, LedgerHDInterface };
 export {
-  dataFetchers,
+  explorer,
   transactions,
   scripts,
   discovery,

@@ -1,7 +1,8 @@
 import { stopTestingEnvironment } from './tools';
 module.exports = async function (globalConfig, projectConfig) {
-  if (globalThis.__TESTING_ENVIRONMENT__)
+  if (globalThis.__TESTING_ENVIRONMENT__) {
     await stopTestingEnvironment(globalThis.__TESTING_ENVIRONMENT__);
+  }
 
   if (process.env.__LEDGER_DETECTED__ === 'false') {
     //Note process.env stringifies stuff

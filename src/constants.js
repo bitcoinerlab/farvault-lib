@@ -94,7 +94,12 @@ export const GAP_ACCOUNT_LIMIT = 1;
 export const GAP_LIMIT = 20;
 export const VAULT_SKIP = 15; //How many addresses skip from latest used path
 
-export const BLOCKSTREAM_EXPLORER_BASEURL = 'https://blockstream.info';
-export const ESPLORA_BASEURL = 'http://127.0.0.1:3002';
+export const ESPLORA = 'ESPLORA';
+export const ELECTRUM = 'ELECTRUM';
+export const BLOCKSTREAM_ESPLORA_BASEURL = 'https://blockstream.info';
+export const LOCAL_ESPLORA_URL = 'http://127.0.0.1:3002';
+export const LOCAL_ELECTRUM_HOST = '127.0.0.1';
+export const LOCAL_ELECTRUM_PORT = 60401;
+export const LOCAL_ELECTRUM_PROTOCOL = 'tcp';
 
 export const PSBT_VERSION = 2;

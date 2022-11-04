@@ -1,10 +1,16 @@
-/** @module dataFetchers */
+/**
+ * This module is encapsulated in {@link Explorer}.
+ *
+ * There's no need to use it directly.
+ *
+ * @module esplora
+ **/
 
 import fetch from 'cross-fetch';
-import { BLOCKSTREAM_EXPLORER_BASEURL, ESPLORA_BASEURL } from './constants';
-import { networks } from './networks';
-import { checkNetwork, checkFeeEstimates } from './check';
+import { networks } from '../networks';
+import { checkNetwork, checkFeeEstimates } from '../check';
 
+import { BLOCKSTREAM_ESPLORA_BASEURL, LOCAL_ESPLORA_URL } from '../constants';
 async function esploraFetchJson(...args) {
   const response = await fetch(...args);
   if (response.status !== 200) {
@@ -44,7 +50,10 @@ async function esploraFetchText(...args) {
  * @returns {boolean} return.used Whether that address ever received sats.
  * @returns {number} return.balance Number of sats currently controlled by that address.
  */
-export async function esploraFetchAddress(address, baseUrl = ESPLORA_BASEURL) {
+export async function esploraFetchAddress(
+  address,
+  baseUrl = LOCAL_ESPLORA_URL
+) {
   if (typeof baseUrl !== 'string') {
     throw new Error('Please pass a valid baseUrl');
   }
@@ -71,7 +80,7 @@ export async function esploraFetchAddress(address, baseUrl = ESPLORA_BASEURL) {
  * @returns {Promise<Array>} An array of utxos objects like this: `[{ tx, n },...]`,
  * where `tx` is a string in hex format and `n` is an integer >= 0.
  */
-export async function esploraFetchUtxos(address, baseUrl = ESPLORA_BASEURL) {
+export async function esploraFetchUtxos(address, baseUrl = LOCAL_ESPLORA_URL) {
   const utxos = [];
   const fetchedUtxos = await esploraFetchJson(
     `${baseUrl}/address/${address}/utxo`
@@ -103,56 +112,18 @@ export async function esploraFetchUtxos(address, baseUrl = ESPLORA_BASEURL) {
  * { "1": 87.882, "2": 87.882, "3": 87.882, "4": 87.882, "5": 81.129, "6": 68.285, ..., "144": 1.027, "504": 1.027, "1008": 1.027 }
  * ```
  */
-export async function esploraFetchFeeEstimates(baseUrl = ESPLORA_BASEURL) {
+export async function esploraFetchFeeEstimates(baseUrl = LOCAL_ESPLORA_URL) {
   const feeEstimates = await esploraFetchJson(`${baseUrl}/fee-estimates`);
   checkFeeEstimates(feeEstimates);
   return feeEstimates;
 }
 
-function blockstreamBaseURL(network = networks.bitcoin) {
+export function blockstreamBaseURL(network = networks.bitcoin) {
   checkNetwork(network, false);
   if (network !== networks.bitcoin && network !== networks.testnet) {
     throw new Error('Blockstream API only available for maninnet or testnet');
   }
-  return `${BLOCKSTREAM_EXPLORER_BASEURL}/${
+  return `${BLOCKSTREAM_ESPLORA_BASEURL}/${
     network === networks.bitcoin ? '' : 'testnet/'
   }api`;
-}
-/**
- * Calls {@link module:dataFetchers.esploraFetchAddress esploraFetchAddress} particularized for blockstream's esplora
- * service.
- * @param {object} [network=networks.bitcoin] A {@link module:networks.networks network}.
- * Only works for bitcoin and testnet.
- * @param {string} address A Bitcoin address
- * @returns {boolean} return.used Whether that address ever received sats.
- * @returns {number} return.balance Number of sats currently controlled by that
- * address.
- */
-export function blockstreamFetchAddress(address, network = networks.bitcoin) {
-  checkNetwork(network);
-  return esploraFetchAddress(address, blockstreamBaseURL(network));
-}
-/**
- * Calls {@link module:dataFetchers.esploraFetchUtxos esploraFetchUtxos} particularized for blockstream's esplora
- * service.
- * @param {object} [network=networks.bitcoin] A {@link module:networks.networks network}.
- * Only works for bitcoin and testnet.
- * @param {string} address A Bitcoin address
- * @returns {Array} An array of utxos objects like this: `[{ tx, n },...]`,
- * where `tx` is a string in hex format and `n` is an integer >= 0.
- */
-export function blockstreamFetchUtxos(address, network = networks.bitcoin) {
-  return esploraFetchUtxos(address, blockstreamBaseURL(network));
-}
-/**
- * Calls {@link module:dataFetchers.esploraFetchFeeEstimates esploraFetchFeeEstimates} particularized for blockstream's
- * esplora service.
- * @param {object} [network=networks.bitcoin] A {@link module:networks.networks network}.
- * Only works for bitcoin and testnet.
- * @returns {Object} An object where the key is the confirmation target
- * (in number of blocks).
- */
-export function blockstreamFetchFeeEstimates(network = networks.bitcoin) {
-  checkNetwork(network, false);
-  return esploraFetchFeeEstimates(blockstreamBaseURL(network));
 }

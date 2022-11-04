@@ -67,7 +67,7 @@ export function feeRateSampling({
  * Pick a fee rate in sats per vbyte, given:
  * * An Object indexing different fees per number of blocks.
  *   The Object must match the format as the one returned by
- *   {@link module:dataFetchers.esploraFetchFeeEstimates esploraFetchFeeEstimates}.
+ *   {@link module:explorer.esploraFetchFeeEstimates esploraFetchFeeEstimates}.
  * * Time to wait (in seconds).
  *
  * This method will pick the fee corresponding to the earlier block (not the
@@ -76,17 +76,18 @@ export function feeRateSampling({
  * not 2.
  *
  * This method assumes 10 minute blocks.
- * @param {Object} esploraFeeEstimates See the returned value of {@link module:dataFetchers.esploraFetchFeeEstimates esploraFetchFeeEstimates}.
+ * @param {Object} esploraFeeEstimates See the returned value of {@link module:explorer.esploraFetchFeeEstimates esploraFetchFeeEstimates}.
  * @param {number} targetTime Number of seconds to wait for the tx to be
  * accepted.
  * @returns {number} The fee rate in sats per vbyte.
  */
-export function pickEsploraFeeEstimate(esploraFeeEstimates, targetTime) {
+export function pickFeeEstimate(esploraFeeEstimates, targetTime) {
   checkFeeEstimates(esploraFeeEstimates);
   if (!Number.isSafeInteger(targetTime) || targetTime < 0)
     throw new Error('Invalid targetTime!');
 
   const block = Object.keys(esploraFeeEstimates)
+    .map(block => Number(block))
     .sort()
     .reverse()
     .find(block => block <= Math.max(targetTime / 600 + Number.EPSILON, 1));

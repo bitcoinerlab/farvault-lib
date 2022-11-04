@@ -194,7 +194,7 @@ export function checkAddress(address, network) {
  * @returns {boolean} If the function does not throw, then it always returns true.
  */
 export function checkFeeEstimates(feeEstimates) {
-  const error = 'Invalid esplora fee estimates!';
+  const error = 'Invalid fee estimates!';
   if (
     typeof feeEstimates !== 'object' ||
     Object.keys(feeEstimates).length === 0

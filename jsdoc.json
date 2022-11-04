@@ -5,6 +5,7 @@
     "include": [
       "src/",
       "src/HDInterface",
+      "src/explorer",
       "src/bip44",
       "src/secp256k1",
       "test",

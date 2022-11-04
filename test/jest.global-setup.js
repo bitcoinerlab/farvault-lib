@@ -4,13 +4,15 @@ module.exports = async function (globalConfig, projectConfig) {
   const start =
     globalConfig.testPathPattern === '' ||
     globalConfig.testPathPattern.indexOf('farvault.test.js') !== -1 ||
-    globalConfig.testPathPattern.indexOf('discovery.test.js') !== -1
+    globalConfig.testPathPattern.indexOf('discovery.test.js') !== -1 ||
+    globalConfig.testPathPattern.indexOf('explorer.test.js') !== -1
       ? true
       : false;
   const startElectrs =
     globalConfig.testPathPattern === '' ||
     globalConfig.testPathPattern.indexOf('farvault.test.js') !== -1 ||
-    globalConfig.testPathPattern.indexOf('discovery.test.js') !== -1
+    globalConfig.testPathPattern.indexOf('discovery.test.js') !== -1 ||
+    globalConfig.testPathPattern.indexOf('explorer.test.js') !== -1
       ? true
       : false;
 

@@ -16,6 +16,7 @@ const regtestUtils = new RegtestUtils(bJs);
 
 export const BITCOIND_CATCH_UP_TIME = 2000;
 export const REGTEST_SERVER_CATCH_UP_TIME = 1000;
+export const ESPLORA_CATCH_UP_TIME = 10000;
 
 import { COINTYPE, REGTEST } from '../src/constants';
 
@@ -48,6 +49,10 @@ export async function fundRegtest({
 }) {
   if (network !== networks.regtest) {
     throw new Error('Tests are only run on a regtest chain');
+  }
+  const height = await regtestUtils.height();
+  if (height < 432) {
+    throw new Error('regtest-server works better after more mature blocks');
   }
   const HDInterface = new SoftHDInterface({ mnemonic });
   await HDInterface.init();

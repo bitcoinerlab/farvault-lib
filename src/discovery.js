@@ -16,7 +16,6 @@ import {
   getDerivationPathAddress
 } from './bip44';
 
-import { blockstreamFetchAddress, blockstreamFetchUtxos } from './dataFetchers';
 import { checkNetwork, checkExtPub } from './check';
 
 import { Transaction } from 'bitcoinjs-lib';
@@ -31,8 +30,7 @@ export class Discovery {
    * @param {HDInterface#getExtPub} params.extPubGetter An **async** function that resolves an extended pub key.
    * @param {number} [params.gapAccountLimit=GAP_ACCOUNT_LIMIT] The gap account limit: Number of consecutive unused accounts that can be hit. If the software hits `gapAccountLimit` unused accounts in a row, it expects there are no used accounts beyond this point.
    * @param {number} [params.gapLimit=GAP_LIMIT] The gap limit. See [BIP44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki#Address_gap_limit).
-   * @param {function} [params.addressFetcher=blockstreamFetchAddress] A function that conforms to {@link module:dataFetchers.esploraFetchAddress esploraFetchAddress} interface.
-   * @param {function} [params.utxoFetcher=blockstreamFetchUtxos] A function that conforms to {@link module:dataFetchers.esploraFetchUtxos esploraFetchUtxos} interface.
+   * @param {object} params.explorer An instance of {@link Explorer}.
    * @param {number} [params.forceFetchChange=false] Change (also called internal) addresses will not be fetched if external addresses never received any Bitcoin. Can change this behaviour by forcing change addresses to be fetched even if an account never received any Bitcoin.
    * @param {function} [walletChanged] A callback function that will be called
    * everytime a new utxo is added or when the balance in a derivation path
@@ -46,8 +44,7 @@ export class Discovery {
     walletChanged,
     gapAccountLimit = GAP_ACCOUNT_LIMIT,
     gapLimit = GAP_LIMIT,
-    addressFetcher = blockstreamFetchAddress,
-    utxoFetcher = blockstreamFetchUtxos,
+    explorer,
     forceFetchChange = false
   }) {
     Object.assign(this, {
@@ -55,8 +52,7 @@ export class Discovery {
       extPubGetter,
       gapAccountLimit,
       gapLimit,
-      addressFetcher,
-      utxoFetcher,
+      explorer,
       forceFetchChange
     });
   }
@@ -303,7 +299,7 @@ export class Discovery {
         index++
       ) {
         const address = getExtPubAddress({ extPub, index, isChange, network });
-        const { used, balance } = await this.addressFetcher(address, network);
+        const { used, balance } = await this.explorer.fetchAddress(address);
         const path = serializeDerivationPath({
           purpose,
           coinType,
@@ -378,7 +374,7 @@ export class Discovery {
             path: path.path,
             network
           });
-          const utxos = await this.utxoFetcher(address);
+          const utxos = await this.explorer.fetchUtxos(address);
           this.#utxosFound({
             utxos,
             network,

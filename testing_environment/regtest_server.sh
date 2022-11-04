@@ -1,6 +1,8 @@
 #!/bin/sh
 rm -rf /tmp/regtest1/regtest-server
 mkdir -p /tmp/regtest1/regtest-server/regtest-data
+#"satoshi" is the default password. See:
+#https://github.com/bitcoinjs/regtest-client/blob/master/src/index.js
 echo "satoshi" > /tmp/regtest1/regtest-server/regtest-data/KEYS
 export RPCCOOKIE=/tmp/regtest1/bitcoind/regtest/.cookie
 export KEYDB=/tmp/regtest1/regtest-server/regtest-data/KEYS

@@ -2,14 +2,16 @@ import { fixtures } from './fixtures/discovery';
 import { Discovery } from '../src/discovery';
 import { parseDerivationPath } from '../src/bip44';
 
-import { esploraFetchAddress, esploraFetchUtxos } from '../src/dataFetchers';
 import {
   fundRegtest,
   BITCOIND_CATCH_UP_TIME,
-  REGTEST_SERVER_CATCH_UP_TIME
+  REGTEST_SERVER_CATCH_UP_TIME,
+  ESPLORA_CATCH_UP_TIME
 } from './tools';
 const DISCOVERY_TIME = 60000; //60 secs
-const ESPLORA_CATCH_UP_TIME = 10000;
+
+import { ESPLORA, LOCAL_ESPLORA_URL } from '../src/constants';
+import { Explorer } from '../src/explorer';
 
 let HDInterface, walletUtxos;
 beforeAll(async () => {
@@ -52,8 +54,11 @@ for (const valid of fixtures.discovery.valid) {
     beforeAll(async () => {
       discovery = new Discovery({
         extPubGetter: HDInterface.getExtPub.bind(HDInterface),
-        addressFetcher: address => esploraFetchAddress(address),
-        utxoFetcher: address => esploraFetchUtxos(address),
+        explorer: new Explorer({
+          service: ESPLORA,
+          url: LOCAL_ESPLORA_URL,
+          network
+        }),
         network,
         gapLimit: valid.gapLimit,
         forceFetchChange: valid.forceFetchChange,
@@ -148,8 +153,11 @@ for (const valid of fixtures.discovery.valid) {
       async () => {
         const test_discovery = new Discovery({
           extPubGetter: HDInterface.getExtPub.bind(HDInterface),
-          addressFetcher: address => esploraFetchAddress(address),
-          utxoFetcher: address => esploraFetchUtxos(address),
+          explorer: new Explorer({
+            service: ESPLORA,
+            url: LOCAL_ESPLORA_URL,
+            network
+          }),
           network,
           gapLimit: valid.gapLimit,
           forceFetchChange: valid.forceFetchChange,

@@ -18,7 +18,8 @@ import { generateMnemonic } from 'bip39';
 import {
   fundRegtest,
   BITCOIND_CATCH_UP_TIME,
-  REGTEST_SERVER_CATCH_UP_TIME
+  REGTEST_SERVER_CATCH_UP_TIME,
+  ESPLORA_CATCH_UP_TIME
 } from '../tools';
 import {
   createTransaction,
@@ -29,21 +30,16 @@ import { decodeTx } from '../../src/decodeTx';
 
 import { SoftHDInterface } from '../../src/HDInterface/soft';
 import { getDerivationPathAddress } from '../../src/bip44';
+import { Explorer } from '../../src/explorer';
 import { Discovery } from '../../src/discovery';
 import { getNextDerivationPath } from '../../src/bip44/chain';
-import { VAULT_SKIP } from '../../src/constants';
-import {
-  blockstreamFetchFeeEstimates,
-  esploraFetchAddress,
-  esploraFetchUtxos
-} from '../../src/dataFetchers';
+import { VAULT_SKIP, ESPLORA, LOCAL_ESPLORA_URL } from '../../src/constants';
 import { coinselect } from '../../src/coinselect';
 
 import { fixtures } from '../fixtures/farvault';
 
-import { pickEsploraFeeEstimate } from '../../src/fees';
+import { pickFeeEstimate } from '../../src/fees';
 
-const ESPLORA_CATCH_UP_TIME = 10000;
 const TEST_TIME = 120000;
 
 import bip68 from 'bip68';
@@ -82,10 +78,15 @@ describe('FarVault full pipe', () => {
         //Give esplora some time to catch up
         await new Promise(r => setTimeout(r, ESPLORA_CATCH_UP_TIME));
 
+        const blockstreamExplorer = new Explorer({ service: ESPLORA });
+        const localExplorer = new Explorer({
+          service: ESPLORA,
+          url: LOCAL_ESPLORA_URL
+        });
+
         const discovery = new Discovery({
           extPubGetter: hotHDInterface.getExtPub.bind(hotHDInterface),
-          utxoFetcher: address => esploraFetchUtxos(address),
-          addressFetcher: address => esploraFetchAddress(address),
+          explorer: localExplorer,
           forceFetchChange: true
         });
         await discovery.fetch(network);
@@ -171,11 +172,8 @@ describe('FarVault full pipe', () => {
           network
         );
 
-        const feeEstimates = await blockstreamFetchFeeEstimates();
-        const guardTxFeeRate = pickEsploraFeeEstimate(
-          feeEstimates,
-          guardTxTargetTime
-        );
+        const feeEstimates = await blockstreamExplorer.fetchFeeEstimates();
+        const guardTxFeeRate = pickFeeEstimate(feeEstimates, guardTxTargetTime);
 
         //Get which utxos will be protected. utxos are selected based on
         //the number of sats (safeValue) that the user selected
@@ -337,7 +335,7 @@ describe('FarVault full pipe', () => {
         //CREATE A FUNCTION IN FEES FOR THIS BLOCK
         //
         //
-        const unlockTxFeeRate = pickEsploraFeeEstimate(
+        const unlockTxFeeRate = pickFeeEstimate(
           feeEstimates,
           unlockTxTargetTime
         );

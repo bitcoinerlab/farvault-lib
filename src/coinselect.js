@@ -17,7 +17,7 @@ import { checkAddress } from './check';
  * adding Segwit support and automatically detecting if the user wants to send
  * max-funds to an address.
  *
- * It builds on ideas from [Bluewallet](https://github.com/BlueWallet/BlueWallet/)'s
+ * It uses ideas from [Bluewallet](https://github.com/BlueWallet/BlueWallet/)'s
  * coinselect for Segwit support.
  *
  * Pass only one target with empty value to send all utxos funds (except fee) to
@@ -28,8 +28,8 @@ import { checkAddress } from './check';
  * Read the issues below to understand some of the decissions on the
  * `{script:{length}}` pieces of code in the implementation:
  *
- * * [https://github.com/BlueWallet/BlueWallet/issues/4352#issuecomment-1102307443](https://github.com/BlueWallet/BlueWallet/issues/4352#issuecomment-1102307443)
  * * [https://github.com/bitcoinjs/coinselect/issues/69](https://github.com/bitcoinjs/coinselect/issues/69)
+ * * [https://github.com/BlueWallet/BlueWallet/issues/4352#issuecomment-1102307443](https://github.com/BlueWallet/BlueWallet/issues/4352#issuecomment-1102307443)
  * * [https://github.com/BlueWallet/BlueWallet/pull/3810](https://github.com/BlueWallet/BlueWallet/pull/3810)
  * @async
  * @param {Object} parameters
@@ -134,7 +134,6 @@ export async function coinselect({
       length: bjsAddress.toOutputScript(target.address, network).length
     };
 
-    //}
     return csTarget;
   });
 
@@ -154,7 +153,6 @@ export async function coinselect({
     return { fee };
   } else {
     for (const output of outputs) {
-      //outputs.forEach(output => {
       if (!output.address) {
         if (typeof changeAddress !== 'function') {
           //console.log(typeof changeAddress, changeAddress);
@@ -167,7 +165,7 @@ export async function coinselect({
         //This is something we added above.
         delete output.script;
       }
-    } //);
+    }
     inputs.forEach(input => {
       if (input.script) {
         //This is something we added above.
