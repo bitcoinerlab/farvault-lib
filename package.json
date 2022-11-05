@@ -4,12 +4,22 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "createTransactionsFixtures": "NODE_OPTIONS=\"--openssl-legacy-provider\" npx babel-node ./test/createTransactionsFixtures.js",
-    "test": "node --openssl-legacy-provider --experimental-vm-modules node_modules/.bin/jest",
+    "max-compatible-createTransactionsFixtures": "NODE_OPTIONS=\"--openssl-legacy-provider\" npx babel-node ./test/createTransactionsFixtures.js",
+    "max-compatible-test": "node --openssl-legacy-provider --experimental-vm-modules node_modules/.bin/jest",
+    "createTransactionsFixtures": "babel-node ./test/createTransactionsFixtures.js",
+    "test": "jest",
     "docs": "jsdoc -c jsdoc.json"
   },
-  "author": "",
-  "license": "ISC",
+  "author": {
+    "name": "José-Luis Landabaso",
+    "email": "landabaso@gmail.com",
+    "url": "http://farvault.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/farvault/farvault-lib.git"
+  },
+  "license": "MIT",
   "devDependencies": {
     "@babel/core": "^7.18.2",
     "@babel/node": "^7.17.10",

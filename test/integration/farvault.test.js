@@ -89,7 +89,7 @@ describe('FarVault full pipe', () => {
           explorer: localExplorer,
           forceFetchChange: true
         });
-        await discovery.fetch(network);
+        await discovery.fetch({ network });
         const usedPaths = discovery.getUsedDerivationPaths({ network });
         const fundedPaths = discovery.getFundedDerivationPaths({ network });
         ////Get the derivation paths and utxos of the wallet

@@ -10,7 +10,7 @@ import DOMException from 'node-domexception';
 import { fixtures } from './fixtures/explorer';
 import {
   esploraFetchFeeEstimates,
-  blockstreamBaseURL
+  blockstreamEsploraUrl
 } from '../src/explorer/esplora';
 import { ELECTRUM } from '../src/constants';
 import { networks, getNetworkCoinType } from '../src/networks';
@@ -18,7 +18,7 @@ import { createTransaction } from '../src/transactions';
 import { getExtPubAddress, serializeDerivationPath } from '../src/bip44';
 
 function blockstreamFetchFeeEstimates(network = networks.bitcoin) {
-  return esploraFetchFeeEstimates(blockstreamBaseURL(network));
+  return esploraFetchFeeEstimates(blockstreamEsploraUrl(network));
 }
 
 import {

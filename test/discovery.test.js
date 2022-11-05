@@ -59,7 +59,6 @@ for (const valid of fixtures.discovery.valid) {
           url: LOCAL_ESPLORA_URL,
           network
         }),
-        network,
         gapLimit: valid.gapLimit,
         forceFetchChange: valid.forceFetchChange,
         gapAccountLimit: valid.gapAccountLimit
@@ -67,7 +66,7 @@ for (const valid of fixtures.discovery.valid) {
 
       //Do it twice to make it also works also con consecutive calls
       for (let i = 0; i < 2; i++) {
-        await discovery.fetch(network);
+        await discovery.fetch({ network });
         await discovery.fetchUtxos({ network });
       }
     }, DISCOVERY_TIME);
@@ -151,23 +150,22 @@ for (const valid of fixtures.discovery.valid) {
     test(
       'fetchUtxos and getUtxos on each account',
       async () => {
+        const explorer = new Explorer({
+          service: ESPLORA,
+          url: LOCAL_ESPLORA_URL,
+          network
+        });
+        await explorer.connect();
         const test_discovery = new Discovery({
           extPubGetter: HDInterface.getExtPub.bind(HDInterface),
-          explorer: new Explorer({
-            service: ESPLORA,
-            url: LOCAL_ESPLORA_URL,
-            network
-          }),
-          network,
+          explorer,
           gapLimit: valid.gapLimit,
           forceFetchChange: valid.forceFetchChange,
           gapAccountLimit: valid.gapAccountLimit
         });
-        await test_discovery.fetch(network);
+        await test_discovery.fetch({ network });
 
-        const accounts = test_discovery.getAccounts({
-          network
-        });
+        const accounts = test_discovery.getAccounts({ network });
         for (const [index, account] of accounts.entries()) {
           const extPub = account.extPub;
           //These were fecthed beforeAll for all the accounts:

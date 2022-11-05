@@ -34,19 +34,21 @@ export class Discovery {
    * @param {number} [params.forceFetchChange=false] Change (also called internal) addresses will not be fetched if external addresses never received any Bitcoin. Can change this behaviour by forcing change addresses to be fetched even if an account never received any Bitcoin.
    * @param {function} [walletChanged] A callback function that will be called
    * everytime a new utxo is added or when the balance in a derivation path
-   * changes (anytime `this.#discovery` mutates).
+   * changes (anytime `this.#discovery` mutates). The function will receive the this.#discovery object.
    *
    * This function will be triggered as a reaction to new findings when calling
    * {@link Discovery#fetch fetch} or {@link Discovery#fetchUtxos fetchUtxos}.
    */
-  constructor({
-    extPubGetter,
-    walletChanged,
-    gapAccountLimit = GAP_ACCOUNT_LIMIT,
-    gapLimit = GAP_LIMIT,
-    explorer,
-    forceFetchChange = false
-  }) {
+  constructor(
+    {
+      extPubGetter,
+      gapAccountLimit = GAP_ACCOUNT_LIMIT,
+      gapLimit = GAP_LIMIT,
+      explorer,
+      forceFetchChange = false
+    },
+    walletChanged
+  ) {
     Object.assign(this, {
       walletChanged,
       extPubGetter,
@@ -105,7 +107,7 @@ export class Discovery {
     return Object.keys(this.#discovery);
   }
   /**
-   * Get an array of accounts for a speciffic network. In addition to
+   * Get an array of accounts for a specific network. In addition to
    * the account's extPub, it also gives back the balance and and whether the
    * account is currently being updated.
    *
@@ -125,7 +127,7 @@ export class Discovery {
         0
       ),
       pathsBeingFetched: account.pathsBeingFetched,
-      utxosBeingFetched: account.utxosBeingFetched,
+      utxosBeingFetched: !!account.utxosBeingFetched,
       pathsFetchTime: account.pathsFetchTime,
       utxosFetchTime: account.utxosFetchTime
     }));
@@ -167,7 +169,10 @@ export class Discovery {
     );
   }
   /**
-   * Select the account object for a speciffic network within param discovery
+   * An `accounts` selector.
+   *
+   * Select the `accounts` object for a specific network within `discovery`.
+   * Run some sanity checks too.
    * @private
    */
   static accountsFromDiscovery({ discovery, network }) {
@@ -182,15 +187,6 @@ export class Discovery {
     return discovery[getNetworkId(network)].accounts;
   }
   /**
-   * Select the account object for a speciffic network within this.#discovery
-   */
-  #getAccounts({ network }) {
-    return Discovery.accountsFromDiscovery({
-      discovery: this.#discovery,
-      network
-    });
-  }
-  /**
    * Small utility function that returns an array (an iterable object) of
    * accounts so that it can be used in loops.
    *
@@ -198,11 +194,13 @@ export class Discovery {
    * for a certain network.
    *
    * If extPub is passed, then it returns an array of length 1 corresponding to
-   * the account for that speciffic extPub in the selected network.
+   * the account for that specific extPub in the selected network.
    */
   #getAccountsIterable({ network = networks.bitcoin, extPub }) {
     if (typeof extPub !== 'undefined') checkExtPub({ network, extPub });
-    const iterable = Object.values(this.#getAccounts({ network }));
+    const iterable = Object.values(
+      Discovery.accountsFromDiscovery({ discovery: this.#discovery, network })
+    );
     return iterable.filter(account =>
       typeof extPub !== 'undefined' ? account.extPub === extPub : true
     );
@@ -238,14 +236,13 @@ export class Discovery {
    * @param {object} params
    * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}.
    *
-   * @returns {Promise<Discovery>} A Discovery object
    */
-  async fetch(network = networks.bitcoin) {
+  async fetch({ network = networks.bitcoin }) {
     checkNetwork(network);
     await Promise.all([
-      this.#fetchAccount({ network, purpose: LEGACY }),
-      this.#fetchAccount({ network, purpose: NESTED_SEGWIT }),
-      this.#fetchAccount({ network, purpose: NATIVE_SEGWIT })
+      this.fetchAccount({ network, purpose: LEGACY, recursive: true }),
+      this.fetchAccount({ network, purpose: NESTED_SEGWIT, recursive: true }),
+      this.fetchAccount({ network, purpose: NATIVE_SEGWIT, recursive: true })
     ]);
   }
 
@@ -256,19 +253,23 @@ export class Discovery {
    * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}.
    * @param {number} params.purpose LEGACY, NESTED_SEGWIT, or NATIVE_SEGWIT.
    * @param {number} params.accountNumber The account number as described in {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}.
-   * @param {number} [params.lastUsedAccountNumber=-1] Which was the last account
-   * number used, that is, which was the last account number where a path has
-   * been used.
-   * @param {number} [params.recursive=true] Fetch the next account as soon as
+   * @param {number} [params.recursive=false] Fetch the next account as soon as
    * we know this account (`accountNumber`) has been used.
+   * @param {number} [params.lastUsedAccountNumber=-1] Only used when
+   * `recursive = true`.
+   * Which was the last account number used for this `purpose`, that is, which
+   * was the last account number where a path has been used.
+   * This is used in the stopping condition in combination with
+   * `gapAccountLimit` set in the constructor. Set it to
+   * `-1` if no accounts have been used yet for this `purpose`.
    *
    */
-  async #fetchAccount({
+  async fetchAccount({
     network = networks.bitcoin,
     purpose,
     accountNumber = 0,
     lastUsedAccountNumber = -1,
-    recursive = true
+    recursive = false
   }) {
     const coinType = getNetworkCoinType(network);
     const extPub = await this.extPubGetter({ purpose, accountNumber, network });
@@ -321,7 +322,7 @@ export class Discovery {
           consecutiveUnusedAddresses = 0;
           //If used we can already launch the next account fetcher (in parallel)
           if (!nextFetcher && recursive) {
-            nextFetcher = this.#fetchAccount({
+            nextFetcher = this.fetchAccount({
               network,
               purpose,
               accountNumber: accountNumber + 1,
@@ -340,7 +341,7 @@ export class Discovery {
       recursive &&
       accountNumber - lastUsedAccountNumber < this.gapAccountLimit
     ) {
-      nextFetcher = this.#fetchAccount({
+      nextFetcher = this.fetchAccount({
         network,
         purpose,
         accountNumber: accountNumber + 1,
@@ -426,9 +427,13 @@ export class Discovery {
    * immutable.
    */
   #accountPathsFetched({ extPub, network }) {
+    const networkId = getNetworkId(network);
     //Note that accountPathsFetched will also be called on accounts that have not
     //been used. Only update if this is a used account.
     const newDiscovery = produce(this.#discovery, draftDiscovery => {
+      if (!draftDiscovery[networkId]) {
+        draftDiscovery[networkId] = { networkId, accounts: {} };
+      }
       const accounts = Discovery.accountsFromDiscovery({
         discovery: draftDiscovery,
         network

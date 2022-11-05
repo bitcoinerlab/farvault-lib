@@ -97,6 +97,15 @@ export const VAULT_SKIP = 15; //How many addresses skip from latest used path
 export const ESPLORA = 'ESPLORA';
 export const ELECTRUM = 'ELECTRUM';
 export const BLOCKSTREAM_ESPLORA_BASEURL = 'https://blockstream.info';
+
+export const BLOCKSTREAM_ELECTRUM_HOST = 'electrum.blockstream.info';
+export const BLOCKSTREAM_ELECTRUM_PORT = 50002;
+export const BLOCKSTREAM_ELECTRUM_PROTOCOL = 'ssl';
+
+export const BLOCKSTREAM_TESTNET_ELECTRUM_HOST = 'electrum.blockstream.info';
+export const BLOCKSTREAM_TESTNET_ELECTRUM_PORT = 60002;
+export const BLOCKSTREAM_TESTNET_ELECTRUM_PROTOCOL = 'ssl';
+
 export const LOCAL_ESPLORA_URL = 'http://127.0.0.1:3002';
 export const LOCAL_ELECTRUM_HOST = '127.0.0.1';
 export const LOCAL_ELECTRUM_PORT = 60401;

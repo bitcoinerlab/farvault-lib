@@ -1,12 +1,18 @@
-import { ESPLORA, ELECTRUM } from '../constants';
+import {
+  ESPLORA,
+  ELECTRUM,
+  BLOCKSTREAM_ELECTRUM_HOST,
+  BLOCKSTREAM_ELECTRUM_PORT,
+  BLOCKSTREAM_ELECTRUM_PROTOCOL
+} from '../constants';
 import { networks } from '../networks';
 import { checkNetwork } from '../check';
-import { Electrum } from './electrum';
+import { Electrum, blockstreamElectrumServer } from './electrum';
 import {
   esploraFetchUtxos,
   esploraFetchAddress,
   esploraFetchFeeEstimates,
-  blockstreamBaseURL
+  blockstreamEsploraUrl
 } from './esplora';
 
 function isValidHttpUrl(string) {
@@ -55,7 +61,7 @@ export class Explorer {
     checkNetwork(network);
     if (service === ESPLORA) {
       if (typeof url === 'undefined') {
-        url = blockstreamBaseURL(network);
+        url = blockstreamEsploraUrl(network);
       }
       if (host || port || protocol || !isValidHttpUrl(url))
         throw new Error(
@@ -68,9 +74,10 @@ export class Explorer {
         typeof port === 'undefined' &&
         typeof protocol === 'undefined'
       ) {
-        host = 'electrum.blockstream.info';
-        port = 50002;
-        protocol = 'ssl';
+        const server = blockstreamElectrumServer(network);
+        host = server.host;
+        port = server.port;
+        protocol = server.protocol;
       }
       if (
         typeof host !== 'string' ||

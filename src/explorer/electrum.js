@@ -4,6 +4,14 @@ import ElectrumClient from 'electrum-client';
 
 import { networks } from '../networks';
 import { checkNetwork, checkFeeEstimates } from '../check';
+import {
+  BLOCKSTREAM_ELECTRUM_HOST,
+  BLOCKSTREAM_ELECTRUM_PORT,
+  BLOCKSTREAM_ELECTRUM_PROTOCOL,
+  BLOCKSTREAM_TESTNET_ELECTRUM_HOST,
+  BLOCKSTREAM_TESTNET_ELECTRUM_PORT,
+  BLOCKSTREAM_TESTNET_ELECTRUM_PROTOCOL
+} from '../constants';
 import { address as bjsAddress, crypto } from 'bitcoinjs-lib';
 
 function addressToScriptHash(address, network = networks.bitcoin) {
@@ -171,5 +179,26 @@ export class Electrum {
     }
     checkFeeEstimates(feeEstimates);
     return feeEstimates;
+  }
+}
+export function blockstreamElectrumServer(network = networks.bitcoin) {
+  checkNetwork(network, false);
+  if (network !== networks.bitcoin && network !== networks.testnet) {
+    throw new Error(
+      'Blockstream electrum server only available for maninnet or testnet'
+    );
+  }
+  if (network === networks.bitcoin) {
+    return {
+      host: BLOCKSTREAM_ELECTRUM_HOST,
+      port: BLOCKSTREAM_ELECTRUM_PORT,
+      protocol: BLOCKSTREAM_ELECTRUM_PROTOCOL
+    };
+  } else if (network === networks.testnet) {
+    return {
+      host: BLOCKSTREAM_TESTNET_ELECTRUM_HOST,
+      port: BLOCKSTREAM_TESTNET_ELECTRUM_PORT,
+      protocol: BLOCKSTREAM_TESTNET_ELECTRUM_PROTOCOL
+    };
   }
 }

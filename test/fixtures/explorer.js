@@ -82,6 +82,9 @@ export const fixtures = {
     ]
   },
   public: {
+    mnemonic:
+      'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about',
+    network: networks.bitcoin,
     servers: [
       {
         service: ELECTRUM,

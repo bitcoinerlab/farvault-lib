@@ -118,7 +118,7 @@ export async function esploraFetchFeeEstimates(baseUrl = LOCAL_ESPLORA_URL) {
   return feeEstimates;
 }
 
-export function blockstreamBaseURL(network = networks.bitcoin) {
+export function blockstreamEsploraUrl(network = networks.bitcoin) {
   checkNetwork(network, false);
   if (network !== networks.bitcoin && network !== networks.testnet) {
     throw new Error('Blockstream API only available for maninnet or testnet');
