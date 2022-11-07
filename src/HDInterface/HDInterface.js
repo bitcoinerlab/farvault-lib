@@ -23,7 +23,7 @@ export class HDInterface {
   constructor() {
     //Overwrite own method to allow memoization
     this.getPublicKey = memoize(
-      this.getPublicKey,
+      this._getPublicKey,
       (path, network = networks.bitcoin) => {
         return path + getNetworkId(network);
       }
@@ -104,7 +104,7 @@ export class HDInterface {
    * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}.
    * @returns {Promise<Buffer>} The public key.
    */
-  async getPublicKey(path, network = networks.bitcoin) {
+  async _getPublicKey(path, network = networks.bitcoin) {
     const { purpose, coinType, accountNumber, index, isChange } =
       parseDerivationPath(path);
     if (getNetworkCoinType(network) !== coinType) {
@@ -116,6 +116,11 @@ export class HDInterface {
       network
     });
     return deriveExtPub({ extPub, index, isChange, network });
+  }
+  async getPublicKey() {
+    throw new Error(
+      'This is a memoized method which is built in the constructor. Call this.super() in the constructor of the extended class.'
+    );
   }
 
   /**

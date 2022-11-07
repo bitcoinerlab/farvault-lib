@@ -1,5 +1,20 @@
-//Run it from the root project path as this:
-//npx babel-node ./example/discovery.js
+#! /usr/bin/env npx babel-node
+
+/*
+ * This example shows how to connect to an Electrum server (or Esplora server)
+ * and retrieve all the Accounts, Addresses and UTXOs of a certain seed.
+ * In the example we use the "abandon" seed which has been used a lot in the
+ * past by developers.
+ *
+ * How to run it:
+ *
+ * A) chmod +x discovery.js
+ * then run it from the root project path as this:
+ * ./examples/discovery.js
+ *
+ * B) Or, you can run it from the root project path as this:
+ * npx babel-node ./examples/discovery.js
+ */
 
 import { Discovery } from '../src/discovery';
 import { Explorer } from '../src/explorer';
