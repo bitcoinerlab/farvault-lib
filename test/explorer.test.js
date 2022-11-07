@@ -45,10 +45,10 @@ fetch.dontMock();
 
 import { Explorer } from '../src/explorer';
 
-let HDInterface, walletUtxos, regtestUtils;
+let HDSigner, walletUtxos, regtestUtils;
 beforeAll(async () => {
   const {
-    HDInterface: _HDInterface,
+    HDSigner: _HDSigner,
     paths,
     utxos: _utxos,
     regtestUtils: _regtestUtils
@@ -57,7 +57,7 @@ beforeAll(async () => {
     fundingDescriptors: fixtures.local.fundingDescriptors,
     network: fixtures.local.network
   });
-  HDInterface = _HDInterface;
+  HDSigner = _HDSigner;
   walletUtxos = _utxos;
   regtestUtils = _regtestUtils;
   //Give esplora some time to catch up
@@ -165,7 +165,7 @@ describe('Explorer: Tests with local servers', () => {
       ).toEqual(0);
     }
     for (const descriptor of fixtures.local.fundingDescriptors) {
-      const extPub = await HDInterface.getExtPub({
+      const extPub = await HDSigner.getExtPub({
         purpose: descriptor.purpose,
         accountNumber: descriptor.accountNumber,
         network
@@ -203,8 +203,8 @@ describe('Explorer: Tests with local servers', () => {
             value: descriptor.value - 1000
           }
         ], //1000 sat fee
-        createSigners: HDInterface.createSigners.bind(HDInterface),
-        getPublicKey: HDInterface.getPublicKey.bind(HDInterface),
+        createSigners: HDSigner.createSigners.bind(HDSigner),
+        getPublicKey: HDSigner.getPublicKey.bind(HDSigner),
         network
       });
       await regtestUtils.broadcast(tx);

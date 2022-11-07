@@ -4,7 +4,7 @@
   "source": {
     "include": [
       "src/",
-      "src/HDInterface",
+      "src/HDSigner",
       "src/explorer",
       "src/bip44",
       "src/secp256k1",

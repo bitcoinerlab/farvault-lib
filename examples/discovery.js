@@ -18,7 +18,7 @@
 
 import { Discovery } from '../src/discovery';
 import { Explorer } from '../src/explorer';
-import { SoftHDInterface } from '../src/HDInterface/soft';
+import { SoftHDSigner } from '../src/HDSigner/soft';
 import { networks } from '../src/networks';
 import { ELECTRUM, ESPLORA } from '../src/constants';
 
@@ -30,9 +30,9 @@ async function discovery() {
   const mnemonic =
     'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
 
-  const softHDInterface = new SoftHDInterface({ mnemonic });
-  await softHDInterface.init();
-  const extPubGetter = softHDInterface.getExtPub.bind(softHDInterface);
+  const softHDSigner = new SoftHDSigner({ mnemonic });
+  await softHDSigner.init();
+  const extPubGetter = softHDSigner.getExtPub.bind(softHDSigner);
 
   const explorer = new Explorer({ network, service });
   //If you want to specify a local server:

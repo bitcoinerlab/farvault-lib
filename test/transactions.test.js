@@ -1,7 +1,7 @@
 import { fixtures } from './fixtures/transactions';
 const { network, mnemonic } = fixtures;
-import { SoftHDInterface } from '../src/HDInterface/soft';
-import { LedgerHDInterface, NODEJS_TRANSPORT } from '../src/HDInterface/ledger';
+import { SoftHDSigner } from '../src/HDSigner/soft';
+import { LedgerHDSigner, NODEJS_TRANSPORT } from '../src/HDSigner/ledger';
 
 import {
   createTransaction,
@@ -10,21 +10,21 @@ import {
 
 import { decodeTx } from '../src/decodeTx';
 
-let ledgerHDInterface, softHDInterface;
+let ledgerHDSigner, softHDSigner;
 beforeAll(async () => {
   if (process.env.__LEDGER_DETECTED__ === 'true') {
-    ledgerHDInterface = new LedgerHDInterface({ transport: NODEJS_TRANSPORT });
-    await ledgerHDInterface.init();
+    ledgerHDSigner = new LedgerHDSigner({ transport: NODEJS_TRANSPORT });
+    await ledgerHDSigner.init();
   }
-  softHDInterface = new SoftHDInterface({ mnemonic });
-  await softHDInterface.init();
+  softHDSigner = new SoftHDSigner({ mnemonic });
+  await softHDSigner.init();
 }, 100 * 1000 /*increase the default timeout time*/);
 afterAll(async () => {
   if (process.env.__LEDGER_DETECTED__ === 'true') {
-    await ledgerHDInterface.close();
+    await ledgerHDSigner.close();
   }
-  softHDInterface = new SoftHDInterface({ mnemonic });
-  await softHDInterface.init();
+  softHDSigner = new SoftHDSigner({ mnemonic });
+  await softHDSigner.init();
 });
 const LEDGER_INTERFACE = 'LEDGER_INTERFACE';
 const SOFT_INTERFACE = 'SOFT_INTERFACE';
@@ -37,13 +37,13 @@ for (const type of process.env.__LEDGER_DETECTED__ === 'true' //Note process.env
       test(
         description,
         async () => {
-          const HDInterface =
-            type === LEDGER_INTERFACE ? ledgerHDInterface : softHDInterface;
+          const HDSigner =
+            type === LEDGER_INTERFACE ? ledgerHDSigner : softHDSigner;
           const _tx = await createTransaction({
             utxos,
             targets,
-            createSigners: HDInterface.createSigners.bind(HDInterface),
-            getPublicKey: HDInterface.getPublicKey.bind(HDInterface),
+            createSigners: HDSigner.createSigners.bind(HDSigner),
+            getPublicKey: HDSigner.getPublicKey.bind(HDSigner),
             network
           });
 
@@ -54,7 +54,7 @@ for (const type of process.env.__LEDGER_DETECTED__ === 'true' //Note process.env
     }
   });
 
-  describe(`Transactions with invalid HDInterface data on ${type}`, () => {
+  describe(`Transactions with invalid HDSigner data on ${type}`, () => {
     //Just do it once for valid[0]
     if (fixtures.createTransaction.valid.length > 0) {
       const { description, utxos, targets, tx } =
@@ -62,10 +62,10 @@ for (const type of process.env.__LEDGER_DETECTED__ === 'true' //Note process.env
       test(
         'Inject bad signature to: ' + description,
         async () => {
-          const HDInterface =
-            type === LEDGER_INTERFACE ? ledgerHDInterface : softHDInterface;
+          const HDSigner =
+            type === LEDGER_INTERFACE ? ledgerHDSigner : softHDSigner;
           const createInvalidSigners = async ({ psbt, utxos, network }) => {
-            const signers = await HDInterface.createSigners({
+            const signers = await HDSigner.createSigners({
               psbt,
               utxos,
               network
@@ -83,7 +83,7 @@ for (const type of process.env.__LEDGER_DETECTED__ === 'true' //Note process.env
               utxos,
               targets,
               createSigners: createInvalidSigners,
-              getPublicKey: HDInterface.getPublicKey.bind(HDInterface),
+              getPublicKey: HDSigner.getPublicKey.bind(HDSigner),
               network
             })
           ).rejects.toThrow('Invalid signature detected');
@@ -94,21 +94,21 @@ for (const type of process.env.__LEDGER_DETECTED__ === 'true' //Note process.env
       test(
         'Inject bad pubkey to: ' + description,
         async () => {
-          const HDInterface =
-            type === LEDGER_INTERFACE ? ledgerHDInterface : softHDInterface;
+          const HDSigner =
+            type === LEDGER_INTERFACE ? ledgerHDSigner : softHDSigner;
           const getInvalidPublicKey = (path, network) => {
             return Buffer.from(
               '02783c942ac07f03a4c378ff6bd2cf8c99efc18bd1ae3cd37e6cd1ceca518bae2b',
               'hex'
             );
-            //const pubKey = HDInterface.getPublicKey(path, network);
+            //const pubKey = HDSigner.getPublicKey(path, network);
             //return pubKey;
           };
           await expect(
             createTransaction({
               utxos,
               targets,
-              createSigners: HDInterface.createSigners.bind(HDInterface),
+              createSigners: HDSigner.createSigners.bind(HDSigner),
               getPublicKey: getInvalidPublicKey,
               network
             })
@@ -127,14 +127,14 @@ for (const type of process.env.__LEDGER_DETECTED__ === 'true' //Note process.env
       test(
         description,
         async () => {
-          const HDInterface =
-            type === LEDGER_INTERFACE ? ledgerHDInterface : softHDInterface;
+          const HDSigner =
+            type === LEDGER_INTERFACE ? ledgerHDSigner : softHDSigner;
           await expect(
             createTransaction({
               utxos,
               targets,
-              createSigners: HDInterface.createSigners.bind(HDInterface),
-              getPublicKey: HDInterface.getPublicKey.bind(HDInterface),
+              createSigners: HDSigner.createSigners.bind(HDSigner),
+              getPublicKey: HDSigner.getPublicKey.bind(HDSigner),
               network
             })
           ).rejects.toThrow(exception);
@@ -146,7 +146,7 @@ for (const type of process.env.__LEDGER_DETECTED__ === 'true' //Note process.env
 
   //Only test it using soft device. Otherwise this would be hell on a ledget nano
   if (type === SOFT_INTERFACE)
-    describe(`Multifee transactions with invalid HDInterface data on ${type}`, () => {
+    describe(`Multifee transactions with invalid HDSigner data on ${type}`, () => {
       //Just do it once for valid[0]
       if (fixtures.createTransaction.valid.length > 0) {
         const { description, utxos, targets, tx } =
@@ -154,12 +154,12 @@ for (const type of process.env.__LEDGER_DETECTED__ === 'true' //Note process.env
         test(
           'Multi-fee version of: ' + description,
           async () => {
-            const HDInterface = softHDInterface;
+            const HDSigner = softHDSigner;
             const txs = await createMultiFeeTransactions({
               utxos,
               address: targets[0].address,
-              createSigners: HDInterface.createSigners.bind(HDInterface),
-              getPublicKey: HDInterface.getPublicKey.bind(HDInterface),
+              createSigners: HDSigner.createSigners.bind(HDSigner),
+              getPublicKey: HDSigner.getPublicKey.bind(HDSigner),
               network
             });
             let inputValue = 0;

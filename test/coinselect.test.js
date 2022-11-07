@@ -2,7 +2,7 @@ import { coinselect } from '../src/coinselect';
 import { decodeTx } from '../src/decodeTx';
 import { parseDerivationPath } from '../src/bip44';
 import { LEGACY, NESTED_SEGWIT, NATIVE_SEGWIT } from '../src/constants';
-import { SoftHDInterface } from '../src/HDInterface/soft';
+import { SoftHDSigner } from '../src/HDSigner/soft';
 import { fixtures } from './fixtures/coinselect';
 import { Psbt, payments } from 'bitcoinjs-lib';
 
@@ -52,15 +52,15 @@ describe('Coinselect', () => {
           );
         }
 
-        const HDInterface = new SoftHDInterface({ mnemonic: fixture.mnemonic });
-        await HDInterface.init();
+        const HDSigner = new SoftHDSigner({ mnemonic: fixture.mnemonic });
+        await HDSigner.init();
         const psbt = new Psbt({ network });
 
         for (const utxo of utxos) {
           const purpose = parseDerivationPath(utxo.path).purpose;
           let redeemScript = undefined;
           if (purpose === NESTED_SEGWIT) {
-            const pubkey = await HDInterface.getPublicKey(utxo.path, network);
+            const pubkey = await HDSigner.getPublicKey(utxo.path, network);
             const p2wpkh = payments.p2wpkh({ pubkey, network });
             redeemScript = payments.p2sh({ redeem: p2wpkh, network }).redeem
               .output;
@@ -80,7 +80,7 @@ describe('Coinselect', () => {
 
         targets.forEach(target => psbt.addOutput(target));
 
-        const signers = await HDInterface.createSigners({
+        const signers = await HDSigner.createSigners({
           psbt,
           utxos,
           network
@@ -88,10 +88,7 @@ describe('Coinselect', () => {
         for (let index = 0; index < utxos.length; index++) {
           psbt.signInput(index, {
             network,
-            publicKey: await HDInterface.getPublicKey(
-              utxos[index].path,
-              network
-            ),
+            publicKey: await HDSigner.getPublicKey(utxos[index].path, network),
             sign: signers[index]
           });
         }

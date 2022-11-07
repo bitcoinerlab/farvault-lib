@@ -6,7 +6,7 @@ import {
 } from '../src/bip44';
 import { fixtures } from './fixtures/bip44';
 import { getNextDerivationPath, exportedForTesting } from '../src/bip44/chain';
-import { SoftHDInterface } from '../src/HDInterface/soft';
+import { SoftHDSigner } from '../src/HDSigner/soft';
 import { networks } from '../src/networks';
 
 describe('bip32', () => {
@@ -18,11 +18,11 @@ describe('bip32', () => {
       network,
       mnemonic
     } of fixtures.addressDescriptors) {
-      const HDInterface = new SoftHDInterface({ mnemonic });
-      await HDInterface.init();
+      const HDSigner = new SoftHDSigner({ mnemonic });
+      await HDSigner.init();
       expect(
         await getDerivationPathAddress({
-          extPubGetter: async params => HDInterface.getExtPub(params),
+          extPubGetter: async params => HDSigner.getExtPub(params),
           path,
           network
         })

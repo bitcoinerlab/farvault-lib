@@ -2,7 +2,7 @@
 
 import fs from 'fs';
 const TESTING_SERVERS_COOKIE = '/tmp/farvault_testing_environment_started';
-import { SoftHDInterface } from '../src/HDInterface/soft';
+import { SoftHDSigner } from '../src/HDSigner/soft';
 import {
   serializeDerivationPath,
   getDerivationPathAddress
@@ -34,7 +34,7 @@ import { COINTYPE, REGTEST } from '../src/constants';
  * @param {number} [fundingDescriptors[].coinType=REGTEST_COINTYPE] - Should always be REGTEST_COINTYPE
  * @param {object} [parameters.network=networks.regtest] A {@link module:networks.networks network}.
  * @return {Promise<object>} `{
-    HDInterface,
+    HDSigner,
     extPubs,
     utxos,
     paths,
@@ -54,8 +54,8 @@ export async function fundRegtest({
   if (height < 432) {
     throw new Error('regtest-server works better after more mature blocks');
   }
-  const HDInterface = new SoftHDInterface({ mnemonic });
-  await HDInterface.init();
+  const HDSigner = new SoftHDSigner({ mnemonic });
+  await HDSigner.init();
   const extPubs = [];
   const paths = [];
   const utxos = [];
@@ -69,7 +69,7 @@ export async function fundRegtest({
       );
     }
     const { index, isChange, purpose, accountNumber } = descriptor;
-    const extPub = await HDInterface.getExtPub({
+    const extPub = await HDSigner.getExtPub({
       purpose,
       accountNumber,
       network
@@ -85,7 +85,7 @@ export async function fundRegtest({
     });
     if (!paths[path]) paths.push(path);
     const address = await getDerivationPathAddress({
-      extPubGetter: HDInterface.getExtPub.bind(HDInterface),
+      extPubGetter: HDSigner.getExtPub.bind(HDSigner),
       path,
       network
     });
@@ -102,7 +102,7 @@ export async function fundRegtest({
   // All of the above faucet payments will confirm
   if (utxos.length > 0) await regtestUtils.mine(6);
   return {
-    HDInterface,
+    HDSigner,
     extPubs,
     utxos,
     paths,

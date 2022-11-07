@@ -1,45 +1,40 @@
 import memoize from 'lodash.memoize';
 
-import { deriveExtPub, parseDerivationPath } from '../bip44';
 import { networks, getNetworkId, getNetworkCoinType } from '../networks';
 
+function MUST_IMPLEMENT() {
+  throw new Error('This Interface method must be implemented.');
+}
+
 /**
- * Base Class implementing an interface to a HD wallet.
+ * Class desccribing an Interface to an HD Signer (also popularly known as an 
+ * HD wallet). For example, this Interface is implemented in LedgerHDSigners to
+ * communicate with a Ledger Nano. Also, this Interface is implemented in
+ * SoftHDSigner to communicate with a software HD wallet that is created using
+ * a BIP39 word mnemonic.
  *
- * As a farvault-lib user, you are probably trying to use {@link SoftHDInterface}
- * (for a software based HD signing device) or {@link LedgerHDInterface} for a
+ * As a farvault-lib user, you are probably trying to use {@link SoftHDSigner}
+ * (for a software based HD signing device) or {@link LedgerHDSigner} for a
  * Ledger Nano HD device.
  *
- * This is the base HD interface for farvault-lib. Devs adding more signing HD
- * devices to farvault-lib must extend this class.
+ * This is the HDSigner Interface for farvault-lib. Devs adding more signing HD
+ * devices to farvault-lib must implement this class methods.
  *
- * Derived classes must implement the emtpy methods defined here which are not
- * implemented.
- *
- * Constructor parameters may differ in derived classes. The rest of the methods
- * must be implemented following exactly the interface described here.
+ * Methods must be implemented following exactly the interface described here.
  */
-export class HDInterface {
-  constructor() {
-    //Overwrite own method to allow memoization
-    this.getPublicKey = memoize(
-      this._getPublicKey,
-      (path, network = networks.bitcoin) => {
-        return path + getNetworkId(network);
-      }
-    );
-  }
-
+export class HDSigner {
   /**
    * Initializes the HD interface.
    *
    * Call it before accessing any other method.
    * @async
    */
-  async init() {}
+  async init() {
+    MUST_IMPLEMENT();
+  }
 
   /**
-   * Returns the extended pub key of an initialized HDInterface.
+   * Returns the extended pub key of an initialized HDSigner.
    *
    * @async
    * @param {object} params
@@ -49,7 +44,9 @@ export class HDInterface {
    * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}.
    * @returns {Promise<string>} An extended pub key. F.ex.: "xpub6D4BDPcP2GT577Vvch3R8wDkScZWzQzMMUm3PWbmWvVJrZwQY4VUNgqFJPMM3No2dFDFGTsxxpG5uJh7n7epu4trkrX7x7DogT5Uv6fcLW5".
    */
-  getExtPub() {}
+  getExtPub() {
+    MUST_IMPLEMENT();
+  }
 
   /**
    * Creates an array of signer functions following this pattern:
@@ -84,7 +81,7 @@ export class HDInterface {
    * @async
    * @param {object} params
    * @param {object} params.psbt The [bitcoinjs-lib Psbt object](https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/src/psbt.js) where the `tx` to be signed will be extracted.
-   * @param {Object[]} params.utxos Array of spendable utxos controlled by this HDInterface. The function will create a signer for each utxo.
+   * @param {Object[]} params.utxos Array of spendable utxos controlled by this HDSigner. The function will create a signer for each utxo.
    * @param {string} params.utxos[].path Derivation path of the key that must sign the hash. F.ex.: `44'/1'/1'/0/0`.
    * @param {string} params.utxos[].tx The transaction serialized in hex.
    * @param {number} params.utxos[].n The vout index of the tx above.
@@ -93,7 +90,9 @@ export class HDInterface {
    * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}.
    * @returns {Promise<function[]>} An array of functions, where each function corresponds to an utxo from the `utxos` input array.
    */
-  createSigners() {}
+  createSigners() {
+    MUST_IMPLEMENT();
+  }
 
   /**
    * Returns the public key of a path.
@@ -104,23 +103,8 @@ export class HDInterface {
    * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}.
    * @returns {Promise<Buffer>} The public key.
    */
-  async _getPublicKey(path, network = networks.bitcoin) {
-    const { purpose, coinType, accountNumber, index, isChange } =
-      parseDerivationPath(path);
-    if (getNetworkCoinType(network) !== coinType) {
-      throw new Error('Network mismatch');
-    }
-    const extPub = await this.getExtPub({
-      purpose,
-      accountNumber,
-      network
-    });
-    return deriveExtPub({ extPub, index, isChange, network });
-  }
   async getPublicKey() {
-    throw new Error(
-      'This is a memoized method which is built in the constructor. Call this.super() in the constructor of the extended class.'
-    );
+    MUST_IMPLEMENT();
   }
 
   /**
@@ -129,5 +113,7 @@ export class HDInterface {
    *
    * @async
    */
-  close() {}
+  close() {
+    MUST_IMPLEMENT();
+  }
 }

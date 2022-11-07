@@ -1,11 +1,17 @@
-import { HDInterface } from './HDInterface';
+import { HDSigner } from './interface';
 import { mnemonicToSeed } from 'bip39';
 import { networks, getNetworkId, getNetworkCoinType } from '../networks';
 
 import { checkNetwork, checkPurpose, checkExtPub } from '../check';
 import memoize from 'lodash.memoize';
 
-import { setExtPubPrefix, fromSeed, serializeDerivationPath } from '../bip44';
+import {
+  deriveExtPub,
+  parseDerivationPath,
+  setExtPubPrefix,
+  fromSeed,
+  serializeDerivationPath
+} from '../bip44';
 
 //Create the cache-key for memoize with the seed:
 const rootDerivePath = memoize(
@@ -18,10 +24,10 @@ const rootDerivePath = memoize(
 /**
  * Implements a Software-based HD interface.
  *
- * It is derived from {@link HDInterface} and it implements all the methods
+ * It is derived from {@link HDSigner} and it implements all the methods
  * described there.
  */
-export class SoftHDInterface extends HDInterface {
+export class SoftHDSigner extends HDSigner {
   #mnemonic;
   #seed;
   /**
@@ -36,18 +42,45 @@ export class SoftHDInterface extends HDInterface {
       console.log('WARNING: Using default mnemonic.');
       this.#mnemonic =
         'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
-    } else this.#mnemonic = mnemonic;
+    } else {
+      this.#mnemonic = mnemonic;
+    }
+
+    //Overwrite own method to allow memoization
+    this.getPublicKey = memoize(
+      this.getPublicKey,
+      (path, network = networks.bitcoin) => {
+        return path + getNetworkId(network);
+      }
+    );
   }
 
   /**
-   * Implements {@link HDInterface#init}.
+   * Implements {@link HDSigner#getPublicKey}.
+   */
+  async getPublicKey(path, network = networks.bitcoin) {
+    const { purpose, coinType, accountNumber, index, isChange } =
+      parseDerivationPath(path);
+    if (getNetworkCoinType(network) !== coinType) {
+      throw new Error('Network mismatch');
+    }
+    const extPub = await this.getExtPub({
+      purpose,
+      accountNumber,
+      network
+    });
+    return deriveExtPub({ extPub, index, isChange, network });
+  }
+
+  /**
+   * Implements {@link HDSigner#init}.
    */
   async init() {
     this.#seed = await mnemonicToSeed(this.#mnemonic);
   }
 
   /**
-   * Implements {@link HDInterface#createSigners}.
+   * Implements {@link HDSigner#createSigners}.
    */
   createSigners({ psbt, utxos, network = networks.bitcoin }) {
     const root = fromSeed(this.#seed, network);
@@ -64,7 +97,7 @@ export class SoftHDInterface extends HDInterface {
   }
 
   /**
-   * Implements {@link HDInterface#getExtPub}.
+   * Implements {@link HDSigner#getExtPub}.
    */
   getExtPub({ purpose, accountNumber, network = networks.bitcoin }) {
     //No need to memoize

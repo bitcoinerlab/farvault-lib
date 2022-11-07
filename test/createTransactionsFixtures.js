@@ -227,7 +227,7 @@ async function createFixture({
 }) {
   console.log(description);
   const {
-    HDInterface,
+    HDSigner,
     paths,
     utxos: newUtxos,
     regtestUtils
@@ -251,8 +251,8 @@ async function createFixture({
   const tx = await createTransaction({
     utxos,
     targets,
-    createSigners: HDInterface.createSigners.bind(HDInterface),
-    getPublicKey: HDInterface.getPublicKey.bind(HDInterface),
+    createSigners: HDSigner.createSigners.bind(HDSigner),
+    getPublicKey: HDSigner.getPublicKey.bind(HDSigner),
     network
   });
   await regtestUtils.mine(prevBlocksToMine);
@@ -594,11 +594,11 @@ async function main() {
       targetTemplates: recoveryTargetP2SH0Secs,
       fixtures: validFixtures
     });
-    const { HDInterface } = await fundRegtest({
+    const { HDSigner } = await fundRegtest({
       mnemonic,
       fundingDescriptors: []
     });
-    const utxoPubKey = await HDInterface.getPublicKey(
+    const utxoPubKey = await HDSigner.getPublicKey(
       validFixtures[0].utxos[0].path,
       network
     );

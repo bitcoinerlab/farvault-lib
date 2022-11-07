@@ -1,4 +1,4 @@
-import { HDInterface } from './HDInterface';
+import { HDSigner } from './interface';
 import LedgerTransport from '@ledgerhq/hw-transport-webusb';
 import LedgerTransportNodejs from '@ledgerhq/hw-transport-node-hid-noevents';
 import LedgerAppBtc from '@ledgerhq/hw-app-btc';
@@ -14,6 +14,7 @@ import { Transaction, payments, script } from 'bitcoinjs-lib';
 import { checkNetwork, checkPurpose, checkExtPub } from '../check';
 import {
   setExtPubPrefix,
+  deriveExtPub,
   parseDerivationPath,
   serializeDerivationPath
 } from '../bip44';
@@ -35,10 +36,10 @@ async function getApp(transport) {
 /**
  * Implements an interface to a Ledger device.
  *
- * It is derived from {@link HDInterface} and it implements all the methods
+ * It is derived from {@link HDSigner} and it implements all the methods
  * described there.
  */
-export class LedgerHDInterface extends HDInterface {
+export class LedgerHDSigner extends HDSigner {
   #transport;
   #ledgerTransport;
   #ledgerAppBtc;
@@ -76,10 +77,35 @@ export class LedgerHDInterface extends HDInterface {
         '_' +
         getNetworkId(network)
     );
+
+    //Overwrite own method to allow memoization
+    this.getPublicKey = memoize(
+      this.getPublicKey,
+      (path, network = networks.bitcoin) => {
+        return path + getNetworkId(network);
+      }
+    );
   }
 
   /**
-   * Implements {@link HDInterface#init}.
+   * Implements {@link HDSigner#getPublicKey}.
+   */
+  async getPublicKey(path, network = networks.bitcoin) {
+    const { purpose, coinType, accountNumber, index, isChange } =
+      parseDerivationPath(path);
+    if (getNetworkCoinType(network) !== coinType) {
+      throw new Error('Network mismatch');
+    }
+    const extPub = await this.getExtPub({
+      purpose,
+      accountNumber,
+      network
+    });
+    return deriveExtPub({ extPub, index, isChange, network });
+  }
+
+  /**
+   * Implements {@link HDSigner#init}.
    */
   async init() {
     try {
@@ -114,7 +140,7 @@ export class LedgerHDInterface extends HDInterface {
   }
 
   /**
-   * Implements {@link HDInterface#getExtPub}.
+   * Implements {@link HDSigner#getExtPub}.
    */
   async getExtPub({ purpose, accountNumber, network = networks.bitcoin }) {
     checkPurpose(purpose);
@@ -195,7 +221,7 @@ export class LedgerHDInterface extends HDInterface {
   }
 
   /**
-   * Implements {@link HDInterface#createSigners}.
+   * Implements {@link HDSigner#createSigners}.
    */
   async createSigners({ psbt, utxos, network = networks.bitcoin }) {
     checkNetwork(network);
@@ -331,7 +357,7 @@ export class LedgerHDInterface extends HDInterface {
   }
 
   /**
-   * Implements {@link HDInterface#close}.
+   * Implements {@link HDSigner#close}.
    */
   async close() {
     await this.#ledgerTransport.close();

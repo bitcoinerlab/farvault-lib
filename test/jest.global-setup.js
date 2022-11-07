@@ -1,5 +1,5 @@
 import { startTestingEnvironment } from './tools';
-import { NODEJS_TRANSPORT, LedgerHDInterface } from '../src/HDInterface/ledger';
+import { NODEJS_TRANSPORT, LedgerHDSigner } from '../src/HDSigner/ledger';
 module.exports = async function (globalConfig, projectConfig) {
   const start =
     globalConfig.testPathPattern === '' ||
@@ -18,9 +18,9 @@ module.exports = async function (globalConfig, projectConfig) {
 
   process.env.__LEDGER_DETECTED__ = true;
   try {
-    const HDInterface = new LedgerHDInterface({ transport: NODEJS_TRANSPORT });
-    await HDInterface.init();
-    await HDInterface.close();
+    const HDSigner = new LedgerHDSigner({ transport: NODEJS_TRANSPORT });
+    await HDSigner.init();
+    await HDSigner.close();
   } catch (err) {
     process.env.__LEDGER_DETECTED__ = false;
   }

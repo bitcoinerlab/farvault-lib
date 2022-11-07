@@ -439,7 +439,7 @@ function getNativeSegwitAddress({
  *
  * @async
  * @param {object} params
- * @param {HDInterface#getExtPub} params.extPubGetter An **async** function that resolves the extended pub key. Assumes bip44 paths.
+ * @param {HDSigner#getExtPub} params.extPubGetter An **async** function that resolves the extended pub key. Assumes bip44 paths.
  * @param {string} params.path F.ex.: "84’/0’/0’/0/0", "m/44'/1'/10'/0/0",
  * "m/49h/1h/8h/1/1"...
  * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}

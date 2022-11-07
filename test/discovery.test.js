@@ -13,7 +13,7 @@ const DISCOVERY_TIME = 60000; //60 secs
 import { ESPLORA, LOCAL_ESPLORA_URL } from '../src/constants';
 import { Explorer } from '../src/explorer';
 
-let HDInterface, walletUtxos;
+let HDSigner, walletUtxos;
 beforeAll(async () => {
   const fundingDescriptors = [];
   for (const path of Object.keys(fixtures.discovery.paths)) {
@@ -32,7 +32,7 @@ beforeAll(async () => {
       });
   }
   const {
-    HDInterface: _HDInterface,
+    HDSigner: _HDSigner,
     paths,
     utxos: _utxos,
     regtestUtils
@@ -41,7 +41,7 @@ beforeAll(async () => {
     fundingDescriptors,
     network: fixtures.discovery.network
   });
-  HDInterface = _HDInterface;
+  HDSigner = _HDSigner;
   walletUtxos = _utxos;
   //Give esplora some time to catch up
   await new Promise(r => setTimeout(r, ESPLORA_CATCH_UP_TIME));
@@ -53,7 +53,7 @@ for (const valid of fixtures.discovery.valid) {
     let discovery;
     beforeAll(async () => {
       discovery = new Discovery({
-        extPubGetter: HDInterface.getExtPub.bind(HDInterface),
+        extPubGetter: HDSigner.getExtPub.bind(HDSigner),
         explorer: new Explorer({
           service: ESPLORA,
           url: LOCAL_ESPLORA_URL,
@@ -157,7 +157,7 @@ for (const valid of fixtures.discovery.valid) {
         });
         await explorer.connect();
         const test_discovery = new Discovery({
-          extPubGetter: HDInterface.getExtPub.bind(HDInterface),
+          extPubGetter: HDSigner.getExtPub.bind(HDSigner),
           explorer,
           gapLimit: valid.gapLimit,
           forceFetchChange: valid.forceFetchChange,

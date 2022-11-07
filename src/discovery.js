@@ -27,7 +27,7 @@ export class Discovery {
   /**
    * Create a discovery object.
    * @param {object} params
-   * @param {HDInterface#getExtPub} params.extPubGetter An **async** function that resolves an extended pub key.
+   * @param {HDSigner#getExtPub} params.extPubGetter An **async** function that resolves an extended pub key.
    * @param {number} [params.gapAccountLimit=GAP_ACCOUNT_LIMIT] The gap account limit: Number of consecutive unused accounts that can be hit. If the software hits `gapAccountLimit` unused accounts in a row, it expects there are no used accounts beyond this point.
    * @param {number} [params.gapLimit=GAP_LIMIT] The gap limit. See [BIP44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki#Address_gap_limit).
    * @param {object} params.explorer An instance of {@link Explorer}.
