@@ -30,10 +30,14 @@ import { decodeTx } from '../../src/decodeTx';
 
 import { SoftHDSigner } from '../../src/HDSigner/soft';
 import { getDerivationPathAddress } from '../../src/bip44';
-import { Explorer } from '../../src/explorer';
+import { EsploraExplorer } from '../../src/explorer/esplora';
 import { Discovery } from '../../src/discovery';
 import { getNextDerivationPath } from '../../src/bip44/chain';
-import { VAULT_SKIP, ESPLORA, LOCAL_ESPLORA_URL } from '../../src/constants';
+import {
+  VAULT_SKIP,
+  ESPLORA,
+  ESPLORA_LOCAL_REGTEST_URL
+} from '../../src/constants';
 import { coinselect } from '../../src/coinselect';
 
 import { fixtures } from '../fixtures/farvault';
@@ -78,10 +82,9 @@ describe('FarVault full pipe', () => {
         //Give esplora some time to catch up
         await new Promise(r => setTimeout(r, ESPLORA_CATCH_UP_TIME));
 
-        const blockstreamExplorer = new Explorer({ service: ESPLORA });
-        const localExplorer = new Explorer({
-          service: ESPLORA,
-          url: LOCAL_ESPLORA_URL
+        const blockstreamExplorer = new EsploraExplorer();
+        const localExplorer = new EsploraExplorer({
+          url: ESPLORA_LOCAL_REGTEST_URL
         });
 
         const discovery = new Discovery({

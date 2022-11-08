@@ -2,14 +2,15 @@ import {
   LEGACY,
   NATIVE_SEGWIT,
   NESTED_SEGWIT,
-  ESPLORA,
-  ELECTRUM,
-  LOCAL_ESPLORA_URL,
-  LOCAL_ELECTRUM_HOST,
-  LOCAL_ELECTRUM_PORT,
-  LOCAL_ELECTRUM_PROTOCOL
+  ESPLORA_LOCAL_REGTEST_URL,
+  ELECTRUM_LOCAL_REGTEST_HOST,
+  ELECTRUM_LOCAL_REGTEST_PORT,
+  ELECTRUM_LOCAL_REGTEST_PROTOCOL
 } from '../../src/constants';
 import { networks } from '../../src/networks';
+
+export const ESPLORA = 'ESPLORA';
+export const ELECTRUM = 'ELECTRUM';
 
 //Use a tool such as: https://iancoleman.io/bip39/
 export const fixtures = {
@@ -20,15 +21,14 @@ export const fixtures = {
     servers: [
       {
         service: ELECTRUM,
-        host: LOCAL_ELECTRUM_HOST,
-        port: LOCAL_ELECTRUM_PORT,
-        protocol: LOCAL_ELECTRUM_PROTOCOL,
+        host: ELECTRUM_LOCAL_REGTEST_HOST,
+        port: ELECTRUM_LOCAL_REGTEST_PORT,
+        protocol: ELECTRUM_LOCAL_REGTEST_PROTOCOL,
         network: networks.regtest
       },
       {
         service: ESPLORA,
-        url: LOCAL_ESPLORA_URL,
-        network: networks.regtest
+        url: ESPLORA_LOCAL_REGTEST_URL
       }
     ],
     unusedAddress: '2N4HNDu7u2WV2XXbMV2e38RjUAiosbeKwBH',
@@ -107,9 +107,6 @@ export const fixtures = {
       {
         //will default to blockstream electrum
         service: ELECTRUM
-      },
-      {
-        //will default to blockstream esplora
       }
     ]
     //if (server.network !== networks.regtest) {

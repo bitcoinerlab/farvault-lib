@@ -10,8 +10,8 @@ import {
 } from './tools';
 const DISCOVERY_TIME = 60000; //60 secs
 
-import { ESPLORA, LOCAL_ESPLORA_URL } from '../src/constants';
-import { Explorer } from '../src/explorer';
+import { ESPLORA_LOCAL_REGTEST_URL } from '../src/constants';
+import { EsploraExplorer } from '../src/explorer/esplora';
 
 let HDSigner, walletUtxos;
 beforeAll(async () => {
@@ -54,11 +54,7 @@ for (const valid of fixtures.discovery.valid) {
     beforeAll(async () => {
       discovery = new Discovery({
         extPubGetter: HDSigner.getExtPub.bind(HDSigner),
-        explorer: new Explorer({
-          service: ESPLORA,
-          url: LOCAL_ESPLORA_URL,
-          network
-        }),
+        explorer: new EsploraExplorer({ url: ESPLORA_LOCAL_REGTEST_URL }),
         gapLimit: valid.gapLimit,
         forceFetchChange: valid.forceFetchChange,
         gapAccountLimit: valid.gapAccountLimit
@@ -150,10 +146,8 @@ for (const valid of fixtures.discovery.valid) {
     test(
       'fetchUtxos and getUtxos on each account',
       async () => {
-        const explorer = new Explorer({
-          service: ESPLORA,
-          url: LOCAL_ESPLORA_URL,
-          network
+        const explorer = new EsploraExplorer({
+          url: ESPLORA_LOCAL_REGTEST_URL
         });
         await explorer.connect();
         const test_discovery = new Discovery({

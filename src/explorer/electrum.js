@@ -5,14 +5,46 @@ import ElectrumClient from 'electrum-client';
 import { networks } from '../networks';
 import { checkNetwork, checkFeeEstimates } from '../check';
 import {
-  BLOCKSTREAM_ELECTRUM_HOST,
-  BLOCKSTREAM_ELECTRUM_PORT,
-  BLOCKSTREAM_ELECTRUM_PROTOCOL,
-  BLOCKSTREAM_TESTNET_ELECTRUM_HOST,
-  BLOCKSTREAM_TESTNET_ELECTRUM_PORT,
-  BLOCKSTREAM_TESTNET_ELECTRUM_PROTOCOL
+  ELECTRUM_BLOCKSTREAM_HOST,
+  ELECTRUM_BLOCKSTREAM_PORT,
+  ELECTRUM_BLOCKSTREAM_PROTOCOL,
+  ELECTRUM_BLOCKSTREAM_TESTNET_HOST,
+  ELECTRUM_BLOCKSTREAM_TESTNET_PORT,
+  ELECTRUM_BLOCKSTREAM_TESTNET_PROTOCOL
 } from '../constants';
 import { address as bjsAddress, crypto } from 'bitcoinjs-lib';
+import { Explorer } from './interface';
+
+function defaultElectrumServer(network = networks.bitcoin) {
+  if (
+    network !== networks.bitcoin &&
+    network !== networks.testnet &&
+    network !== networks.regtest
+  ) {
+    throw new Error(
+      'Default electrum server only available for maninnet, testnet or regtest'
+    );
+  }
+  if (network === networks.bitcoin) {
+    return {
+      host: ELECTRUM_BLOCKSTREAM_HOST,
+      port: ELECTRUM_BLOCKSTREAM_PORT,
+      protocol: ELECTRUM_BLOCKSTREAM_PROTOCOL
+    };
+  } else if (network === networks.testnet) {
+    return {
+      host: ELECTRUM_BLOCKSTREAM_TESTNET_HOST,
+      port: ELECTRUM_BLOCKSTREAM_TESTNET_PORT,
+      protocol: ELECTRUM_BLOCKSTREAM_TESTNET_PROTOCOL
+    };
+  } else if (network === networks.regtest) {
+    return {
+      host: ELECTRUM_LOCAL_REGTEST_HOST,
+      port: ELECTRUM_LOCAL_REGTEST_PORT,
+      protocol: ELECTRUM_LOCAL_REGTEST_PROTOCOL
+    };
+  }
+}
 
 function addressToScriptHash(address, network = networks.bitcoin) {
   const script = bjsAddress.toOutputScript(address, network);
@@ -23,11 +55,9 @@ function addressToScriptHash(address, network = networks.bitcoin) {
 }
 
 /**
- * This class is encapsulated in {@link Explorer}.
- *
- * There is no need to use it directly.
+ * Implements an {@link Explorer} Interface for an Electrum server.
  */
-export class Electrum {
+export class ElectrumExplorer extends Explorer {
   #client;
   #height;
   #blockTime;
@@ -37,20 +67,39 @@ export class Electrum {
   #protocol;
   #network;
 
-  #assertConnect() {
-    if (typeof this.#client === 'undefined') {
-      throw new Error('Client not connected.');
-    }
-  }
-
   /**
+   * Constructor.
+   *
+   * `host`, `port` and `protocol` default to Blockstream esplora servers if
+   * `network` is bitcoin or testnet and to a local esplora sever in case of
+   * `regtest`.
+   *
    * @param {object} params
    * @param {string} params.host Elecrum's host.
    * @param {number} params.port Elecrum's port.
    * @param {protocol} params.protocol Elecrum's protocol. Either 'ssl' or 'tcp'.
    * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}.
    */
-  constructor({ host, port, protocol, network = networks.bitcoin }) {
+  constructor(
+    { host, port, protocol, network = networks.bitcoin } = {
+      host: ELECTRUM_BLOCKSTREAM_HOST,
+      port: ELECTRUM_BLOCKSTREAM_PORT,
+      protocol: ELECTRUM_BLOCKSTREAM_PROTOCOL,
+      network: networks.bitcoin
+    }
+  ) {
+    super();
+    checkNetwork(network);
+    if (
+      typeof host === 'undefined' &&
+      typeof port === 'undefined' &&
+      typeof protocol === 'undefined'
+    ) {
+      const server = defaultElectrumServer(network);
+      host = server.host;
+      port = server.port;
+      protocol = server.protocol;
+    }
     if (
       typeof host !== 'string' ||
       !Number.isInteger(port) ||
@@ -64,9 +113,15 @@ export class Electrum {
     this.#host = host;
     this.#port = port;
     this.#protocol = protocol;
-    checkNetwork(network);
     this.#network = network;
   }
+
+  #assertConnect() {
+    if (typeof this.#client === 'undefined') {
+      throw new Error('Client not connected.');
+    }
+  }
+
   #updateHeight(header) {
     if (
       header &&
@@ -79,7 +134,7 @@ export class Electrum {
   }
 
   /**
-   * Connect the socket. See {@link Explorer#connect}.
+   * Implements {@link Explorer#connect}.
    */
   async connect() {
     if (this.#client) {
@@ -109,7 +164,7 @@ export class Electrum {
   }
 
   /**
-   * Close the socket. See {@link Explorer#close}.
+   * Implements {@link Explorer#close}.
    */
   async close() {
     this.#assertConnect();
@@ -120,7 +175,27 @@ export class Electrum {
   }
 
   /**
-   * See {@link Explorer#fetchAddress}
+   * Implements {@link Explorer#fetchUtxos}.
+   */
+  async fetchUtxos(address) {
+    this.#assertConnect();
+    const utxos = [];
+    const unspents = await this.#client.blockchainScripthash_listunspent(
+      addressToScriptHash(address, this.#network)
+    );
+    for (const unspent of unspents) {
+      if (this.#height - unspent.height >= 5) {
+        const tx = await this.#client.blockchainTransaction_get(
+          unspent.tx_hash
+        );
+        utxos.push({ tx, n: unspent.tx_pos });
+      }
+    }
+    return utxos;
+  }
+
+  /**
+   * Implements {@link Explorer#fetchAddress}.
    * */
   async fetchAddress(address) {
     this.#assertConnect();
@@ -143,26 +218,6 @@ export class Electrum {
   }
 
   /**
-   * See {@link Explorer#fetchUtxos}
-   * */
-  async fetchUtxos(address) {
-    this.#assertConnect();
-    const utxos = [];
-    const unspents = await this.#client.blockchainScripthash_listunspent(
-      addressToScriptHash(address, this.#network)
-    );
-    for (const unspent of unspents) {
-      if (this.#height - unspent.height >= 5) {
-        const tx = await this.#client.blockchainTransaction_get(
-          unspent.tx_hash
-        );
-        utxos.push({ tx, n: unspent.tx_pos });
-      }
-    }
-    return utxos;
-  }
-
-  /**
    * See {@link Explorer#fetchFeeEstimates}
    * */
   async fetchFeeEstimates() {
@@ -179,26 +234,5 @@ export class Electrum {
     }
     checkFeeEstimates(feeEstimates);
     return feeEstimates;
-  }
-}
-export function blockstreamElectrumServer(network = networks.bitcoin) {
-  checkNetwork(network, false);
-  if (network !== networks.bitcoin && network !== networks.testnet) {
-    throw new Error(
-      'Blockstream electrum server only available for maninnet or testnet'
-    );
-  }
-  if (network === networks.bitcoin) {
-    return {
-      host: BLOCKSTREAM_ELECTRUM_HOST,
-      port: BLOCKSTREAM_ELECTRUM_PORT,
-      protocol: BLOCKSTREAM_ELECTRUM_PROTOCOL
-    };
-  } else if (network === networks.testnet) {
-    return {
-      host: BLOCKSTREAM_TESTNET_ELECTRUM_HOST,
-      port: BLOCKSTREAM_TESTNET_ELECTRUM_PORT,
-      protocol: BLOCKSTREAM_TESTNET_ELECTRUM_PROTOCOL
-    };
   }
 }

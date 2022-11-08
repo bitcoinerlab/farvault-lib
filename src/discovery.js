@@ -20,7 +20,10 @@ import { checkNetwork, checkExtPub } from './check';
 
 import { Transaction } from 'bitcoinjs-lib';
 
-/** Class representing the discovery of accounts from the blockchain. */
+/**
+ * Class representing the discovery of {@link https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki BIP44}/{@link https://github.com/bitcoin/bips/blob/master/bip-0049.mediawiki 49}/{@link https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki 84} accounts from
+ * the Blockchain.
+ */
 export class Discovery {
   //immutable root
   #discovery = {};

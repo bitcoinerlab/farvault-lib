@@ -22,17 +22,12 @@ const rootDerivePath = memoize(
 );
 
 /**
- * Implements a Software-based HD interface.
- *
- * It is derived from {@link HDSigner} and it implements all the methods
- * described there.
+ * Implements a {@link HDSigner} interface to a Software-based HD signer.
  */
 export class SoftHDSigner extends HDSigner {
   #mnemonic;
   #seed;
   /**
-   * Constructor
-   *
    * @param {object} params
    * @param {string} params.mnemonic Space separated list of BIP39 words used as mnemonic.
    */

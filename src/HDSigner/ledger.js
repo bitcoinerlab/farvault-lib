@@ -34,10 +34,7 @@ async function getApp(transport) {
 }
 
 /**
- * Implements an interface to a Ledger device.
- *
- * It is derived from {@link HDSigner} and it implements all the methods
- * described there.
+ * Implements an {@link HDSigner} interface to a Ledger Nano device.
  */
 export class LedgerHDSigner extends HDSigner {
   #transport;
@@ -49,8 +46,6 @@ export class LedgerHDSigner extends HDSigner {
   #ledgerAppBtc_flags;
 
   /**
-   * Constructor
-   *
    * @param {object} params
    * @param {string} params.transport Either `NODEJS_TRANSPORT` for use on
    * the command line or `WEB_TRANSPORT` for use in a browser-based

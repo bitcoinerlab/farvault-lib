@@ -1,26 +1,22 @@
-import memoize from 'lodash.memoize';
-
-import { networks, getNetworkId, getNetworkCoinType } from '../networks';
-
 function MUST_IMPLEMENT() {
   throw new Error('This Interface method must be implemented.');
 }
 
 /**
- * Class desccribing an Interface to an HD Signer (also popularly known as an 
- * HD wallet). For example, this Interface is implemented in LedgerHDSigners to
- * communicate with a Ledger Nano. Also, this Interface is implemented in
- * SoftHDSigner to communicate with a software HD wallet that is created using
- * a BIP39 word mnemonic.
+ * Class describing an Interface to communicate with a Hierarchical
+ * Deterministic Signer -HD Signer- (also known as Hierarchical
+ * Deterministic Wallet).
  *
- * As a farvault-lib user, you are probably trying to use {@link SoftHDSigner}
- * (for a software based HD signing device) or {@link LedgerHDSigner} for a
- * Ledger Nano HD device.
+ * Popular "Harwdare Wallets" such as Ledger Nanos or Trezors
+ * are, in fact, Hardware HD Signers, aka Hardware HD Wallets or simply Hardware
+ * Wallets.
  *
- * This is the HDSigner Interface for farvault-lib. Devs adding more signing HD
- * devices to farvault-lib must implement this class methods.
+ * So far, this Interface has been implemented in {@link LedgerHDSigner} to
+ * communicate with a Ledger Nano. Also, in {@link SoftHDSigner} to communicate
+ * with a Software HD wallet that is created using a BIP39 word mnemonic.
  *
- * Methods must be implemented following exactly the interface described here.
+ * Devs adding new signing HD devices to farvault-lib must implement this class
+ * methods.
  */
 export class HDSigner {
   /**

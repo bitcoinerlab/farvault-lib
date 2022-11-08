@@ -1,115 +1,28 @@
-import {
-  ESPLORA,
-  ELECTRUM,
-  BLOCKSTREAM_ELECTRUM_HOST,
-  BLOCKSTREAM_ELECTRUM_PORT,
-  BLOCKSTREAM_ELECTRUM_PROTOCOL
-} from '../constants';
-import { networks } from '../networks';
-import { checkNetwork } from '../check';
-import { Electrum, blockstreamElectrumServer } from './electrum';
-import {
-  esploraFetchUtxos,
-  esploraFetchAddress,
-  esploraFetchFeeEstimates,
-  blockstreamEsploraUrl
-} from './esplora';
-
-function isValidHttpUrl(string) {
-  let url;
-  try {
-    url = new URL(string);
-  } catch (_) {
-    return false;
-  }
-  return url.protocol === 'http:' || url.protocol === 'https:';
+function MUST_IMPLEMENT() {
+  throw new Error('This Interface method must be implemented.');
 }
 
-/** Class representing a client of a blockchain explorer.
+/** Class describing an Interface to a client that connects to a Blockchain
+ * explorer. For example, {@link EsploraExplorer a client to an Esplora Server}
+ * or {@link ElectrumExplorer a client to an Electrum Server}.
  *
- * {@link https://github.com/Blockstream/esplora/blob/master/API.md Esplora} and {@link https://electrumx.readthedocs.io/ electrum} servers are supported.
+ * Devs adding new Explorer clients to farvault-lib must implement this class
+ * methods.
  **/
 export class Explorer {
-  #service;
-  #url;
-  #electrum;
-
-  /** Usage:
-   *
-   * * `new Explorer()` will use public Blockstream's esplora server.
-   * * `new Explorer({service: ELECTRUM})` will use public Blockstream's electrum server.
-   * * `new Explorer({url: LOCAL_ESPLORA_URL})` will use a esplora server on `LOCAL_ESPLORA_URL`.
-   *
-   * Or choose any other server:
-   *
-   * @param {object} params
-   * @param {string} [params.service=ESPLORA] `ESPLORA` or `ELECTRUM`. Set `url` if `service = ESPLORA` or `host, port, protocol` if `service = ELECTRUM`.
-   * @param {string} params.url Esplora's API url. Defaults to blockstream.info if `service = ESPLORA`.
-   * @param {string} params.host Elecrum's host. Defaults to 'electrum.blockstream.info' if `service = ELECTRUM` and host, port and protocol are unset.
-   * @param {number} params.port Elecrum's port. Defaults to 50002 if `service = ELECTRUM` and host, port and protocol are unset.
-   * @param {protocol} params.protocol Elecrum's protocol. Either 'ssl' or 'tcp'. Defaults to 'ssl' if `service = ELECTRUM` and host, port and protocol are unset.
-   * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}.
-   */
-  constructor({
-    service = ESPLORA,
-    url,
-    host,
-    port,
-    protocol,
-    network = networks.bitcoin
-  }) {
-    checkNetwork(network);
-    if (service === ESPLORA) {
-      if (typeof url === 'undefined') {
-        url = blockstreamEsploraUrl(network);
-      }
-      if (host || port || protocol || !isValidHttpUrl(url))
-        throw new Error(
-          'Specify a valid URL for Esplora and nothing else. Note that the url can include the port: http://api.example.com:8080/api'
-        );
-      this.#url = url;
-    } else if (service === ELECTRUM) {
-      if (
-        typeof host === 'undefined' &&
-        typeof port === 'undefined' &&
-        typeof protocol === 'undefined'
-      ) {
-        const server = blockstreamElectrumServer(network);
-        host = server.host;
-        port = server.port;
-        protocol = server.protocol;
-      }
-      if (
-        typeof host !== 'string' ||
-        !Number.isInteger(port) ||
-        port <= 0 ||
-        (protocol !== 'ssl' && protocol !== 'tcp')
-      ) {
-        throw new Error(
-          "Specify a host (string), port (integer), and protocol ('ssl' or 'tcp') for Electrum."
-        );
-      }
-      this.#electrum = new Electrum({ host, port, protocol, network });
-    } else {
-      throw new Error('Invalid service.');
-    }
-    this.#service = service;
-  }
-  /** To be used with ELECTRUM servers before fetching any data.
+  /**
+   * Connect to the server.
    * @async
    **/
   async connect() {
-    if (this.#service === ELECTRUM) {
-      return await this.#electrum.connect();
-    }
+    MUST_IMPLEMENT();
   }
-  /** To be used with ELECTRUM servers to disconnect the socket.
+  /**
+   * Close the connection.
    * @async
    **/
   async close() {
-    if (this.#service === ELECTRUM) {
-      return await this.#electrum.close();
-    }
+    MUST_IMPLEMENT();
   }
   /**
    * Get the utxos of an address.
@@ -119,14 +32,11 @@ export class Explorer {
    * where `tx` is a string in hex format and `n` is an integer >= 0.
    * */
   async fetchUtxos(address) {
-    if (this.#service === ESPLORA) {
-      return await esploraFetchUtxos(address, this.#url);
-    } else if (this.#service === ELECTRUM) {
-      return await this.#electrum.fetchUtxos(address);
-    }
+    MUST_IMPLEMENT();
   }
   /**
-   * Get the balance and usage status of an address.
+   * Get the balance of an address and find out whether the address ever
+   * received some coins.
    * @async
    * @param {string} address A Bitcoin address
    * @returns {Promise<object>} return
@@ -134,11 +44,7 @@ export class Explorer {
    * @returns {number} return.balance Number of sats currently controlled by that address.
    * */
   async fetchAddress(address) {
-    if (this.#service === ESPLORA) {
-      return await esploraFetchAddress(address, this.#url);
-    } else if (this.#service === ELECTRUM) {
-      return await this.#electrum.fetchAddress(address);
-    }
+    MUST_IMPLEMENT();
   }
 
   /**
@@ -154,10 +60,6 @@ export class Explorer {
    * ```
    */
   async fetchFeeEstimates() {
-    if (this.#service === ESPLORA) {
-      return await esploraFetchFeeEstimates(this.#url);
-    } else if (this.#service === ELECTRUM) {
-      return await this.#electrum.fetchFeeEstimates();
-    }
+    MUST_IMPLEMENT();
   }
 }

@@ -7,18 +7,30 @@
 //not globally defined in nodejs. So import it with this package:
 import DOMException from 'node-domexception';
 
-import { fixtures } from './fixtures/explorer';
+import { fixtures, ELECTRUM, ESPLORA } from './fixtures/explorer';
 import {
   esploraFetchFeeEstimates,
   blockstreamEsploraUrl
 } from '../src/explorer/esplora';
-import { ELECTRUM } from '../src/constants';
 import { networks, getNetworkCoinType } from '../src/networks';
 import { createTransaction } from '../src/transactions';
 import { getExtPubAddress, serializeDerivationPath } from '../src/bip44';
+import { ESPLORA_BLOCKSTREAM_TESTNET_URL } from '../src/constants';
 
-function blockstreamFetchFeeEstimates(network = networks.bitcoin) {
-  return esploraFetchFeeEstimates(blockstreamEsploraUrl(network));
+function blockstreamEsploraFetchFeeEstimates(network = networks.bitcoin) {
+  if (network === networks.bitcoin) {
+    const esploraExplorer = new EsploraExplorer();
+    return esploraExplorer.fetchFeeEstimates();
+  } else if (network === networks.bitcoin) {
+    const esploraExplorer = new EsploraExplorer({
+      url: ESPLORA_BLOCKSTREAM_TESTNET_URL
+    });
+    return esploraExplorer.fetchFeeEstimates();
+  } else {
+    throw new Error(
+      'Blocktream esplora explorer is only available for mainnet and testnet'
+    );
+  }
 }
 
 import {
@@ -43,7 +55,8 @@ import fetch from 'cross-fetch';
 //Do not mock unless we explicitelly ask it to do.
 fetch.dontMock();
 
-import { Explorer } from '../src/explorer';
+import { EsploraExplorer } from '../src/explorer/esplora';
+import { ElectrumExplorer } from '../src/explorer/electrum';
 
 let HDSigner, walletUtxos, regtestUtils;
 beforeAll(async () => {
@@ -68,19 +81,19 @@ describe('esploraFetchFeeEstimates for blockstream server', () => {
   test('Estimates parse correct json data', async () => {
     fetch.doMock();
     fetch.mockResponse('hello world');
-    expect(blockstreamFetchFeeEstimates()).rejects.toThrow(
+    expect(blockstreamEsploraFetchFeeEstimates()).rejects.toThrow(
       'Invalid json format!'
     );
     fetch.mockResponse(JSON.stringify({ hello: 'world' }));
-    expect(blockstreamFetchFeeEstimates()).rejects.toThrow(
+    expect(blockstreamEsploraFetchFeeEstimates()).rejects.toThrow(
       'Invalid fee estimates!'
     );
     fetch.mockResponse(JSON.stringify({ a: 123 }));
-    expect(blockstreamFetchFeeEstimates()).rejects.toThrow(
+    expect(blockstreamEsploraFetchFeeEstimates()).rejects.toThrow(
       'Invalid fee estimates!'
     );
     fetch.mockResponse(JSON.stringify({ 12: 'a' }));
-    expect(blockstreamFetchFeeEstimates()).rejects.toThrow(
+    expect(blockstreamEsploraFetchFeeEstimates()).rejects.toThrow(
       'Invalid fee estimates!'
     );
     fetch.dontMock();
@@ -88,10 +101,10 @@ describe('esploraFetchFeeEstimates for blockstream server', () => {
 
   test('blockstream fee data returns the 28 fee elements as described in their doc', async () => {
     fetch.dontMock();
-    expect(Object.keys(await blockstreamFetchFeeEstimates()).length).toEqual(
-      28
-    );
-    expect(Object.keys(await blockstreamFetchFeeEstimates())).toEqual(
+    expect(
+      Object.keys(await blockstreamEsploraFetchFeeEstimates()).length
+    ).toEqual(28);
+    expect(Object.keys(await blockstreamEsploraFetchFeeEstimates())).toEqual(
       expect.arrayContaining([
         '1',
         '2',
@@ -131,15 +144,17 @@ describe('esploraFetchFeeEstimates for blockstream server', () => {
     fetch.mockAbortOnce();
     //Note we don't await since we assume that the promise rejects
     //https://jestjs.io/docs/expect#rejects
-    expect(blockstreamFetchFeeEstimates()).rejects.toThrow(
+    expect(blockstreamEsploraFetchFeeEstimates()).rejects.toThrow(
       'The operation was aborted'
     );
     fetch.mockRejectOnce(new Error('Unknown Network Error!'));
-    expect(blockstreamFetchFeeEstimates()).rejects.toThrow(
+    expect(blockstreamEsploraFetchFeeEstimates()).rejects.toThrow(
       'Unknown Network Error!'
     );
     fetch.mockOnce('Not found', { status: 404 });
-    expect(blockstreamFetchFeeEstimates()).rejects.toThrow('Service is down!');
+    expect(blockstreamEsploraFetchFeeEstimates()).rejects.toThrow(
+      'Service is down!'
+    );
     fetch.dontMock();
   });
 });
@@ -149,7 +164,12 @@ describe('Explorer: Tests with local servers', () => {
   for (const server of fixtures.local.servers) {
     test(`Create and connect to ${server.service}`, async () => {
       let explorer;
-      expect(() => (explorer = new Explorer(server))).not.toThrow();
+      if (server.service === ELECTRUM) {
+        expect(() => (explorer = new ElectrumExplorer(server))).not.toThrow();
+      }
+      if (server.service === ESPLORA) {
+        expect(() => (explorer = new EsploraExplorer(server))).not.toThrow();
+      }
       await expect(explorer.connect()).resolves.not.toThrow();
       explorers.push(explorer);
     }, 10000);
@@ -238,7 +258,12 @@ describe('Explorer: Tests with public servers', () => {
       server.service === ELECTRUM ? server.host : server.url
     }`, async () => {
       let explorer;
-      expect(() => (explorer = new Explorer(server))).not.toThrow();
+      if (server.service === ELECTRUM) {
+        expect(() => (explorer = new ElectrumExplorer(server))).not.toThrow();
+      }
+      if (server.service === ESPLORA) {
+        expect(() => (explorer = new EsploraExplorer(server))).not.toThrow();
+      }
       await expect(explorer.connect()).resolves.not.toThrow();
       explorers.push(explorer);
     }, 10000);
