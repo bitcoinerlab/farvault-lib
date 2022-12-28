@@ -356,6 +356,26 @@ export class Discovery {
   }
 
   /**
+   * Queries an online API to get all the addresses from an account.
+   * @async
+   * @param {object} params
+   * @param {object} [params.network=networks.bitcoin] A {@link module:networks.networks network}.
+   * @param {object} params.xDesc A {@link https://github.com/bitcoin/bitcoin/blob/master/doc/descriptors.md Bitcoin descriptor}.
+   *
+   * TODO: Keep the account based functions
+   * TODO: Change fetch -> to syncAccounts (this refers to BIP44, BIP49 and BIP84)
+   * TODO: Change fetchAccount -> to syncAccount (this refers to BIP44, BIP49 and BIP84)
+   * TODO: change the names of #pathFound, #accountPathsFetched & #accountUtxosFetched
+   * to #descFound, #xDescPathsFetched, #xDescUtxosFetched
+   * TODO: change the getUsedDerivationPaths to getUsedDescriptors, getFundedDerivationPaths to getFundedDescritors
+   *
+   *
+   */
+  async syncXDesc({ network = networks.bitcoin, xDesc }) {
+    
+  }
+
+  /**
    * Queries an online API to get the utxos of a certain extPub.
    *
    * @async

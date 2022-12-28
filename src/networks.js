@@ -33,11 +33,29 @@ const signet = { ...bjsNetworks.testnet }; //So that signet !== testnet
  */
 export const networks = { bitcoin, regtest, testnet, signet };
 
+/**
+ * Returns an id from a network
+ * @param {object} One of these {@link module:networks.networks networks}.
+ * @returns {number} A network id.
+ */
 export const getNetworkId = network => {
   if (network === bitcoin) return BITCOIN;
   if (network === regtest) return REGTEST;
   if (network === testnet) return TESTNET;
   if (network === signet) return SIGNET;
+  throw new Error('Unknown network');
+};
+
+/**
+ * Returns a network from an id.
+ * @param {number} A network id.
+ * @returns {object} One of these {@link module:networks.networks networks}.
+ */
+export const getNetwork = networkId => {
+  if (networkId === BITCOIN) return bitcoin;
+  if (networkId === REGTEST) return regtest;
+  if (networkId === TESTNET) return testnet;
+  if (networkId === SIGNET) return signet;
   throw new Error('Unknown network');
 };
 
